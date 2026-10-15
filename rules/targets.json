@@ -1,0 +1,2516 @@
+[
+  {
+    "id": "user-temp",
+    "group": "system",
+    "name": "User temp files",
+    "nameTr": "Kullanıcı geçici dosyaları",
+    "description": "Per-user temporary files left by installers and apps; files untouched for 24 hours are removed and anything in use is skipped.",
+    "descriptionTr": "Kurulum programlarının ve uygulamaların bıraktığı kullanıcıya ait geçici dosyalar; 24 saattir değişmeyenler silinir, kullanımda olanlar atlanır.",
+    "paths": [
+      "%TEMP%"
+    ],
+    "mode": "contents",
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr"
+  },
+  {
+    "id": "windows-temp",
+    "group": "system",
+    "name": "Windows temp files",
+    "nameTr": "Windows geçici dosyaları",
+    "description": "System-wide temporary folders used by services and SYSTEM processes; old files are removed and Windows recreates what it needs.",
+    "descriptionTr": "Hizmetlerin ve SYSTEM işlemlerinin kullandığı sistem geneli geçici klasörler; eski dosyalar silinir, Windows gerekenleri yeniden oluşturur.",
+    "paths": [
+      "%WINDIR%\\Temp",
+      "%WINDIR%\\SystemTemp"
+    ],
+    "mode": "contents",
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr"
+  },
+  {
+    "id": "windows-update-download",
+    "group": "system",
+    "name": "Windows Update downloads",
+    "nameTr": "Windows Update indirmeleri",
+    "description": "Update packages already downloaded by Windows Update; stop the wuauserv and bits services first, pending updates are downloaded again.",
+    "descriptionTr": "Windows Update'in indirdiği güncelleme paketleri; önce wuauserv ve bits hizmetleri durdurulmalı, bekleyen güncellemeler yeniden indirilir.",
+    "paths": [
+      "%WINDIR%\\SoftwareDistribution\\Download"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows/deployment/update/windows-update-resources"
+  },
+  {
+    "id": "delivery-optimization",
+    "group": "system",
+    "name": "Delivery Optimization cache",
+    "nameTr": "Teslim İyileştirme önbelleği",
+    "description": "Peer-to-peer cache of Windows and Store downloads; cleared with the official cmdlet, Windows re-downloads files when needed (size: Get-DeliveryOptimizationPerfSnap CacheSizeBytes).",
+    "descriptionTr": "Windows ve Store indirmelerinin eşler arası önbelleği; resmi cmdlet ile temizlenir, gerektiğinde dosyalar yeniden indirilir (boyut: Get-DeliveryOptimizationPerfSnap CacheSizeBytes).",
+    "paths": [
+      "%WINDIR%\\ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization\\Cache",
+      "%WINDIR%\\SoftwareDistribution\\DeliveryOptimization"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "command": "powershell.exe -NoProfile -NonInteractive -Command \"Delete-DeliveryOptimizationCache -Force\"",
+    "verified": false,
+    "source": "https://learn.microsoft.com/en-us/powershell/module/deliveryoptimization/delete-deliveryoptimizationcache"
+  },
+  {
+    "id": "component-store-cleanup",
+    "group": "system",
+    "name": "Component store (WinSxS) cleanup",
+    "nameTr": "Bileşen deposu (WinSxS) temizliği",
+    "description": "Removes superseded Windows component versions through DISM; never delete WinSxS files directly, older updates may no longer be rolled back.",
+    "descriptionTr": "Eski Windows bileşen sürümlerini DISM ile kaldırır; WinSxS dosyaları asla elle silinmez, eski güncellemeler geri alınamayabilir.",
+    "paths": [],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "command": "Dism.exe /Online /Cleanup-Image /StartComponentCleanup",
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/clean-up-the-winsxs-folder"
+  },
+  {
+    "id": "wer-system",
+    "group": "system",
+    "name": "Windows Error Reporting (system)",
+    "nameTr": "Windows Hata Bildirimi (sistem)",
+    "description": "Archived and queued crash reports for all users; only diagnostic history is lost.",
+    "descriptionTr": "Tüm kullanıcılar için arşivlenmiş ve kuyruktaki hata raporları; yalnızca tanılama geçmişi kaybolur.",
+    "paths": [
+      "%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportArchive",
+      "%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportQueue",
+      "%PROGRAMDATA%\\Microsoft\\Windows\\WER\\Temp"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://woshub.com/wer-windows-error-reporting-clear-reportqueue-folder-windows/"
+  },
+  {
+    "id": "wer-user",
+    "group": "system",
+    "name": "Windows Error Reporting (user)",
+    "nameTr": "Windows Hata Bildirimi (kullanıcı)",
+    "description": "Crash reports archived or queued for the current user; only diagnostic history is lost.",
+    "descriptionTr": "Geçerli kullanıcı için arşivlenmiş veya kuyruktaki hata raporları; yalnızca tanılama geçmişi kaybolur.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\WER\\ReportArchive",
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\WER\\ReportQueue"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://woshub.com/wer-windows-error-reporting-clear-reportqueue-folder-windows/"
+  },
+  {
+    "id": "memory-dump",
+    "group": "system",
+    "name": "System memory dump",
+    "nameTr": "Sistem bellek dökümü",
+    "description": "Full kernel dump (MEMORY.DMP) written after a blue screen; can be several GB, but it is needed if you still want to analyze that crash.",
+    "descriptionTr": "Mavi ekrandan sonra yazılan tam çekirdek dökümü (MEMORY.DMP); birkaç GB olabilir ama o çökmeyi incelemek istiyorsanız gereklidir.",
+    "paths": [
+      "%WINDIR%"
+    ],
+    "mode": "files",
+    "include": [
+      "*.dmp"
+    ],
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/performance/memory-dump-file-options"
+  },
+  {
+    "id": "minidumps",
+    "group": "system",
+    "name": "Blue screen minidumps",
+    "nameTr": "Mavi ekran mini dökümleri",
+    "description": "Small crash dumps from past blue screens; removing them only loses crash history used for troubleshooting.",
+    "descriptionTr": "Geçmiş mavi ekranlardan kalan küçük dökümler; silinince yalnızca sorun gidermede kullanılan çökme geçmişi kaybolur.",
+    "paths": [
+      "%WINDIR%\\Minidump"
+    ],
+    "mode": "files",
+    "include": [
+      "*.dmp"
+    ],
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/performance/memory-dump-file-options"
+  },
+  {
+    "id": "live-kernel-reports",
+    "group": "system",
+    "name": "Live kernel reports",
+    "nameTr": "Canlı çekirdek raporları",
+    "description": "Kernel dumps written without a crash (GPU timeouts, USB or network hangs) plus Task Manager live dumps; useful for driver diagnostics, otherwise safe to remove.",
+    "descriptionTr": "Çökme olmadan yazılan çekirdek dökümleri (GPU zaman aşımı, USB veya ağ takılması) ve Görev Yöneticisi canlı dökümleri; sürücü tanılaması için faydalı, aksi halde silinebilir.",
+    "paths": [
+      "%WINDIR%\\LiveKernelReports",
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\TaskManager\\LiveKernelDumps"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows/win32/wer/wer-settings"
+  },
+  {
+    "id": "app-crash-dumps",
+    "group": "system",
+    "name": "Application crash dumps",
+    "nameTr": "Uygulama çökme dökümleri",
+    "description": "User-mode crash dumps written by Windows Error Reporting (LocalDumps); apps are unaffected, only crash evidence is removed.",
+    "descriptionTr": "Windows Hata Bildirimi'nin (LocalDumps) yazdığı kullanıcı modu çökme dökümleri; uygulamalar etkilenmez, yalnızca çökme kanıtı silinir.",
+    "paths": [
+      "%LOCALAPPDATA%\\CrashDumps"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows/win32/wer/wer-settings"
+  },
+  {
+    "id": "thumbnail-cache",
+    "group": "system",
+    "name": "Thumbnail cache",
+    "nameTr": "Küçük resim önbelleği",
+    "description": "Explorer's thumbnail databases; thumbnails are regenerated while browsing folders, files locked by Explorer are skipped.",
+    "descriptionTr": "Dosya Gezgini'nin küçük resim veritabanları; klasörlere göz atarken yeniden oluşturulur, Gezgin'in kilitlediği dosyalar atlanır.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"
+    ],
+    "mode": "files",
+    "include": [
+      "thumbcache_*.db"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://www.elevenforum.com/t/clear-and-reset-thumbnail-cache-in-windows-11.2051/"
+  },
+  {
+    "id": "icon-cache",
+    "group": "system",
+    "name": "Icon cache",
+    "nameTr": "Simge önbelleği",
+    "description": "Explorer's icon databases; rebuilt automatically, icons may look blank or wrong until Explorer restarts or you sign out.",
+    "descriptionTr": "Dosya Gezgini'nin simge veritabanları; otomatik yeniden oluşturulur, Gezgin yeniden başlayana veya oturum kapanana kadar simgeler boş ya da hatalı görünebilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer",
+      "%LOCALAPPDATA%"
+    ],
+    "mode": "files",
+    "include": [
+      "iconcache_*.db",
+      "IconCache.db"
+    ],
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://www.winability.com/how-to-erase-icon-thumbnail-cache-windows-8/"
+  },
+  {
+    "id": "cbs-dism-logs",
+    "group": "system",
+    "name": "CBS and DISM logs",
+    "nameTr": "CBS ve DISM günlükleri",
+    "description": "Servicing logs and archived log cabinets from Windows Update, SFC and DISM; logs older than 7 days are removed, the active log is skipped.",
+    "descriptionTr": "Windows Update, SFC ve DISM bakım günlükleri ile arşivlenmiş günlük paketleri; 7 günden eski olanlar silinir, etkin günlük atlanır.",
+    "paths": [
+      "%WINDIR%\\Logs\\CBS",
+      "%WINDIR%\\Logs\\DISM"
+    ],
+    "mode": "files",
+    "include": [
+      "*.log",
+      "*.cab"
+    ],
+    "minAgeHours": 168,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr"
+  },
+  {
+    "id": "panther-logs",
+    "group": "system",
+    "name": "Windows Setup logs (Panther)",
+    "nameTr": "Windows Kurulum günlükleri (Panther)",
+    "description": "Setup and upgrade logs; only needed when diagnosing a failed Windows install or feature update.",
+    "descriptionTr": "Kurulum ve sürüm yükseltme günlükleri; yalnızca başarısız bir Windows kurulumu veya özellik güncellemesi incelenirken gerekir.",
+    "paths": [
+      "%WINDIR%\\Panther"
+    ],
+    "mode": "files",
+    "include": [
+      "*.log",
+      "*.etl"
+    ],
+    "minAgeHours": 168,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/troubleshoot/windows-client/setup-upgrade-and-drivers/windows-setup-log-file-locations"
+  },
+  {
+    "id": "setupapi-logs",
+    "group": "system",
+    "name": "Driver install logs (SetupAPI)",
+    "nameTr": "Sürücü kurulum günlükleri (SetupAPI)",
+    "description": "Device and driver installation text logs in the INF folder; only .log files named setupapi* are touched, needed only for driver troubleshooting.",
+    "descriptionTr": "INF klasöründeki aygıt ve sürücü kurulum günlükleri; yalnızca setupapi* adlı .log dosyalarına dokunulur, sadece sürücü sorunlarını incelerken gerekir.",
+    "paths": [
+      "%WINDIR%\\INF"
+    ],
+    "mode": "files",
+    "include": [
+      "setupapi*.log"
+    ],
+    "minAgeHours": 168,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-hardware/drivers/install/setupapi-text-logs"
+  },
+  {
+    "id": "prefetch",
+    "group": "system",
+    "name": "Prefetch files (not recommended)",
+    "nameTr": "Prefetch dosyaları (önerilmez)",
+    "description": "Launch traces Windows uses to start apps faster; Windows trims this folder itself, deleting frees almost nothing and makes the next app launches slower.",
+    "descriptionTr": "Windows'un uygulamaları hızlı açmak için kullandığı başlatma izleri; Windows klasörü kendisi yönetir, silmek neredeyse yer açmaz ve sonraki açılışları yavaşlatır.",
+    "paths": [
+      "%WINDIR%\\Prefetch"
+    ],
+    "mode": "files",
+    "include": [
+      "*.pf"
+    ],
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://edbott.com/2005/06/01/one-more-time-do-not-clean-out-your-prefetch-folder/"
+  },
+  {
+    "id": "windows-old",
+    "group": "system",
+    "name": "Previous Windows installation",
+    "nameTr": "Önceki Windows kurulumu",
+    "description": "Windows.old kept after an upgrade or reinstall; removing it ends rollback and it can hold old user files after a clean reinstall, so it is removed via Disk Cleanup, not raw file deletion.",
+    "descriptionTr": "Yükseltme veya yeniden kurulum sonrası tutulan Windows.old; silinince geri dönüş biter ve temiz kurulumdan sonra eski kullanıcı dosyalarını içerebilir, bu yüzden ham dosya silme yerine Disk Temizleme ile kaldırılır.",
+    "paths": [
+      "%SYSTEMDRIVE%\\Windows.old"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": true,
+    "closeApps": [],
+    "command": "cleanmgr.exe /autoclean",
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr"
+  },
+  {
+    "id": "windows-upgrade-temp",
+    "group": "system",
+    "name": "Windows upgrade leftovers",
+    "nameTr": "Windows yükseltme artıkları",
+    "description": "$Windows.~BT and $Windows.~WS staging folders from feature updates; removing them ends rollback and must not happen while an upgrade is pending.",
+    "descriptionTr": "Özellik güncellemelerinden kalan $Windows.~BT ve $Windows.~WS hazırlık klasörleri; silinince geri dönüş biter ve bekleyen bir yükseltme sırasında silinmemelidir.",
+    "paths": [
+      "%SYSTEMDRIVE%\\$Windows.~BT",
+      "%SYSTEMDRIVE%\\$Windows.~WS"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": true,
+    "closeApps": [],
+    "command": "cleanmgr.exe /autoclean",
+    "verified": true,
+    "source": "https://www.howtogeek.com/268667/what-is-the-windows.bt-folder-and-can-you-delete-it"
+  },
+  {
+    "id": "downloaded-program-files",
+    "group": "system",
+    "name": "Downloaded Program Files",
+    "nameTr": "İndirilen Program Dosyaları",
+    "description": "Legacy ActiveX controls and Java applets downloaded by Internet Explorer; normally empty on Windows 10/11, removing them breaks those legacy controls.",
+    "descriptionTr": "Internet Explorer'ın indirdiği eski ActiveX denetimleri ve Java uygulamacıkları; Windows 10/11'de genelde boştur, silinirse bu eski denetimler çalışmaz.",
+    "paths": [
+      "%WINDIR%\\Downloaded Program Files"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr"
+  },
+  {
+    "id": "directx-shader-cache",
+    "group": "system",
+    "name": "DirectX shader cache",
+    "nameTr": "DirectX gölgelendirici önbelleği",
+    "description": "Compiled Direct3D shaders shared by games and apps; rebuilt on demand, the first launch of each game may stutter briefly.",
+    "descriptionTr": "Oyunların ve uygulamaların paylaştığı derlenmiş Direct3D gölgelendiricileri; gerektikçe yeniden oluşturulur, her oyunun ilk açılışı kısa süre takılabilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\D3DSCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://rtech.support/guides/clearing-shader-cache/"
+  },
+  {
+    "id": "recycle-bin",
+    "group": "system",
+    "name": "Recycle Bin",
+    "nameTr": "Geri Dönüşüm Kutusu",
+    "description": "Files you deleted on every drive; emptied through the SHEmptyRecycleBinW API (size via SHQueryRecycleBinW), after which they cannot be restored.",
+    "descriptionTr": "Tüm sürücülerde sildiğiniz dosyalar; SHEmptyRecycleBinW API'siyle boşaltılır (boyut SHQueryRecycleBinW ile), sonrasında geri yüklenemez.",
+    "paths": [
+      "%SYSTEMDRIVE%\\$Recycle.Bin"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "api:SHEmptyRecycleBinW(NULL, NULL, SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND)",
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shemptyrecyclebinw"
+  },
+  {
+    "id": "inetcache",
+    "group": "system",
+    "name": "Internet cache (IE / legacy Edge)",
+    "nameTr": "İnternet önbelleği (IE / eski Edge)",
+    "description": "WinINet cache used by Internet Explorer mode and older apps; Content.Outlook and Content.Word are deliberately left alone because Office keeps open attachments and recovery files there.",
+    "descriptionTr": "Internet Explorer modu ve eski uygulamaların kullandığı WinINet önbelleği; Office açık ekleri ve kurtarma dosyalarını Content.Outlook ile Content.Word'de tuttuğu için onlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache\\IE",
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache\\Low",
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache\\Content.IE5"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/answers/questions/98747/windows-10-temporary-internet-files-cannot-be-dele"
+  },
+  {
+    "id": "chkdsk-fragments",
+    "group": "system",
+    "name": "Old CHKDSK fragments",
+    "nameTr": "Eski CHKDSK parçaları",
+    "description": "File fragments CHKDSK recovered into FOUND.xxx folders; usually useless, but they are the only remains of files that were damaged.",
+    "descriptionTr": "CHKDSK'nın FOUND.xxx klasörlerine kurtardığı dosya parçaları; genelde işe yaramaz ama hasar gören dosyalardan kalan tek şeydir.",
+    "paths": [
+      "%SYSTEMDRIVE%\\FOUND.*"
+    ],
+    "mode": "files",
+    "include": [
+      "*.CHK"
+    ],
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr"
+  },
+  {
+    "id": "nvidia-shader-cache",
+    "group": "system",
+    "name": "NVIDIA shader cache",
+    "nameTr": "NVIDIA gölgelendirici önbelleği",
+    "description": "DirectX and OpenGL shader caches kept by the NVIDIA driver; rebuilt automatically, games may stutter on first launch.",
+    "descriptionTr": "NVIDIA sürücüsünün tuttuğu DirectX ve OpenGL gölgelendirici önbellekleri; otomatik yeniden oluşturulur, oyunlar ilk açılışta takılabilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\NVIDIA\\DXCache",
+      "%LOCALAPPDATA%\\NVIDIA\\GLCache",
+      "%USERPROFILE%\\AppData\\LocalLow\\NVIDIA\\DXCache",
+      "%USERPROFILE%\\AppData\\LocalLow\\NVIDIA\\PerDriverVersion\\DXCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NV_Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://usekudu.com/cleaners/nvidia"
+  },
+  {
+    "id": "nvidia-nv-cache-programdata",
+    "group": "system",
+    "name": "NVIDIA legacy shader cache",
+    "nameTr": "NVIDIA eski gölgelendirici önbelleği",
+    "description": "Machine-wide NV_Cache used by older NVIDIA drivers; rebuilt automatically if still in use.",
+    "descriptionTr": "Eski NVIDIA sürücülerinin kullandığı makine geneli NV_Cache; hâlâ kullanılıyorsa otomatik yeniden oluşturulur.",
+    "paths": [
+      "%PROGRAMDATA%\\NVIDIA Corporation\\NV_Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://usekudu.com/cleaners/nvidia"
+  },
+  {
+    "id": "amd-shader-cache",
+    "group": "system",
+    "name": "AMD shader cache",
+    "nameTr": "AMD gölgelendirici önbelleği",
+    "description": "DirectX, Vulkan and OpenGL shader caches kept by the AMD driver (same data as Adrenalin's Reset Shader Cache); rebuilt automatically.",
+    "descriptionTr": "AMD sürücüsünün tuttuğu DirectX, Vulkan ve OpenGL gölgelendirici önbellekleri (Adrenalin'deki Reset Shader Cache ile aynı veri); otomatik yeniden oluşturulur.",
+    "paths": [
+      "%LOCALAPPDATA%\\AMD\\DxCache",
+      "%LOCALAPPDATA%\\AMD\\DxcCache",
+      "%LOCALAPPDATA%\\AMD\\DX9Cache",
+      "%LOCALAPPDATA%\\AMD\\GLCache",
+      "%LOCALAPPDATA%\\AMD\\VkCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://www.amd.com/en/resources/support-articles/faqs/DH3-012.html"
+  },
+  {
+    "id": "intel-shader-cache",
+    "group": "system",
+    "name": "Intel shader cache",
+    "nameTr": "Intel gölgelendirici önbelleği",
+    "description": "Shader cache kept by the Intel graphics driver; rebuilt automatically, first launches may be slower.",
+    "descriptionTr": "Intel grafik sürücüsünün tuttuğu gölgelendirici önbelleği; otomatik yeniden oluşturulur, ilk açılışlar yavaş olabilir.",
+    "paths": [
+      "%USERPROFILE%\\AppData\\LocalLow\\Intel\\ShaderCache",
+      "%LOCALAPPDATA%\\Intel\\ShaderCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://rtech.support/guides/clearing-shader-cache/"
+  },
+  {
+    "id": "gpu-driver-installers",
+    "group": "system",
+    "name": "Extracted GPU driver installers",
+    "nameTr": "Açılmış GPU sürücü kurulum dosyaları",
+    "description": "Driver packages that AMD and NVIDIA installers extract to C:\\AMD and C:\\NVIDIA; the installed driver is unaffected, but some AMD chipset uninstallers live in C:\\AMD.",
+    "descriptionTr": "AMD ve NVIDIA kurulum programlarının C:\\AMD ve C:\\NVIDIA'ya açtığı sürücü paketleri; kurulu sürücü etkilenmez ama bazı AMD yonga seti kaldırıcıları C:\\AMD içindedir.",
+    "paths": [
+      "%SYSTEMDRIVE%\\AMD",
+      "%SYSTEMDRIVE%\\NVIDIA"
+    ],
+    "mode": "folder",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": true,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://community.amd.com/t5/pc-drivers-software/what-files-and-or-folders-are-safe-to-delete-after-installing-an/m-p/494600"
+  },
+  {
+    "id": "chrome-cache",
+    "group": "browser",
+    "name": "Chrome cache",
+    "nameTr": "Chrome önbelleği",
+    "description": "HTTP, code and GPU/shader caches of every Chrome profile; cookies, history, passwords and sessions are not touched, pages load slower once. The browser must be closed.",
+    "descriptionTr": "Tüm Chrome profillerinin HTTP, kod ve GPU/gölgelendirici önbellekleri; çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz, sayfalar bir kez yavaş yüklenir. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "chrome.exe"
+    ],
+    "verified": true,
+    "source": "https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md"
+  },
+  {
+    "id": "chrome-sw-cache",
+    "group": "browser",
+    "name": "Chrome service worker cache",
+    "nameTr": "Chrome service worker önbelleği",
+    "description": "Cache Storage written by websites and installed web apps through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin ve yüklü web uygulamalarının service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "chrome.exe"
+    ],
+    "verified": true,
+    "source": "https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md"
+  },
+  {
+    "id": "edge-cache",
+    "group": "browser",
+    "name": "Edge cache",
+    "nameTr": "Edge önbelleği",
+    "description": "HTTP, code and GPU/shader caches of every Edge profile; cookies, history, passwords and sessions are not touched, pages load slower once. The browser must be closed.",
+    "descriptionTr": "Tüm Edge profillerinin HTTP, kod ve GPU/gölgelendirici önbellekleri; çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz, sayfalar bir kez yavaş yüklenir. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "msedge.exe"
+    ],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-browser-policies/userdatadir"
+  },
+  {
+    "id": "edge-sw-cache",
+    "group": "browser",
+    "name": "Edge service worker cache",
+    "nameTr": "Edge service worker önbelleği",
+    "description": "Cache Storage written by websites and installed web apps through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin ve yüklü web uygulamalarının service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "msedge.exe"
+    ],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-browser-policies/userdatadir"
+  },
+  {
+    "id": "brave-cache",
+    "group": "browser",
+    "name": "Brave cache",
+    "nameTr": "Brave önbelleği",
+    "description": "HTTP, code and GPU/shader caches of every Brave profile; cookies, history, passwords and sessions are not touched, pages load slower once. The browser must be closed.",
+    "descriptionTr": "Tüm Brave profillerinin HTTP, kod ve GPU/gölgelendirici önbellekleri; çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz, sayfalar bir kez yavaş yüklenir. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "brave.exe"
+    ],
+    "verified": true,
+    "source": "https://community.brave.app/t/where-brave-browser-profiles-are-located/646708"
+  },
+  {
+    "id": "brave-sw-cache",
+    "group": "browser",
+    "name": "Brave service worker cache",
+    "nameTr": "Brave service worker önbelleği",
+    "description": "Cache Storage written by websites and installed web apps through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin ve yüklü web uygulamalarının service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "brave.exe"
+    ],
+    "verified": true,
+    "source": "https://community.brave.app/t/where-brave-browser-profiles-are-located/646708"
+  },
+  {
+    "id": "vivaldi-cache",
+    "group": "browser",
+    "name": "Vivaldi cache",
+    "nameTr": "Vivaldi önbelleği",
+    "description": "HTTP, code and GPU/shader caches of every Vivaldi profile; cookies, history, passwords and sessions are not touched, pages load slower once. The browser must be closed.",
+    "descriptionTr": "Tüm Vivaldi profillerinin HTTP, kod ve GPU/gölgelendirici önbellekleri; çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz, sayfalar bir kez yavaş yüklenir. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "vivaldi.exe"
+    ],
+    "verified": true,
+    "source": "https://forum.vivaldi.net/topic/34565/how-do-you-change-location-of-user-data-files"
+  },
+  {
+    "id": "vivaldi-sw-cache",
+    "group": "browser",
+    "name": "Vivaldi service worker cache",
+    "nameTr": "Vivaldi service worker önbelleği",
+    "description": "Cache Storage written by websites and installed web apps through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin ve yüklü web uygulamalarının service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "vivaldi.exe"
+    ],
+    "verified": true,
+    "source": "https://forum.vivaldi.net/topic/34565/how-do-you-change-location-of-user-data-files"
+  },
+  {
+    "id": "chromium-cache",
+    "group": "browser",
+    "name": "Chromium cache",
+    "nameTr": "Chromium önbelleği",
+    "description": "HTTP, code and GPU/shader caches of every Chromium profile; cookies, history, passwords and sessions are not touched, pages load slower once. The browser must be closed.",
+    "descriptionTr": "Tüm Chromium profillerinin HTTP, kod ve GPU/gölgelendirici önbellekleri; çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz, sayfalar bir kez yavaş yüklenir. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Chromium\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "chrome.exe"
+    ],
+    "verified": true,
+    "source": "https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md"
+  },
+  {
+    "id": "chromium-sw-cache",
+    "group": "browser",
+    "name": "Chromium service worker cache",
+    "nameTr": "Chromium service worker önbelleği",
+    "description": "Cache Storage written by websites and installed web apps through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin ve yüklü web uygulamalarının service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Chromium\\User Data\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "chrome.exe"
+    ],
+    "verified": true,
+    "source": "https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md"
+  },
+  {
+    "id": "arc-cache",
+    "group": "browser",
+    "name": "Arc cache",
+    "nameTr": "Arc önbelleği",
+    "description": "HTTP, code and GPU/shader caches of every Arc profile; cookies, history, passwords and sessions are not touched, pages load slower once. The browser must be closed.",
+    "descriptionTr": "Tüm Arc profillerinin HTTP, kod ve GPU/gölgelendirici önbellekleri; çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz, sayfalar bir kez yavaş yüklenir. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Arc.exe"
+    ],
+    "verified": false,
+    "source": "https://contextbolt.com/blog/export-arc-bookmarks/"
+  },
+  {
+    "id": "arc-sw-cache",
+    "group": "browser",
+    "name": "Arc service worker cache",
+    "nameTr": "Arc service worker önbelleği",
+    "description": "Cache Storage written by websites and installed web apps through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin ve yüklü web uygulamalarının service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\TheBrowserCompany.Arc_*\\LocalCache\\Local\\Arc\\User Data\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Arc.exe"
+    ],
+    "verified": false,
+    "source": "https://contextbolt.com/blog/export-arc-bookmarks/"
+  },
+  {
+    "id": "opera-cache",
+    "group": "browser",
+    "name": "Opera cache",
+    "nameTr": "Opera önbelleği",
+    "description": "HTTP, code and GPU caches of Opera (Opera keeps the profile in Roaming and the disk cache in Local); cookies, history, passwords and sessions are not touched. The browser must be closed.",
+    "descriptionTr": "Opera HTTP, kod ve GPU önbellekleri (Opera profili Roaming'de, disk önbelleğini Local'de tutar); çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Opera Software\\Opera Stable\\Cache",
+      "%LOCALAPPDATA%\\Opera Software\\Opera Stable\\*\\Cache",
+      "%LOCALAPPDATA%\\Opera Software\\Opera Stable\\Code Cache",
+      "%LOCALAPPDATA%\\Opera Software\\Opera Stable\\*\\Code Cache",
+      "%APPDATA%\\Opera Software\\Opera Stable\\Code Cache",
+      "%APPDATA%\\Opera Software\\Opera Stable\\*\\Code Cache",
+      "%APPDATA%\\Opera Software\\Opera Stable\\GPUCache",
+      "%APPDATA%\\Opera Software\\Opera Stable\\*\\GPUCache",
+      "%APPDATA%\\Opera Software\\Opera Stable\\ShaderCache",
+      "%APPDATA%\\Opera Software\\Opera Stable\\GrShaderCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "opera.exe"
+    ],
+    "verified": false,
+    "source": "https://forums.opera.com/post/322269"
+  },
+  {
+    "id": "opera-sw-cache",
+    "group": "browser",
+    "name": "Opera service worker cache",
+    "nameTr": "Opera service worker önbelleği",
+    "description": "Cache Storage written by websites through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Opera Software\\Opera Stable\\Service Worker\\CacheStorage",
+      "%APPDATA%\\Opera Software\\Opera Stable\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "opera.exe"
+    ],
+    "verified": false,
+    "source": "https://forums.opera.com/post/322269"
+  },
+  {
+    "id": "opera-gx-cache",
+    "group": "browser",
+    "name": "Opera GX cache",
+    "nameTr": "Opera GX önbelleği",
+    "description": "HTTP, code and GPU caches of Opera GX (Opera keeps the profile in Roaming and the disk cache in Local); cookies, history, passwords and sessions are not touched. The browser must be closed.",
+    "descriptionTr": "Opera GX HTTP, kod ve GPU önbellekleri (Opera profili Roaming'de, disk önbelleğini Local'de tutar); çerezlere, geçmişe, parolalara ve oturumlara dokunulmaz. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Opera Software\\Opera GX Stable\\Cache",
+      "%LOCALAPPDATA%\\Opera Software\\Opera GX Stable\\*\\Cache",
+      "%LOCALAPPDATA%\\Opera Software\\Opera GX Stable\\Code Cache",
+      "%LOCALAPPDATA%\\Opera Software\\Opera GX Stable\\*\\Code Cache",
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\Code Cache",
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\*\\Code Cache",
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\GPUCache",
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\*\\GPUCache",
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\ShaderCache",
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\GrShaderCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "opera.exe"
+    ],
+    "verified": false,
+    "source": "https://forums.opera.com/post/322269"
+  },
+  {
+    "id": "opera-gx-sw-cache",
+    "group": "browser",
+    "name": "Opera GX service worker cache",
+    "nameTr": "Opera GX service worker önbelleği",
+    "description": "Cache Storage written by websites through service workers; sites re-download it, offline copies of web apps are lost until revisited. The browser must be closed.",
+    "descriptionTr": "Web sitelerinin service worker ile yazdığı Cache Storage; siteler yeniden indirir, web uygulamalarının çevrimdışı kopyaları tekrar ziyaret edilene kadar kaybolur. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\Service Worker\\CacheStorage",
+      "%APPDATA%\\Opera Software\\Opera GX Stable\\*\\Service Worker\\CacheStorage"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "opera.exe"
+    ],
+    "verified": false,
+    "source": "https://forums.opera.com/post/322269"
+  },
+  {
+    "id": "firefox-cache",
+    "group": "browser",
+    "name": "Firefox cache",
+    "nameTr": "Firefox önbelleği",
+    "description": "Disk cache (cache2), startup cache, page thumbnails and shader cache in Firefox's local profile folders; bookmarks, history, cookies and passwords live in Roaming and are not touched. Firefox must be closed.",
+    "descriptionTr": "Firefox'un yerel profil klasörlerindeki disk önbelleği (cache2), başlangıç önbelleği, sayfa küçük resimleri ve gölgelendirici önbelleği; yer imleri, geçmiş, çerezler ve parolalar Roaming'dedir ve dokunulmaz. Firefox kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\cache2",
+      "%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\startupCache",
+      "%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\thumbnails",
+      "%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\shader-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "firefox.exe"
+    ],
+    "verified": true,
+    "source": "https://artifacts-kb.readthedocs.io/en/latest/sources/webbrowser/FirefoxCache.html"
+  },
+  {
+    "id": "discord-cache",
+    "group": "apps",
+    "name": "Discord cache",
+    "nameTr": "Discord önbelleği",
+    "description": "Cached images, scripts and GPU data of Discord (stable, PTB, Canary); login and settings stay, media reloads once. Discord must be closed.",
+    "descriptionTr": "Discord'un (stable, PTB, Canary) önbelleğe aldığı görseller, betikler ve GPU verisi; oturum ve ayarlar kalır, medya bir kez yeniden yüklenir. Discord kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\discord\\Cache",
+      "%APPDATA%\\discord\\Code Cache",
+      "%APPDATA%\\discord\\GPUCache",
+      "%APPDATA%\\discordptb\\Cache",
+      "%APPDATA%\\discordptb\\Code Cache",
+      "%APPDATA%\\discordptb\\GPUCache",
+      "%APPDATA%\\discordcanary\\Cache",
+      "%APPDATA%\\discordcanary\\Code Cache",
+      "%APPDATA%\\discordcanary\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Discord.exe",
+      "DiscordPTB.exe",
+      "DiscordCanary.exe"
+    ],
+    "verified": true,
+    "source": "https://www.howtogeek.com/686597/how-to-clear-discord-cache-files-on-desktop-and-mobile/"
+  },
+  {
+    "id": "slack-cache",
+    "group": "apps",
+    "name": "Slack cache",
+    "nameTr": "Slack önbelleği",
+    "description": "Cached web content of the Slack desktop app (same as Help > Troubleshooting > Clear Cache); messages and sign-in are kept. Slack must be closed.",
+    "descriptionTr": "Slack masaüstü uygulamasının önbelleğe aldığı web içeriği (Yardım > Sorun Giderme > Önbelleği Temizle ile aynı); mesajlar ve oturum korunur. Slack kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Slack\\Cache",
+      "%APPDATA%\\Slack\\Code Cache",
+      "%APPDATA%\\Slack\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "slack.exe"
+    ],
+    "verified": true,
+    "source": "https://usekudu.com/cleaners/slack"
+  },
+  {
+    "id": "teams-classic-cache",
+    "group": "apps",
+    "name": "Microsoft Teams (classic) cache",
+    "nameTr": "Microsoft Teams (klasik) önbelleği",
+    "description": "Everything in the classic Teams data folder, as Microsoft's cache-clearing steps prescribe; Teams starts slower once and diagnostic logs are lost. Teams must be closed.",
+    "descriptionTr": "Microsoft'un önbellek temizleme adımlarına göre klasik Teams veri klasörünün tamamı; Teams bir kez yavaş açılır ve tanılama günlükleri kaybolur. Teams kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Microsoft\\Teams"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Teams.exe"
+    ],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/troubleshoot/microsoftteams/teams-administration/clear-teams-cache"
+  },
+  {
+    "id": "teams-new-cache",
+    "group": "apps",
+    "name": "Microsoft Teams (new) cache",
+    "nameTr": "Microsoft Teams (yeni) önbelleği",
+    "description": "Everything in the new Teams cache folder, as Microsoft's cache-clearing steps prescribe; Teams starts slower once and diagnostic logs are lost. Teams must be closed.",
+    "descriptionTr": "Microsoft'un önbellek temizleme adımlarına göre yeni Teams önbellek klasörünün tamamı; Teams bir kez yavaş açılır ve tanılama günlükleri kaybolur. Teams kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\MSTeams_8wekyb3d8bbwe\\LocalCache\\Microsoft\\MSTeams"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "ms-teams.exe"
+    ],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/troubleshoot/microsoftteams/teams-administration/clear-teams-cache"
+  },
+  {
+    "id": "vscode-cache",
+    "group": "apps",
+    "name": "VS Code cache and logs",
+    "nameTr": "VS Code önbelleği ve günlükleri",
+    "description": "Electron caches, compiled-code cache, cached extension packages and logs of VS Code (stable and Insiders); settings, extensions and workspace state in User are not touched. VS Code must be closed.",
+    "descriptionTr": "VS Code'un (stable ve Insiders) Electron önbellekleri, derlenmiş kod önbelleği, önbelleğe alınmış eklenti paketleri ve günlükleri; User içindeki ayarlara, eklentilere ve çalışma alanı durumuna dokunulmaz. VS Code kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Code\\Cache",
+      "%APPDATA%\\Code\\Code Cache",
+      "%APPDATA%\\Code\\CachedData",
+      "%APPDATA%\\Code\\CachedExtensionVSIXs",
+      "%APPDATA%\\Code\\GPUCache",
+      "%APPDATA%\\Code\\DawnGraphiteCache",
+      "%APPDATA%\\Code\\DawnWebGPUCache",
+      "%APPDATA%\\Code\\logs",
+      "%APPDATA%\\Code - Insiders\\Cache",
+      "%APPDATA%\\Code - Insiders\\Code Cache",
+      "%APPDATA%\\Code - Insiders\\CachedData",
+      "%APPDATA%\\Code - Insiders\\CachedExtensionVSIXs",
+      "%APPDATA%\\Code - Insiders\\GPUCache",
+      "%APPDATA%\\Code - Insiders\\DawnGraphiteCache",
+      "%APPDATA%\\Code - Insiders\\DawnWebGPUCache",
+      "%APPDATA%\\Code - Insiders\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Code.exe",
+      "Code - Insiders.exe"
+    ],
+    "verified": true,
+    "source": "https://bobbyhadz.com/blog/vscode-clear-cache"
+  },
+  {
+    "id": "cursor-cache",
+    "group": "apps",
+    "name": "Cursor cache and logs",
+    "nameTr": "Cursor önbelleği ve günlükleri",
+    "description": "Electron caches, compiled-code cache, cached extension packages and logs of Cursor; settings and chat history in User are not touched. Cursor must be closed.",
+    "descriptionTr": "Cursor'ın Electron önbellekleri, derlenmiş kod önbelleği, önbelleğe alınmış eklenti paketleri ve günlükleri; User içindeki ayarlara ve sohbet geçmişine dokunulmaz. Cursor kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Cursor\\Cache",
+      "%APPDATA%\\Cursor\\Code Cache",
+      "%APPDATA%\\Cursor\\CachedData",
+      "%APPDATA%\\Cursor\\CachedExtensionVSIXs",
+      "%APPDATA%\\Cursor\\GPUCache",
+      "%APPDATA%\\Cursor\\DawnGraphiteCache",
+      "%APPDATA%\\Cursor\\DawnWebGPUCache",
+      "%APPDATA%\\Cursor\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Cursor.exe"
+    ],
+    "verified": true,
+    "source": "https://usekudu.com/cleaners/cursor"
+  },
+  {
+    "id": "figma-cache",
+    "group": "apps",
+    "name": "Figma desktop cache",
+    "nameTr": "Figma masaüstü önbelleği",
+    "description": "Chromium caches inside Figma's desktop profile; sign-in and local storage are kept (unlike Figma's full reset), files reload from the cloud. Figma must be closed.",
+    "descriptionTr": "Figma masaüstü profilindeki Chromium önbellekleri; oturum ve yerel depolama korunur (Figma'nın tam sıfırlamasının aksine), dosyalar buluttan yeniden yüklenir. Figma kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Figma\\DesktopProfile\\*\\Cache",
+      "%APPDATA%\\Figma\\DesktopProfile\\*\\Code Cache",
+      "%APPDATA%\\Figma\\DesktopProfile\\*\\GPUCache",
+      "%APPDATA%\\Figma\\DesktopProfile\\*\\DawnGraphiteCache",
+      "%APPDATA%\\Figma\\DesktopProfile\\*\\DawnWebGPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Figma.exe"
+    ],
+    "verified": true,
+    "source": "https://help.figma.com/hc/en-us/articles/22380853110551"
+  },
+  {
+    "id": "notion-cache",
+    "group": "apps",
+    "name": "Notion cache",
+    "nameTr": "Notion önbelleği",
+    "description": "Electron caches of the Notion desktop app; the offline page database and sign-in are kept, content reloads from Notion. Notion must be closed.",
+    "descriptionTr": "Notion masaüstü uygulamasının Electron önbellekleri; çevrimdışı sayfa veritabanı ve oturum korunur, içerik Notion'dan yeniden yüklenir. Notion kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Notion\\Cache",
+      "%APPDATA%\\Notion\\Code Cache",
+      "%APPDATA%\\Notion\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Notion.exe"
+    ],
+    "verified": true,
+    "source": "https://thebricks.com/resources/how-to-clear-notion-cache"
+  },
+  {
+    "id": "postman-cache",
+    "group": "apps",
+    "name": "Postman cache and logs",
+    "nameTr": "Postman önbelleği ve günlükleri",
+    "description": "Electron caches and logs of the Postman app; collections, environments and history (stored in its databases) are not touched. Postman must be closed.",
+    "descriptionTr": "Postman uygulamasının Electron önbellekleri ve günlükleri; koleksiyonlara, ortamlara ve geçmişe (veritabanlarında tutulur) dokunulmaz. Postman kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Postman\\Cache",
+      "%APPDATA%\\Postman\\Code Cache",
+      "%APPDATA%\\Postman\\GPUCache",
+      "%APPDATA%\\Postman\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Postman.exe"
+    ],
+    "verified": false,
+    "source": "https://learning.postman.com/help/faqs/troubleshooting/how-to-open-my-logs-directory"
+  },
+  {
+    "id": "zoom-logs",
+    "group": "apps",
+    "name": "Zoom logs",
+    "nameTr": "Zoom günlükleri",
+    "description": "Log and crash-report folders of the Zoom desktop client; chats, settings and recordings are not touched.",
+    "descriptionTr": "Zoom masaüstü istemcisinin günlük ve çökme raporu klasörleri; sohbetlere, ayarlara ve kayıtlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Zoom\\logs",
+      "%APPDATA%\\Zoom\\data\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Zoom.exe"
+    ],
+    "verified": true,
+    "source": "https://community.zoom.com/t5/Zoom-Meetings/Zoom-crash-logs-in-windows/m-p/122612"
+  },
+  {
+    "id": "whatsapp-cache",
+    "group": "apps",
+    "name": "WhatsApp desktop cache",
+    "nameTr": "WhatsApp masaüstü önbelleği",
+    "description": "Web caches of WhatsApp desktop (legacy Electron build and the WebView2-based Store build); chats and the login session are kept, media thumbnails reload. WhatsApp must be closed.",
+    "descriptionTr": "WhatsApp masaüstünün web önbellekleri (eski Electron sürümü ve WebView2 tabanlı Store sürümü); sohbetler ve oturum korunur, medya önizlemeleri yeniden yüklenir. WhatsApp kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\WhatsApp\\Cache",
+      "%APPDATA%\\WhatsApp\\Code Cache",
+      "%APPDATA%\\WhatsApp\\GPUCache",
+      "%LOCALAPPDATA%\\Packages\\5319275A.WhatsAppDesktop_*\\LocalState\\EBWebView\\*\\Cache",
+      "%LOCALAPPDATA%\\Packages\\5319275A.WhatsAppDesktop_*\\LocalState\\EBWebView\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Packages\\5319275A.WhatsAppDesktop_*\\LocalState\\EBWebView\\*\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "WhatsApp.exe"
+    ],
+    "verified": false,
+    "source": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/user-data-folder"
+  },
+  {
+    "id": "telegram-cache",
+    "group": "apps",
+    "name": "Telegram Desktop cache",
+    "nameTr": "Telegram Desktop önbelleği",
+    "description": "Encrypted media and file cache of every Telegram Desktop account (same as Settings > Advanced > Manage local storage); the session keys in tdata are not touched, media is re-downloaded. Telegram must be closed.",
+    "descriptionTr": "Her Telegram Desktop hesabının şifreli medya ve dosya önbelleği (Ayarlar > Gelişmiş > Yerel depolamayı yönet ile aynı); tdata içindeki oturum anahtarlarına dokunulmaz, medya yeniden indirilir. Telegram kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\Telegram Desktop\\tdata\\user_data*\\cache",
+      "%APPDATA%\\Telegram Desktop\\tdata\\user_data*\\media_cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Telegram.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/telegramdesktop/tdesktop/blob/dev/Telegram/SourceFiles/storage/storage_account.cpp"
+  },
+  {
+    "id": "obsidian-cache",
+    "group": "apps",
+    "name": "Obsidian cache",
+    "nameTr": "Obsidian önbelleği",
+    "description": "Electron caches of the Obsidian app; vaults, obsidian.json (vault list) and IndexedDB (Sync state, metadata cache) are not touched. Obsidian must be closed.",
+    "descriptionTr": "Obsidian uygulamasının Electron önbellekleri; kasalara, obsidian.json'a (kasa listesi) ve IndexedDB'ye (Sync durumu, meta veri önbelleği) dokunulmaz. Obsidian kapalı olmalı.",
+    "paths": [
+      "%APPDATA%\\obsidian\\Cache",
+      "%APPDATA%\\obsidian\\Code Cache",
+      "%APPDATA%\\obsidian\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Obsidian.exe"
+    ],
+    "verified": true,
+    "source": "https://obsidian.md/help/data-storage"
+  },
+  {
+    "id": "spotify-cache",
+    "group": "media",
+    "name": "Spotify cache",
+    "nameTr": "Spotify önbelleği",
+    "description": "Streamed-music cache of Spotify (desktop and Store builds); downloaded offline songs in Storage are not touched, streamed tracks are fetched again. Spotify must be closed.",
+    "descriptionTr": "Spotify'ın (masaüstü ve Store sürümleri) akış müzik önbelleği; Storage içindeki çevrimdışı indirilen şarkılara dokunulmaz, dinlenen parçalar yeniden indirilir. Spotify kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Spotify\\Data",
+      "%LOCALAPPDATA%\\Packages\\SpotifyAB.SpotifyMusic_*\\LocalCache\\Spotify\\Data"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Spotify.exe"
+    ],
+    "verified": true,
+    "source": "https://community.spotify.com/t5/Desktop-Windows/Changing-the-Cache-location/td-p/4758102"
+  },
+  {
+    "id": "adobe-media-cache",
+    "group": "media",
+    "name": "Adobe media cache",
+    "nameTr": "Adobe medya önbelleği",
+    "description": "Conformed audio and peak files plus the media cache database shared by Premiere Pro, After Effects and Media Encoder; projects are untouched, media is re-indexed on next open.",
+    "descriptionTr": "Premiere Pro, After Effects ve Media Encoder'ın paylaştığı dönüştürülmüş ses, tepe dosyaları ve medya önbellek veritabanı; projelere dokunulmaz, medya bir sonraki açılışta yeniden işlenir.",
+    "paths": [
+      "%APPDATA%\\Adobe\\Common\\Media Cache Files",
+      "%APPDATA%\\Adobe\\Common\\Media Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Adobe Premiere Pro.exe",
+      "AfterFX.exe",
+      "Adobe Media Encoder.exe"
+    ],
+    "verified": true,
+    "source": "https://www.pugetsystems.com/labs/articles/How-to-Configure-Storage-and-Cache-File-Locations-in-Premiere-Pro-2292/"
+  },
+  {
+    "id": "steam-htmlcache",
+    "group": "games",
+    "name": "Steam web cache",
+    "nameTr": "Steam web önbelleği",
+    "description": "Cache of Steam's built-in browser (store, library, overlay pages); login and games are not touched. Steam must be closed.",
+    "descriptionTr": "Steam'in yerleşik tarayıcısının (mağaza, kütüphane, katman sayfaları) önbelleği; oturuma ve oyunlara dokunulmaz. Steam kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Steam\\htmlcache\\Default\\Cache",
+      "%LOCALAPPDATA%\\Steam\\htmlcache\\Default\\Code Cache",
+      "%LOCALAPPDATA%\\Steam\\htmlcache\\Default\\GPUCache",
+      "%LOCALAPPDATA%\\Steam\\htmlcache\\GrShaderCache",
+      "%LOCALAPPDATA%\\Steam\\htmlcache\\ShaderCache",
+      "%LOCALAPPDATA%\\Steam\\htmlcache\\GraphiteDawnCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "steam.exe",
+      "steamwebhelper.exe"
+    ],
+    "verified": true,
+    "source": "https://usekudu.com/cleaners/steam"
+  },
+  {
+    "id": "steam-shadercache",
+    "group": "games",
+    "name": "Steam shader pre-cache",
+    "nameTr": "Steam gölgelendirici ön önbelleği",
+    "description": "Per-game shader caches downloaded or built by Steam's shader pre-caching; rebuilt per game, expect stutter or a shader download on next launch. Other library folders hold their own steamapps\\shadercache.",
+    "descriptionTr": "Steam'in gölgelendirici ön önbelleklemesiyle indirilen veya derlenen oyun başına önbellekler; oyun başına yeniden oluşur, sonraki açılışta takılma veya indirme olabilir. Diğer kütüphane klasörlerinin kendi steamapps\\shadercache klasörü vardır.",
+    "paths": [
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\shadercache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "steam.exe"
+    ],
+    "verified": true,
+    "source": "https://rtech.support/guides/clearing-shader-cache/"
+  },
+  {
+    "id": "steam-logs-dumps",
+    "group": "games",
+    "name": "Steam logs and crash dumps",
+    "nameTr": "Steam günlükleri ve çökme dökümleri",
+    "description": "Client logs, crash dumps and the HTTP cache of the Steam client; nothing related to games or accounts is lost.",
+    "descriptionTr": "Steam istemcisinin günlükleri, çökme dökümleri ve HTTP önbelleği; oyunlarla veya hesapla ilgili hiçbir şey kaybolmaz.",
+    "paths": [
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\logs",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\dumps",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\appcache\\httpcache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "steam.exe"
+    ],
+    "verified": true,
+    "source": "https://usekudu.com/cleaners/steam"
+  },
+  {
+    "id": "epic-webcache",
+    "group": "games",
+    "name": "Epic Games Launcher web cache",
+    "nameTr": "Epic Games Launcher web önbelleği",
+    "description": "The launcher's webcache folders, removed exactly as Epic's support article instructs; fixes display issues, games are not touched. The launcher must be closed.",
+    "descriptionTr": "Epic'in destek makalesindeki gibi silinen başlatıcı webcache klasörleri; görüntü sorunlarını giderir, oyunlara dokunulmaz. Başlatıcı kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\EpicGamesLauncher\\Saved\\webcache*"
+    ],
+    "mode": "folder",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "EpicGamesLauncher.exe",
+      "EpicWebHelper.exe"
+    ],
+    "verified": true,
+    "source": "https://www.epicgames.com/help/epic-games-store-c-32735058/a20673770"
+  },
+  {
+    "id": "epic-logs",
+    "group": "games",
+    "name": "Epic Games Launcher logs",
+    "nameTr": "Epic Games Launcher günlükleri",
+    "description": "Log files of the Epic Games Launcher; only troubleshooting history is lost.",
+    "descriptionTr": "Epic Games Launcher günlük dosyaları; yalnızca sorun giderme geçmişi kaybolur.",
+    "paths": [
+      "%LOCALAPPDATA%\\EpicGamesLauncher\\Saved\\Logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "EpicGamesLauncher.exe"
+    ],
+    "verified": false,
+    "source": "https://www.epicgames.com/help/epic-games-store-c-32735058/a20673770"
+  },
+  {
+    "id": "battlenet-cache",
+    "group": "games",
+    "name": "Battle.net cache and logs",
+    "nameTr": "Battle.net önbelleği ve günlükleri",
+    "description": "Launcher cache and log folders of Battle.net; game installs and install locations are not touched (unlike Blizzard's ProgramData reset). Battle.net must be closed.",
+    "descriptionTr": "Battle.net başlatıcısının önbellek ve günlük klasörleri; oyun kurulumlarına ve kurulum konumlarına dokunulmaz (Blizzard'ın ProgramData sıfırlamasının aksine). Battle.net kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Battle.net\\Cache",
+      "%LOCALAPPDATA%\\Battle.net\\Logs",
+      "%LOCALAPPDATA%\\Blizzard Entertainment\\Battle.net\\Logs",
+      "%APPDATA%\\Battle.net\\Logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Battle.net.exe",
+      "Agent.exe"
+    ],
+    "verified": false,
+    "source": "https://usekudu.com/cleaners/battlenet"
+  },
+  {
+    "id": "riot-client-logs",
+    "group": "games",
+    "name": "Riot Client logs",
+    "nameTr": "Riot Client günlükleri",
+    "description": "Dated log files of the Riot Client; only support/troubleshooting history is lost.",
+    "descriptionTr": "Riot Client'ın tarihli günlük dosyaları; yalnızca destek ve sorun giderme geçmişi kaybolur.",
+    "paths": [
+      "%LOCALAPPDATA%\\Riot Games\\Riot Client\\Logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "RiotClientServices.exe",
+      "Riot Client.exe"
+    ],
+    "verified": true,
+    "source": "https://support.riotgames.com/en-us/riot/performance/network-system-and-logs-windows"
+  },
+  {
+    "id": "valorant-logs",
+    "group": "games",
+    "name": "VALORANT logs",
+    "nameTr": "VALORANT günlükleri",
+    "description": "Game log files written by VALORANT; only troubleshooting history is lost.",
+    "descriptionTr": "VALORANT'ın yazdığı oyun günlük dosyaları; yalnızca sorun giderme geçmişi kaybolur.",
+    "paths": [
+      "%LOCALAPPDATA%\\VALORANT\\Saved\\Logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "VALORANT.exe",
+      "VALORANT-Win64-Shipping.exe"
+    ],
+    "verified": false,
+    "source": "https://usekudu.com/cleaners/valorant"
+  },
+  {
+    "id": "npm-cache",
+    "group": "dev",
+    "name": "npm cache",
+    "nameTr": "npm önbelleği",
+    "description": "npm's content-addressable package cache; packages are re-downloaded on the next install.",
+    "descriptionTr": "npm'in içerik adresli paket önbelleği; paketler sonraki kurulumda yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\npm-cache\\_cacache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "npm cache clean --force",
+    "verified": true,
+    "source": "https://docs.npmjs.com/cli/v10/using-npm/config#cache"
+  },
+  {
+    "id": "npm-npx-logs",
+    "group": "dev",
+    "name": "npx cache and npm logs",
+    "nameTr": "npx önbelleği ve npm günlükleri",
+    "description": "Packages installed on the fly by npx/npm exec and npm debug logs inside the npm cache folder; npx downloads packages again when needed.",
+    "descriptionTr": "npx/npm exec'in anlık kurduğu paketler ve npm önbellek klasöründeki hata ayıklama günlükleri; npx gerektiğinde paketleri yeniden indirir.",
+    "paths": [
+      "%LOCALAPPDATA%\\npm-cache\\_npx",
+      "%LOCALAPPDATA%\\npm-cache\\_logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://docs.npmjs.com/cli/v10/using-npm/logging"
+  },
+  {
+    "id": "pnpm-store",
+    "group": "dev",
+    "name": "pnpm store",
+    "nameTr": "pnpm deposu",
+    "description": "pnpm's global content-addressable store; prefer pnpm store prune, which only removes packages no project references. Sizes are overstated because project node_modules are hard links into it.",
+    "descriptionTr": "pnpm'in genel içerik adresli deposu; yalnızca hiçbir projenin kullanmadığı paketleri silen pnpm store prune tercih edilir. Proje node_modules klasörleri buraya sabit bağlantı olduğu için boyut olduğundan büyük görünür.",
+    "paths": [
+      "%LOCALAPPDATA%\\pnpm\\store"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "pnpm store prune",
+    "verified": true,
+    "source": "https://pnpm.io/cli/store"
+  },
+  {
+    "id": "pnpm-cache",
+    "group": "dev",
+    "name": "pnpm metadata cache",
+    "nameTr": "pnpm meta veri önbelleği",
+    "description": "Registry metadata and dlx caches of pnpm; refetched on the next install.",
+    "descriptionTr": "pnpm'in kayıt defteri meta verisi ve dlx önbellekleri; sonraki kurulumda yeniden alınır.",
+    "paths": [
+      "%LOCALAPPDATA%\\pnpm-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://pnpm.io/settings/other"
+  },
+  {
+    "id": "yarn-classic-cache",
+    "group": "dev",
+    "name": "Yarn v1 cache",
+    "nameTr": "Yarn v1 önbelleği",
+    "description": "Global package cache of Yarn Classic; global packages in Yarn\\Data are not touched, packages are re-downloaded.",
+    "descriptionTr": "Yarn Classic'in genel paket önbelleği; Yarn\\Data içindeki global paketlere dokunulmaz, paketler yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\Yarn\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "yarn cache clean",
+    "verified": true,
+    "source": "https://github.com/yarnpkg/yarn/blob/master/src/util/user-dirs.js"
+  },
+  {
+    "id": "yarn-berry-cache",
+    "group": "dev",
+    "name": "Yarn Berry global cache",
+    "nameTr": "Yarn Berry genel önbelleği",
+    "description": "Global (mirror) cache of Yarn 2+; project-local .yarn/cache folders are not touched, packages are re-downloaded.",
+    "descriptionTr": "Yarn 2+ genel (mirror) önbelleği; projelerdeki .yarn/cache klasörlerine dokunulmaz, paketler yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\Yarn\\Berry\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "yarn cache clean --mirror",
+    "verified": true,
+    "source": "https://github.com/yarnpkg/berry/blob/master/packages/yarnpkg-core/sources/folderUtils.ts"
+  },
+  {
+    "id": "bun-cache",
+    "group": "dev",
+    "name": "Bun install cache",
+    "nameTr": "Bun kurulum önbelleği",
+    "description": "Bun's global package cache including its global store; projects that link into the global store need bun install again.",
+    "descriptionTr": "Bun'ın genel deposu dahil genel paket önbelleği; genel depoya bağlanan projelerde yeniden bun install gerekir.",
+    "paths": [
+      "%USERPROFILE%\\.bun\\install\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "bun pm cache rm",
+    "verified": true,
+    "source": "https://bun.com/docs/pm/cli/pm"
+  },
+  {
+    "id": "pip-cache",
+    "group": "dev",
+    "name": "pip cache",
+    "nameTr": "pip önbelleği",
+    "description": "pip's HTTP and wheel cache; wheels are downloaded or built again when needed.",
+    "descriptionTr": "pip'in HTTP ve wheel önbelleği; wheel dosyaları gerektiğinde yeniden indirilir veya derlenir.",
+    "paths": [
+      "%LOCALAPPDATA%\\pip\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "pip cache purge",
+    "verified": true,
+    "source": "https://pip.pypa.io/en/stable/topics/caching/"
+  },
+  {
+    "id": "uv-cache",
+    "group": "dev",
+    "name": "uv cache",
+    "nameTr": "uv önbelleği",
+    "description": "uv's package cache; uv's docs say not to edit it by hand, so the uv CLI is used when available. Existing environments keep working, packages are re-downloaded.",
+    "descriptionTr": "uv'nin paket önbelleği; uv belgeleri elle değiştirilmemesini söyler, bu yüzden varsa uv CLI kullanılır. Mevcut ortamlar çalışmaya devam eder, paketler yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\uv\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "uv cache clean",
+    "verified": true,
+    "source": "https://docs.astral.sh/uv/concepts/cache/"
+  },
+  {
+    "id": "poetry-cache",
+    "group": "dev",
+    "name": "Poetry cache",
+    "nameTr": "Poetry önbelleği",
+    "description": "Poetry's package and artifact caches; Poetry-managed virtualenvs in the same folder are not touched.",
+    "descriptionTr": "Poetry'nin paket ve yapıt önbellekleri; aynı klasördeki Poetry sanal ortamlarına dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\pypoetry\\Cache\\cache",
+      "%LOCALAPPDATA%\\pypoetry\\Cache\\artifacts"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "poetry cache clear PyPI --all",
+    "verified": true,
+    "source": "https://python-poetry.org/docs/configuration/#cache-dir"
+  },
+  {
+    "id": "conda-pkgs",
+    "group": "dev",
+    "name": "Conda package cache",
+    "nameTr": "Conda paket önbelleği",
+    "description": "Downloaded and extracted conda packages; cleaned only with conda clean, because environments can link back into this cache.",
+    "descriptionTr": "İndirilmiş ve açılmış conda paketleri; ortamlar bu önbelleğe bağlantı verebildiği için yalnızca conda clean ile temizlenir.",
+    "paths": [
+      "%USERPROFILE%\\miniconda3\\pkgs",
+      "%USERPROFILE%\\anaconda3\\pkgs",
+      "%USERPROFILE%\\miniforge3\\pkgs",
+      "%USERPROFILE%\\.conda\\pkgs"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "conda clean --all --yes",
+    "verified": false,
+    "source": "https://docs.conda.io/projects/conda/en/latest/commands/clean.html"
+  },
+  {
+    "id": "pipx-cache",
+    "group": "dev",
+    "name": "pipx run cache",
+    "nameTr": "pipx run önbelleği",
+    "description": "Temporary virtual environments created by pipx run; installed pipx apps are not touched.",
+    "descriptionTr": "pipx run'ın oluşturduğu geçici sanal ortamlar; kurulu pipx uygulamalarına dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\pipx\\pipx\\Cache",
+      "%USERPROFILE%\\pipx\\.cache",
+      "%USERPROFILE%\\.local\\pipx\\.cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/pypa/pipx/blob/main/src/pipx/paths.py"
+  },
+  {
+    "id": "cargo-cache",
+    "group": "dev",
+    "name": "Cargo registry cache",
+    "nameTr": "Cargo kayıt defteri önbelleği",
+    "description": "Downloaded .crate archives, their extracted sources and git checkouts; Cargo re-extracts or re-downloads them, installed binaries and the index are kept.",
+    "descriptionTr": "İndirilmiş .crate arşivleri, açılmış kaynakları ve git çalışma kopyaları; Cargo bunları yeniden açar veya indirir, kurulu ikili dosyalar ve dizin korunur.",
+    "paths": [
+      "%USERPROFILE%\\.cargo\\registry\\cache",
+      "%USERPROFILE%\\.cargo\\registry\\src",
+      "%USERPROFILE%\\.cargo\\git\\checkouts"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://doc.rust-lang.org/cargo/guide/cargo-home.html"
+  },
+  {
+    "id": "go-build-cache",
+    "group": "dev",
+    "name": "Go build cache",
+    "nameTr": "Go derleme önbelleği",
+    "description": "Compiled package and test results of the go command; the next build is slower once.",
+    "descriptionTr": "go komutunun derlenmiş paket ve test sonuçları; sonraki derleme bir kez daha yavaş olur.",
+    "paths": [
+      "%LOCALAPPDATA%\\go-build"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "go clean -cache",
+    "verified": true,
+    "source": "https://pkg.go.dev/cmd/go"
+  },
+  {
+    "id": "go-mod-cache",
+    "group": "dev",
+    "name": "Go module cache",
+    "nameTr": "Go modül önbelleği",
+    "description": "Downloaded module sources (read-only files, so go clean -modcache is the right tool); modules are re-downloaded on the next build.",
+    "descriptionTr": "İndirilmiş modül kaynakları (dosyalar salt okunur, bu yüzden doğru araç go clean -modcache); modüller sonraki derlemede yeniden indirilir.",
+    "paths": [
+      "%USERPROFILE%\\go\\pkg\\mod"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "go clean -modcache",
+    "verified": true,
+    "source": "https://pkg.go.dev/cmd/go"
+  },
+  {
+    "id": "gradle-caches",
+    "group": "dev",
+    "name": "Gradle caches",
+    "nameTr": "Gradle önbellekleri",
+    "description": "Dependency, transform and build caches in the Gradle user home; stop daemons first (gradle --stop), everything is re-downloaded or rebuilt on the next build.",
+    "descriptionTr": "Gradle kullanıcı dizinindeki bağımlılık, dönüşüm ve derleme önbellekleri; önce daemon'lar durdurulmalı (gradle --stop), her şey sonraki derlemede yeniden indirilir veya oluşturulur.",
+    "paths": [
+      "%USERPROFILE%\\.gradle\\caches"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://docs.gradle.org/current/userguide/directory_layout.html"
+  },
+  {
+    "id": "gradle-wrapper-dists",
+    "group": "dev",
+    "name": "Gradle wrapper distributions",
+    "nameTr": "Gradle wrapper dağıtımları",
+    "description": "Gradle versions downloaded by project wrappers; the wrapper downloads the needed version again.",
+    "descriptionTr": "Proje wrapper'larının indirdiği Gradle sürümleri; wrapper gereken sürümü yeniden indirir.",
+    "paths": [
+      "%USERPROFILE%\\.gradle\\wrapper\\dists"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://docs.gradle.org/current/userguide/directory_layout.html"
+  },
+  {
+    "id": "gradle-daemon-logs",
+    "group": "dev",
+    "name": "Gradle daemon logs",
+    "nameTr": "Gradle daemon günlükleri",
+    "description": "Log files of Gradle daemons, grouped per Gradle version; nothing else is affected.",
+    "descriptionTr": "Gradle sürümlerine göre gruplanmış Gradle daemon günlük dosyaları; başka hiçbir şey etkilenmez.",
+    "paths": [
+      "%USERPROFILE%\\.gradle\\daemon\\*"
+    ],
+    "mode": "files",
+    "include": [
+      "*.log"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://docs.gradle.org/current/userguide/directory_layout.html"
+  },
+  {
+    "id": "maven-repository",
+    "group": "dev",
+    "name": "Maven local repository",
+    "nameTr": "Maven yerel deposu",
+    "description": "Maven's local repository; downloaded dependencies come back, but artifacts you installed yourself (mvn install, install:install-file) cannot be re-downloaded.",
+    "descriptionTr": "Maven'ın yerel deposu; indirilen bağımlılıklar geri gelir ama sizin kurduğunuz yapıtlar (mvn install, install:install-file) yeniden indirilemez.",
+    "paths": [
+      "%USERPROFILE%\\.m2\\repository"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://maven.apache.org/guides/introduction/introduction-to-repositories.html"
+  },
+  {
+    "id": "nuget-http-cache",
+    "group": "dev",
+    "name": "NuGet HTTP cache",
+    "nameTr": "NuGet HTTP önbelleği",
+    "description": "Cached NuGet feed responses and package downloads; restore fetches them again.",
+    "descriptionTr": "Önbelleğe alınmış NuGet akış yanıtları ve paket indirmeleri; restore bunları yeniden alır.",
+    "paths": [
+      "%LOCALAPPDATA%\\NuGet\\v3-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "dotnet nuget locals http-cache --clear",
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/nuget/consume-packages/managing-the-global-packages-and-cache-folders"
+  },
+  {
+    "id": "nuget-global-packages",
+    "group": "dev",
+    "name": "NuGet global packages",
+    "nameTr": "NuGet genel paketleri",
+    "description": "Extracted packages used directly by PackageReference projects; every project needs a restore afterwards and Visual Studio should be closed.",
+    "descriptionTr": "PackageReference projelerinin doğrudan kullandığı açılmış paketler; sonrasında her proje restore gerektirir ve Visual Studio kapalı olmalı.",
+    "paths": [
+      "%USERPROFILE%\\.nuget\\packages"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "devenv.exe"
+    ],
+    "command": "dotnet nuget locals global-packages --clear",
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/nuget/consume-packages/managing-the-global-packages-and-cache-folders"
+  },
+  {
+    "id": "composer-cache",
+    "group": "dev",
+    "name": "Composer cache",
+    "nameTr": "Composer önbelleği",
+    "description": "Composer's package, repository-metadata and VCS caches; COMPOSER_HOME (global packages, auth.json) in Roaming is not touched.",
+    "descriptionTr": "Composer'ın paket, depo meta verisi ve VCS önbellekleri; Roaming'deki COMPOSER_HOME'a (global paketler, auth.json) dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Composer\\files",
+      "%LOCALAPPDATA%\\Composer\\repo",
+      "%LOCALAPPDATA%\\Composer\\vcs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "composer clear-cache",
+    "verified": true,
+    "source": "https://getcomposer.org/doc/03-cli.md#composer-cache-dir"
+  },
+  {
+    "id": "deno-cache",
+    "group": "dev",
+    "name": "Deno cache",
+    "nameTr": "Deno önbelleği",
+    "description": "Deno's remote module, npm and compiled caches; origin storage (localStorage in location_data) is kept, which is why deno clean is not used.",
+    "descriptionTr": "Deno'nun uzak modül, npm ve derleme önbellekleri; kaynak deposu (location_data içindeki localStorage) korunur, bu yüzden deno clean kullanılmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\deno\\remote",
+      "%LOCALAPPDATA%\\deno\\deps",
+      "%LOCALAPPDATA%\\deno\\npm",
+      "%LOCALAPPDATA%\\deno\\gen",
+      "%LOCALAPPDATA%\\deno\\registries"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://docs.deno.com/runtime/reference/cli/env_variables"
+  },
+  {
+    "id": "playwright-browsers",
+    "group": "dev",
+    "name": "Playwright browsers",
+    "nameTr": "Playwright tarayıcıları",
+    "description": "Chromium, Firefox and WebKit builds downloaded by Playwright; projects need npx playwright install again.",
+    "descriptionTr": "Playwright'ın indirdiği Chromium, Firefox ve WebKit sürümleri; projelerde yeniden npx playwright install gerekir.",
+    "paths": [
+      "%LOCALAPPDATA%\\ms-playwright"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "npx playwright uninstall --all",
+    "verified": true,
+    "source": "https://playwright.dev/docs/browsers#managing-browser-binaries"
+  },
+  {
+    "id": "puppeteer-browsers",
+    "group": "dev",
+    "name": "Puppeteer browsers",
+    "nameTr": "Puppeteer tarayıcıları",
+    "description": "Chrome builds downloaded by Puppeteer; re-downloaded on the next Puppeteer install.",
+    "descriptionTr": "Puppeteer'ın indirdiği Chrome sürümleri; sonraki Puppeteer kurulumunda yeniden indirilir.",
+    "paths": [
+      "%USERPROFILE%\\.cache\\puppeteer"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://pptr.dev/guides/configuration"
+  },
+  {
+    "id": "cypress-cache",
+    "group": "dev",
+    "name": "Cypress binary cache",
+    "nameTr": "Cypress ikili önbelleği",
+    "description": "Cypress app binaries for every installed version; re-downloaded on the next install.",
+    "descriptionTr": "Kurulu her sürüm için Cypress uygulama ikilileri; sonraki kurulumda yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\Cypress\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "npx cypress cache clear",
+    "verified": true,
+    "source": "https://docs.cypress.io/app/references/advanced-installation"
+  },
+  {
+    "id": "electron-cache",
+    "group": "dev",
+    "name": "Electron download cache",
+    "nameTr": "Electron indirme önbelleği",
+    "description": "Electron release zips cached by @electron/get; downloaded again when a project needs them.",
+    "descriptionTr": "@electron/get'in önbelleğe aldığı Electron sürüm arşivleri; bir proje gerektirdiğinde yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\electron\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://www.npmjs.com/package/@electron/get"
+  },
+  {
+    "id": "electron-builder-cache",
+    "group": "dev",
+    "name": "electron-builder cache",
+    "nameTr": "electron-builder önbelleği",
+    "description": "Toolsets (NSIS, winCodeSign and others) cached by electron-builder; downloaded again on the next build.",
+    "descriptionTr": "electron-builder'ın önbelleğe aldığı araç setleri (NSIS, winCodeSign ve diğerleri); sonraki derlemede yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\electron-builder\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://www.electron.build/docs/tutorials/offline-air-gapped-builds"
+  },
+  {
+    "id": "node-gyp-cache",
+    "group": "dev",
+    "name": "node-gyp headers",
+    "nameTr": "node-gyp başlık dosyaları",
+    "description": "Node.js headers and import libraries downloaded by node-gyp for native addons; downloaded again on the next native build.",
+    "descriptionTr": "node-gyp'in yerel eklentiler için indirdiği Node.js başlık dosyaları ve içe aktarma kitaplıkları; sonraki yerel derlemede yeniden indirilir.",
+    "paths": [
+      "%LOCALAPPDATA%\\node-gyp\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/nodejs/node-gyp/blob/main/bin/node-gyp.js"
+  },
+  {
+    "id": "typescript-ata-cache",
+    "group": "dev",
+    "name": "TypeScript type acquisition cache",
+    "nameTr": "TypeScript tür edinme önbelleği",
+    "description": "@types packages that the TypeScript language service downloads for JavaScript projects; editors fetch them again when needed.",
+    "descriptionTr": "TypeScript dil hizmetinin JavaScript projeleri için indirdiği @types paketleri; editörler gerektiğinde yeniden indirir.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\TypeScript"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/angelozerr/typescript.java/wiki/ATA"
+  },
+  {
+    "id": "jetbrains-caches",
+    "group": "dev",
+    "name": "JetBrains IDE caches",
+    "nameTr": "JetBrains IDE önbellekleri",
+    "description": "Caches and indexes of every JetBrains IDE version (same data as File > Invalidate Caches); Local History is kept, projects are re-indexed on next open. The IDE must be closed.",
+    "descriptionTr": "Her JetBrains IDE sürümünün önbellekleri ve dizinleri (Dosya > Önbellekleri Geçersiz Kıl ile aynı veri); Yerel Geçmiş korunur, projeler bir sonraki açılışta yeniden dizinlenir. IDE kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\JetBrains\\*\\caches",
+      "%LOCALAPPDATA%\\JetBrains\\*\\index"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "idea64.exe",
+      "pycharm64.exe",
+      "webstorm64.exe",
+      "phpstorm64.exe",
+      "rider64.exe",
+      "clion64.exe",
+      "goland64.exe",
+      "rubymine64.exe",
+      "datagrip64.exe",
+      "rustrover64.exe"
+    ],
+    "verified": true,
+    "source": "https://www.jetbrains.com/help/idea/directories-used-by-the-ide-to-store-settings-caches-plugins-and-logs.html"
+  },
+  {
+    "id": "jetbrains-logs",
+    "group": "dev",
+    "name": "JetBrains IDE logs",
+    "nameTr": "JetBrains IDE günlükleri",
+    "description": "Log files and thread dumps of every JetBrains IDE version; only troubleshooting history is lost.",
+    "descriptionTr": "Her JetBrains IDE sürümünün günlük dosyaları ve iş parçacığı dökümleri; yalnızca sorun giderme geçmişi kaybolur.",
+    "paths": [
+      "%LOCALAPPDATA%\\JetBrains\\*\\log"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "idea64.exe",
+      "pycharm64.exe",
+      "webstorm64.exe",
+      "phpstorm64.exe",
+      "rider64.exe",
+      "clion64.exe",
+      "goland64.exe",
+      "rubymine64.exe",
+      "datagrip64.exe",
+      "rustrover64.exe"
+    ],
+    "verified": true,
+    "source": "https://www.jetbrains.com/help/idea/directories-used-by-the-ide-to-store-settings-caches-plugins-and-logs.html"
+  },
+  {
+    "id": "visualstudio-mef-cache",
+    "group": "dev",
+    "name": "Visual Studio component cache",
+    "nameTr": "Visual Studio bileşen önbelleği",
+    "description": "MEF component cache of each Visual Studio instance; rebuilt on the next start, often fixes extension load errors. Visual Studio must be closed.",
+    "descriptionTr": "Her Visual Studio örneğinin MEF bileşen önbelleği; sonraki açılışta yeniden oluşturulur, çoğu zaman eklenti yükleme hatalarını giderir. Visual Studio kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\VisualStudio\\*\\ComponentModelCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "devenv.exe"
+    ],
+    "verified": true,
+    "source": "https://visualgdb.com/documentation/mefcache/"
+  },
+  {
+    "id": "android-studio-caches",
+    "group": "dev",
+    "name": "Android Studio caches and logs",
+    "nameTr": "Android Studio önbellekleri ve günlükleri",
+    "description": "Caches, indexes and logs in Android Studio's system folders; settings and plugins in Roaming are not touched. Android Studio must be closed.",
+    "descriptionTr": "Android Studio sistem klasörlerindeki önbellekler, dizinler ve günlükler; Roaming'deki ayarlara ve eklentilere dokunulmaz. Android Studio kapalı olmalı.",
+    "paths": [
+      "%LOCALAPPDATA%\\Google\\AndroidStudio*\\caches",
+      "%LOCALAPPDATA%\\Google\\AndroidStudio*\\index",
+      "%LOCALAPPDATA%\\Google\\AndroidStudio*\\log"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "studio64.exe"
+    ],
+    "verified": true,
+    "source": "https://developer.android.com/studio/intro/studio-config"
+  },
+  {
+    "id": "android-system-images",
+    "group": "dev",
+    "name": "Android emulator system images",
+    "nameTr": "Android emülatör sistem imajları",
+    "description": "Emulator OS images in the Android SDK; any virtual device built on a removed image stops booting until the image is reinstalled with the SDK Manager.",
+    "descriptionTr": "Android SDK içindeki emülatör işletim sistemi imajları; silinen imaja dayanan sanal cihazlar, imaj SDK Manager ile yeniden kurulana kadar açılmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Android\\Sdk\\system-images"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "studio64.exe"
+    ],
+    "verified": true,
+    "source": "https://developer.android.com/studio/intro/studio-config"
+  },
+  {
+    "id": "android-avd",
+    "group": "dev",
+    "name": "Android virtual devices",
+    "nameTr": "Android sanal cihazları",
+    "description": "Emulator devices with their disks, installed apps and snapshots; this is user data inside the emulators and cannot be recovered.",
+    "descriptionTr": "Diskleri, yüklü uygulamaları ve anlık görüntüleriyle emülatör cihazları; emülatörlerin içindeki kullanıcı verisidir ve geri alınamaz.",
+    "paths": [
+      "%USERPROFILE%\\.android\\avd"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": false,
+    "closeApps": [
+      "studio64.exe",
+      "emulator.exe",
+      "qemu-system-x86_64.exe"
+    ],
+    "verified": true,
+    "source": "https://developer.android.com/tools/variables"
+  },
+  {
+    "id": "flutter-pub-cache",
+    "group": "dev",
+    "name": "Dart/Flutter pub cache",
+    "nameTr": "Dart/Flutter pub önbelleği",
+    "description": "Packages downloaded by dart pub and flutter pub; every project needs pub get again and globally activated tools must be reactivated.",
+    "descriptionTr": "dart pub ve flutter pub'ın indirdiği paketler; her proje yeniden pub get gerektirir ve global etkinleştirilen araçlar yeniden etkinleştirilmelidir.",
+    "paths": [
+      "%LOCALAPPDATA%\\Pub\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "dart pub cache clean --force",
+    "verified": true,
+    "source": "https://dart.dev/tools/pub/cmd/pub-cache"
+  },
+  {
+    "id": "docker-desktop-data",
+    "group": "dev",
+    "name": "Docker Desktop disk image",
+    "nameTr": "Docker Desktop disk imajı",
+    "description": "Virtual disks holding all Docker images, containers, volumes and build cache; never delete them, prune unused data with Docker instead (volumes are kept).",
+    "descriptionTr": "Tüm Docker imajlarını, konteynerlerini, birimlerini ve derleme önbelleğini tutan sanal diskler; asla silinmez, kullanılmayan veriler Docker ile temizlenir (birimler korunur).",
+    "paths": [
+      "%LOCALAPPDATA%\\Docker\\wsl\\disk\\docker_data.vhdx",
+      "%LOCALAPPDATA%\\Docker\\wsl\\data\\docker_data.vhdx",
+      "%LOCALAPPDATA%\\Docker\\wsl\\data\\ext4.vhdx",
+      "%LOCALAPPDATA%\\Docker\\wsl\\main\\ext4.vhdx",
+      "%LOCALAPPDATA%\\Docker\\wsl\\distro\\ext4.vhdx"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": false,
+    "closeApps": [],
+    "command": "docker system prune -f",
+    "verified": true,
+    "source": "https://docs.docker.com/reference/cli/docker/system/prune/"
+  },
+  {
+    "id": "wsl-disks",
+    "group": "dev",
+    "name": "WSL distribution disks",
+    "nameTr": "WSL dağıtım diskleri",
+    "description": "ext4.vhdx disks of installed WSL distributions; they hold the whole Linux file system, so they are only measured (exact paths: HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Lxss\\*\\BasePath).",
+    "descriptionTr": "Kurulu WSL dağıtımlarının ext4.vhdx diskleri; tüm Linux dosya sistemini tutarlar, bu yüzden yalnızca ölçülür (kesin yollar: HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Lxss\\*\\BasePath).",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\*\\LocalState\\ext4.vhdx",
+      "%LOCALAPPDATA%\\wsl\\*\\ext4.vhdx"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows/wsl/disk-space"
+  },
+  {
+    "id": "unity-upm-cache",
+    "group": "dev",
+    "name": "Unity package cache",
+    "nameTr": "Unity paket önbelleği",
+    "description": "Unity Package Manager's global registry cache; packages already in projects stay, new installs need a connection to fetch them again.",
+    "descriptionTr": "Unity Package Manager'ın genel kayıt defteri önbelleği; projelerdeki paketler kalır, yeni kurulumlar için yeniden indirme bağlantısı gerekir.",
+    "paths": [
+      "%LOCALAPPDATA%\\Unity\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Unity.exe",
+      "Unity Hub.exe"
+    ],
+    "verified": true,
+    "source": "https://docs.unity.com/en-us/engine/6000.3/manual/packages-list/package-manager-caches/upm-cache"
+  },
+  {
+    "id": "unreal-ddc-local",
+    "group": "dev",
+    "name": "Unreal Engine local DDC",
+    "nameTr": "Unreal Engine yerel DDC",
+    "description": "Legacy file-system Derived Data Cache of launcher-installed engines; disposable, the editor rebuilds shaders and assets on next open (slow).",
+    "descriptionTr": "Başlatıcıyla kurulan motorların eski dosya sistemi Türetilmiş Veri Önbelleği; atılabilir, editör bir sonraki açılışta gölgelendiricileri ve varlıkları yeniden oluşturur (yavaş).",
+    "paths": [
+      "%LOCALAPPDATA%\\UnrealEngine\\Common\\DerivedDataCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "UnrealEditor.exe",
+      "UE4Editor.exe"
+    ],
+    "verified": false,
+    "source": "https://forums.unrealengine.com/t/derived-data-cache/324747"
+  },
+  {
+    "id": "unreal-zen-ddc",
+    "group": "dev",
+    "name": "Unreal Engine Zen cache",
+    "nameTr": "Unreal Engine Zen önbelleği",
+    "description": "Zen storage server data used as the local DDC by Unreal Engine 5.4+; Zen garbage-collects it itself, so it is only measured.",
+    "descriptionTr": "Unreal Engine 5.4+ sürümlerinin yerel DDC olarak kullandığı Zen depolama sunucusu verisi; Zen kendi çöp toplamasını yapar, bu yüzden yalnızca ölçülür.",
+    "paths": [
+      "%PROGRAMDATA%\\Epic\\Zen\\Data"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://dev.epicgames.com/documentation/unreal-engine/using-derived-data-cache-in-unreal-engine"
+  },
+  {
+    "id": "ollama-models",
+    "group": "ai",
+    "name": "Ollama models",
+    "nameTr": "Ollama modelleri",
+    "description": "Downloaded Ollama model blobs and manifests; every model has to be pulled again (often many GB). Keys and config in .ollama are not touched.",
+    "descriptionTr": "İndirilmiş Ollama model blob'ları ve manifestleri; her model yeniden çekilmelidir (çoğu zaman birkaç GB). .ollama içindeki anahtarlara ve ayarlara dokunulmaz.",
+    "paths": [
+      "%USERPROFILE%\\.ollama\\models"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "ollama.exe",
+      "ollama app.exe"
+    ],
+    "verified": true,
+    "source": "https://docs.ollama.com/faq"
+  },
+  {
+    "id": "huggingface-hub",
+    "group": "ai",
+    "name": "Hugging Face hub cache",
+    "nameTr": "Hugging Face hub önbelleği",
+    "description": "Models, datasets and spaces downloaded through huggingface_hub; re-downloaded on next use. The login token in the parent folder is not touched.",
+    "descriptionTr": "huggingface_hub ile indirilen modeller, veri setleri ve space'ler; sonraki kullanımda yeniden indirilir. Üst klasördeki oturum anahtarına dokunulmaz.",
+    "paths": [
+      "%USERPROFILE%\\.cache\\huggingface\\hub"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache"
+  },
+  {
+    "id": "huggingface-xet",
+    "group": "ai",
+    "name": "Hugging Face Xet cache",
+    "nameTr": "Hugging Face Xet önbelleği",
+    "description": "Xet shard cache and upload staging data; only upload deduplication and resumable uploads are affected.",
+    "descriptionTr": "Xet parça önbelleği ve yükleme hazırlık verisi; yalnızca yükleme tekilleştirmesi ve devam ettirilebilir yüklemeler etkilenir.",
+    "paths": [
+      "%USERPROFILE%\\.cache\\huggingface\\xet"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache"
+  },
+  {
+    "id": "huggingface-datasets",
+    "group": "ai",
+    "name": "Hugging Face datasets cache",
+    "nameTr": "Hugging Face veri seti önbelleği",
+    "description": "Arrow files and downloads cached by the datasets library; datasets are downloaded and processed again on next load.",
+    "descriptionTr": "datasets kitaplığının önbelleğe aldığı Arrow dosyaları ve indirmeler; veri setleri bir sonraki yüklemede yeniden indirilip işlenir.",
+    "paths": [
+      "%USERPROFILE%\\.cache\\huggingface\\datasets"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://huggingface.co/docs/datasets/en/cache"
+  },
+  {
+    "id": "lmstudio-models",
+    "group": "ai",
+    "name": "LM Studio models",
+    "nameTr": "LM Studio modelleri",
+    "description": "Model files downloaded in LM Studio's default models folder; they must be downloaded again. Credentials and settings in .lmstudio are not touched.",
+    "descriptionTr": "LM Studio'nun varsayılan modeller klasörüne indirilen model dosyaları; yeniden indirilmeleri gerekir. .lmstudio içindeki kimlik bilgilerine ve ayarlara dokunulmaz.",
+    "paths": [
+      "%USERPROFILE%\\.lmstudio\\models"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "LM Studio.exe"
+    ],
+    "verified": true,
+    "source": "https://tecnobits.com/en/How-to-change-the-folder-where-LM-Studio-saves-the-models/"
+  },
+  {
+    "id": "torch-hub-cache",
+    "group": "ai",
+    "name": "PyTorch Hub cache",
+    "nameTr": "PyTorch Hub önbelleği",
+    "description": "Repositories and weights downloaded by torch.hub; downloaded again on next load.",
+    "descriptionTr": "torch.hub'ın indirdiği depolar ve ağırlıklar; bir sonraki yüklemede yeniden indirilir.",
+    "paths": [
+      "%USERPROFILE%\\.cache\\torch\\hub"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://docs.pytorch.org/docs/2.14/hub.html"
+  },
+  {
+    "id": "whisper-models",
+    "group": "ai",
+    "name": "OpenAI Whisper models",
+    "nameTr": "OpenAI Whisper modelleri",
+    "description": "Whisper checkpoints downloaded by the openai-whisper package; downloaded again on next use.",
+    "descriptionTr": "openai-whisper paketinin indirdiği Whisper model dosyaları; sonraki kullanımda yeniden indirilir.",
+    "paths": [
+      "%USERPROFILE%\\.cache\\whisper"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/openai/whisper/blob/main/whisper/__init__.py"
+  }
+]
