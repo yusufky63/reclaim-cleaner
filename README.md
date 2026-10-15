@@ -93,7 +93,7 @@ Release binaries are built by GitHub Actions from this repository. Signing throu
 
 ## Contributing
 
-Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md). Security problems go through [SECURITY.md](SECURITY.md), not public issues.
+Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md); planned work is in [ROADMAP.md](ROADMAP.md). Security problems go through [SECURITY.md](SECURITY.md), not public issues.
 
 ## License
 
