@@ -1,0 +1,36 @@
+name: Cleanup rule request
+description: Suggest a cache, log or build folder ReClaim should know about.
+labels: [rules]
+body:
+  - type: input
+    id: app
+    attributes:
+      label: App or tool
+      placeholder: e.g. Figma, Android Studio, Unity
+    validations:
+      required: true
+  - type: textarea
+    id: paths
+    attributes:
+      label: Location(s)
+      description: Use environment variables where you can, e.g. %LOCALAPPDATA%\App\Cache.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: contents
+    attributes:
+      label: What is inside, and what happens after deleting it?
+      description: Does it rebuild by itself? Is anything lost (logins, offline files, settings)? Must the app be closed?
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Documentation or source
+      description: A vendor doc, issue or forum post that confirms the location and that it is safe to delete.
+  - type: input
+    id: size
+    attributes:
+      label: Typical size on your PC
+      placeholder: 2.3 GB

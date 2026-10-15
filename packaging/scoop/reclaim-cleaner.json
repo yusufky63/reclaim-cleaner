@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "description": "Open-source disk cleaner and space analyzer for Windows",
+  "homepage": "https://github.com/yusufky63/reclaim-cleaner",
+  "license": "MIT",
+  "notes": "Settings and history are stored in the data folder next to the exe (portable mode).",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/yusufky63/reclaim-cleaner/releases/download/v0.1.0/ReClaim-Cleaner_0.1.0_x64_portable.zip",
+      "hash": "replace-with-sha256-from-SHA256SUMS.txt"
+    }
+  },
+  "bin": [["ReClaim Cleaner.exe", "reclaim-cleaner"]],
+  "shortcuts": [["ReClaim Cleaner.exe", "ReClaim Cleaner"]],
+  "persist": "data",
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/yusufky63/reclaim-cleaner/releases/download/v$version/ReClaim-Cleaner_$version_x64_portable.zip"
+      }
+    },
+    "hash": {
+      "url": "https://github.com/yusufky63/reclaim-cleaner/releases/download/v$version/SHA256SUMS.txt",
+      "regex": "$sha256\\s+$basename"
+    }
+  }
+}
