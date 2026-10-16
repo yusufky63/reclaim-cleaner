@@ -330,8 +330,6 @@ export const ko: Translation = {
     confirmBody: "앱 자체의 제거 프로그램이 열립니다. 안내에 따라 진행하면 ReClaim이 이후 남은 파일을 확인합니다.",
     removed: "{{name}} 앱을 제거했습니다.",
     notRemoved: "{{name}} 앱이 아직 설치되어 있습니다.",
-    leftoverTitle: "남은 폴더 발견",
-    leftoverBody: "{{name}} 앱의 설치 폴더에 {{size}}의 파일이 남아 있습니다. 휴지통으로 이동할까요?",
     unknownSize: "알 수 없음",
     none: "검색과 일치하는 앱이 없습니다.",
     scopeMachine: "모든 사용자",

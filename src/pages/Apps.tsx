@@ -1,12 +1,13 @@
-import { AppWindow, FolderOpen, Search, Trash2, Unlink } from "lucide-react";
+import { AppWindow, FolderOpen, Search, ShieldAlert, Trash2, Unlink } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBytes, useLocale } from "../lib/hooks";
 import { AppIcon } from "../components/FileIcons";
-import { Badge, Banner, Button, Card, Dialog, EmptyState, PageHeader, Segmented, Select, Skeleton } from "../components/ui";
+import { PathText, ReportDialog } from "../components/common";
+import { Badge, Banner, Button, Card, Checkbox, Dialog, EmptyState, PageHeader, Segmented, Select, Skeleton } from "../components/ui";
 import { api } from "../lib/api";
-import { formatBytes } from "../lib/format";
-import type { InstalledApp, UninstallResult } from "../lib/types";
+import { baseName } from "../lib/format";
+import type { CleanReport, DeleteMethod, InstalledApp, Leftover } from "../lib/types";
 import { errorText, useApp } from "../store/app";
 
 type Sort = "size" | "name" | "date";
@@ -15,7 +16,8 @@ export function AppsPage() {
   const { t } = useTranslation();
   const fmt = useBytes();
   const locale = useLocale();
-  const { toast, refreshDrives } = useApp();
+  const { info, toast, refreshDrives } = useApp();
+  const elevated = !!info?.elevated;
   const [tab, setTab] = useState<"desktop" | "store">("desktop");
   const [desktop, setDesktop] = useState<InstalledApp[] | null>(null);
   const [store, setStore] = useState<InstalledApp[] | null>(null);
@@ -23,7 +25,10 @@ export function AppsPage() {
   const [sort, setSort] = useState<Sort>("size");
   const [target, setTarget] = useState<InstalledApp | null>(null);
   const [busy, setBusy] = useState(false);
-  const [leftover, setLeftover] = useState<{ app: InstalledApp; result: UninstallResult } | null>(null);
+  const [leftovers, setLeftovers] = useState<{ app: InstalledApp; items: Leftover[] } | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [method, setMethod] = useState<DeleteMethod>("recycle");
+  const [report, setReport] = useState<CleanReport | null>(null);
   const [onlyBroken, setOnlyBroken] = useState(false);
   const [entryTarget, setEntryTarget] = useState<InstalledApp | null>(null);
 
@@ -64,7 +69,13 @@ export function AppsPage() {
         toast("warning", t("tools.declined"));
       } else if (r.removed) {
         toast("positive", t("apps.removed", { name: app.name }));
-        if (r.leftover) setLeftover({ app, result: r });
+        if (r.leftovers.length > 0) {
+          setLeftovers({ app, items: r.leftovers });
+          // Like BCU, only folders that clearly belong to the app start selected, and only those
+          // this session can actually remove.
+          setPicked(new Set(r.leftovers.filter((l) => l.confidence === "high" && (!l.admin || elevated)).map((l) => l.path)));
+          setMethod("recycle");
+        }
       } else {
         toast("warning", t("apps.notRemoved", { name: app.name }));
       }
@@ -93,12 +104,27 @@ export function AppsPage() {
     }
   };
 
-  const removeLeftover = async () => {
-    if (!leftover?.result.leftover) return;
+  const chosen = (leftovers?.items ?? []).filter((l) => picked.has(l.path));
+  const chosenBytes = chosen.reduce((s, l) => s + l.bytes, 0);
+  const togglePicked = (path: string, on: boolean) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(path);
+      else next.delete(path);
+      return next;
+    });
+
+  const removeLeftovers = async () => {
+    if (chosen.length === 0) return;
     setBusy(true);
     try {
-      await api.pathsClean("apps", [leftover.result.leftover.path], "recycle");
-      setLeftover(null);
+      const r = await api.pathsClean(
+        "apps",
+        chosen.map((l) => l.path),
+        method,
+      );
+      setLeftovers(null);
+      setReport(r);
       void refreshDrives();
     } catch (e) {
       toast("danger", errorText(e));
@@ -225,24 +251,64 @@ export function AppsPage() {
         {target?.uninstall && <code className="selectable mt-3 block truncate rounded bg-surface-muted px-2 py-1.5 font-mono text-[11px] text-ink">{target.uninstall}</code>}
       </Dialog>
       <Dialog
-        open={!!leftover}
-        onClose={() => setLeftover(null)}
-        title={t("apps.leftoverTitle")}
+        open={!!leftovers}
+        onClose={() => !busy && setLeftovers(null)}
+        wide
+        title={t("apps.leftoversTitle", { name: leftovers?.app.name ?? "" })}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setLeftover(null)}>
+            <span className="num mr-auto hidden font-mono text-[13px] text-ink-secondary sm:inline">{chosen.length > 0 ? t("common.selectedSummary", { size: fmt(chosenBytes), count: chosen.length }) : t("common.nothingSelected")}</span>
+            <Button variant="ghost" onClick={() => setLeftovers(null)} disabled={busy}>
               {t("common.close")}
             </Button>
-            <Button variant="primary" onClick={() => void removeLeftover()} loading={busy}>
-              {t("method.recycle")}
+            <Button variant="primary" onClick={() => void removeLeftovers()} loading={busy} disabled={chosen.length === 0}>
+              {t(`method.${method}`)}
             </Button>
           </>
         }
       >
-        {leftover?.result.leftover && (
+        {leftovers && (
           <>
-            <p className="text-[14px] text-ink-secondary">{t("apps.leftoverBody", { name: leftover.app.name, size: formatBytes(leftover.result.leftover.bytes, locale) })}</p>
-            <code className="selectable mt-3 block truncate rounded bg-surface-muted px-2 py-1.5 font-mono text-[11px] text-ink">{leftover.result.leftover.path}</code>
+            <p className="text-[14px] text-ink-secondary">{t("apps.leftoversBody", { name: leftovers.app.name })}</p>
+            {!elevated && leftovers.items.some((l) => l.admin) && (
+              <div className="mt-3">
+                <Banner tone="primary" icon={<ShieldAlert size={16} strokeWidth={1.75} />}>
+                  {t("apps.leftoversAdmin")}
+                </Banner>
+              </div>
+            )}
+            <ul className="mt-4 divide-y divide-line rounded-md border border-line">
+              {leftovers.items.map((l) => (
+                <li key={l.path} className="flex items-center gap-3 px-3 py-2.5">
+                  <Checkbox checked={picked.has(l.path)} onChange={(v) => togglePicked(l.path, v)} label={l.path} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="max-w-full truncate text-[14px] font-medium text-ink">{baseName(l.path)}</span>
+                      <Badge tone={l.confidence === "high" ? "positive" : "warning"}>{t(`apps.confidence.${l.confidence}`)}</Badge>
+                      {l.admin && !elevated && <Badge tone="primary">{t("common.needsAdmin")}</Badge>}
+                    </div>
+                    <div className="mt-0.5 text-[12px] text-ink-secondary">{t(`apps.leftoverReason.${l.reason}`)}</div>
+                    <PathText path={l.path} />
+                  </div>
+                  <span className="num w-[76px] shrink-0 text-right font-mono text-[13px] text-ink">{fmt(l.bytes)}</span>
+                  <Button size="icon" variant="ghost" aria-label={t("common.reveal")} title={t("common.reveal")} onClick={() => void api.reveal(l.path).catch((e) => toast("danger", errorText(e)))}>
+                    <FolderOpen size={15} strokeWidth={1.75} />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4">
+              <div className="label mb-2">{t("confirm.method")}</div>
+              <Segmented
+                value={method}
+                onChange={setMethod}
+                options={[
+                  { value: "permanent", label: t("method.permanent") },
+                  { value: "recycle", label: t("method.recycle") },
+                ]}
+              />
+              <p className="mt-2 text-[13px] text-ink-muted">{t(`method.${method}Hint`)}</p>
+            </div>
           </>
         )}
       </Dialog>
@@ -264,6 +330,7 @@ export function AppsPage() {
         <p className="text-[14px] text-ink-secondary">{t("apps.removeEntryBody")}</p>
         {entryTarget?.uninstall && <code className="selectable mt-3 block truncate rounded bg-surface-muted px-2 py-1.5 font-mono text-[11px] text-ink">{entryTarget.uninstall}</code>}
       </Dialog>
+      <ReportDialog report={report} onClose={() => setReport(null)} />
     </div>
   );
 }

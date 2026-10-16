@@ -15,7 +15,7 @@ Windows 10 ve 11 için açık kaynak disk temizleyici ve alan analizcisi. Alanı
 - **YZ modelleri ve asistanları.** Hugging Face, LM Studio, Ollama ve ComfyUI'deki tüm modeller tek listede, iki araçta birden saklananlar işaretli; Claude Code, Codex ve Gemini CLI'ın tuttuğu oturumlar, kontrol noktaları ve kayıtlar.
 - **İndirilenler.** İndirilenler klasörün türe ve yaşa göre, küçük resimlerle; `dosya (1).pdf` gibi tekrar indirmeler işaretli.
 - **Büyük dosyalar, kopyalar, boş klasörler.** Tür ve yaşa göre süzülür; kopyalar tam BLAKE3 özetiyle doğrulanır, sabit bağlantılar bir kez sayılır.
-- **Uygulamalar ve başlangıç.** Gerçek uygulama ikonları; masaüstü ve Store uygulamalarını kendi kaldırıcılarıyla kaldırır, artık klasör kontrol eder; zaten silinmiş uygulamaların kayıtlarını `.reg` yedeğiyle listeden kaldırır; başlangıç uygulamalarını Görev Yöneticisi'nin yaptığı gibi geri alınabilir şekilde kapatır.
+- **Uygulamalar ve başlangıç.** Gerçek uygulama ikonları; masaüstü ve Store uygulamalarını kendi kaldırıcılarıyla kaldırır, ardından AppData, ProgramData ve Program Files'taki artık klasörleri güven düzeyiyle listeler; zaten silinmiş uygulamaların kayıtlarını `.reg` yedeğiyle listeden kaldırır; başlangıç uygulamalarını Görev Yöneticisi'nin yaptığı gibi geri alınabilir şekilde kapatır.
 - **Windows araçları.** Geri Dönüşüm Kutusu, hazırda bekleme dosyası, bileşen deposu temizliği (DISM), Teslim İyileştirme ve önceki Windows kurulumu; hepsi Windows'un kendi komutlarıyla.
 - **14 dil**: Türkçe, İngilizce, Almanca, İspanyolca, Fransızca, İtalyanca, Portekizce (Brezilya), Lehçe, Rusça, Ukraynaca, Endonezce, Japonca, Korece ve Basitleştirilmiş Çince. Açık ve koyu tema, taşınabilir mod, yerel temizlik geçmişi.
 

@@ -327,8 +327,6 @@ export const id: Translation = {
     confirmBody: "Program penghapus instalan milik aplikasi akan terbuka. Ikuti langkah-langkahnya; setelah itu ReClaim memeriksa file sisa.",
     removed: "{{name}} telah dihapus.",
     notRemoved: "{{name}} masih terinstal.",
-    leftoverTitle: "Folder sisa ditemukan",
-    leftoverBody: "{{name}} meninggalkan {{size}} di folder instalasinya. Pindahkan ke Keranjang Sampah?",
     unknownSize: "Tidak diketahui",
     none: "Tidak ada aplikasi yang cocok dengan pencarian Anda.",
     scopeMachine: "Semua pengguna",

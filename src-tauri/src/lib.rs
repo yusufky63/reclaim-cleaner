@@ -21,7 +21,9 @@ use reclaim_core::history::{self, HistoryEntry};
 use reclaim_core::icons;
 use reclaim_core::installers::{self, InstallerFile};
 use reclaim_core::junk::{self, TargetResult};
+use reclaim_core::leftovers::{self, Leftover};
 use reclaim_core::organize;
+use reclaim_core::paths::{Origin, key};
 use reclaim_core::rules::{ArtifactRule, TargetRule, builtin_artifacts, builtin_targets};
 use reclaim_core::settings::{Settings, is_portable};
 use reclaim_core::startup::{self, StartupItem, StartupSource};
@@ -555,9 +557,25 @@ async fn paths_clean(
 ) -> CmdResult<CleanReport> {
     let state = app.state::<AppState>();
     let guard = state.guard().map_err(err)?;
-    let list: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+    // Leftovers the last uninstall reported may be removed once with the leftover guard;
+    // everything else is an ordinary hand-picked delete.
+    let picked: Vec<(PathBuf, Origin)> = {
+        let mut leftovers = state.leftovers.lock();
+        paths
+            .iter()
+            .map(|p| {
+                let path = PathBuf::from(p);
+                let origin = if kind == "apps" && leftovers.remove(&key(&path)) {
+                    Origin::Leftover
+                } else {
+                    Origin::User
+                };
+                (path, origin)
+            })
+            .collect()
+    };
     let report = run_job(&app, "clean", move |job| {
-        Ok(clean::clean_paths(&list, method, &guard, &job))
+        Ok(clean::clean_picked(&picked, method, &guard, &job))
     })
     .await?;
     {
@@ -626,48 +644,51 @@ struct UninstallResult {
     cancelled: bool,
     exit_code: Option<u32>,
     removed: bool,
-    leftover: Option<Leftover>,
-}
-
-#[derive(Serialize)]
-struct Leftover {
-    path: String,
-    bytes: u64,
+    /// Folders the app left behind, high confidence first. Empty unless it was removed.
+    leftovers: Vec<Leftover>,
 }
 
 #[tauri::command]
-async fn app_uninstall(id: String) -> CmdResult<UninstallResult> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<UninstallResult, Error> {
+async fn app_uninstall(app: AppHandle, id: String) -> CmdResult<UninstallResult> {
+    let state = app.state::<AppState>();
+    state.leftovers.lock().clear();
+    // Without readable settings the user's exclusions are unknown, so no leftovers are offered.
+    let guard = state.guard().ok();
+    let result = tauri::async_runtime::spawn_blocking(move || -> Result<UninstallResult, Error> {
         let store = id.starts_with("store:");
         let list = if store {
             apps::store_apps()?
         } else {
             apps::desktop_apps()
         };
-        let app = list
+        let target = list
             .into_iter()
             .find(|a| a.id == id)
             .ok_or_else(|| Error::Other("the app is no longer installed".into()))?;
-        let outcome = apps::uninstall(&app)?;
+        let outcome = apps::uninstall(&target)?;
         if outcome == LaunchOutcome::Cancelled {
             return Ok(UninstallResult {
                 cancelled: true,
                 exit_code: None,
                 removed: false,
-                leftover: None,
+                leftovers: Vec::new(),
             });
         }
-        let still = if store {
-            apps::store_apps()?.iter().any(|a| a.id == id)
+        let mut remaining = if store {
+            apps::store_apps()?
         } else {
-            apps::desktop_apps().iter().any(|a| a.id == id)
+            apps::desktop_apps()
         };
-        let leftover = if still {
-            None
-        } else {
-            apps::leftover(&app)
-                .filter(|(_, b)| *b > 0)
-                .map(|(path, bytes)| Leftover { path, bytes })
+        let still = remaining.iter().any(|a| a.id == id);
+        let leftovers = match &guard {
+            Some(guard) if !still => {
+                // Store apps can share a vendor folder with desktop apps, so both count.
+                if store {
+                    remaining.extend(apps::desktop_apps());
+                }
+                leftovers::find(&target, &remaining, guard)
+            }
+            _ => Vec::new(),
         };
         Ok(UninstallResult {
             cancelled: false,
@@ -676,12 +697,17 @@ async fn app_uninstall(id: String) -> CmdResult<UninstallResult> {
                 LaunchOutcome::Cancelled => None,
             },
             removed: !still,
-            leftover,
+            leftovers,
         })
     })
     .await
     .map_err(|e| err(Error::Other(e.to_string())))?
-    .map_err(err)
+    .map_err(err)?;
+    state
+        .leftovers
+        .lock()
+        .extend(result.leftovers.iter().map(|l| key(Path::new(&l.path))));
+    Ok(result)
 }
 
 #[tauri::command]

@@ -15,7 +15,7 @@ An open-source disk cleaner and space analyzer for Windows 10 and 11. It shows w
 - **AI models and assistants.** Every model in Hugging Face, LM Studio, Ollama and ComfyUI in one list, with copies stored by two tools flagged; and the sessions, checkpoints and logs that Claude Code, Codex and Gemini CLI keep.
 - **Downloads.** Your Downloads folder by type and age, with thumbnails and browser re-downloads such as `file (1).pdf` flagged.
 - **Large files, duplicates, empty folders.** Filters by type and age; duplicates are confirmed with a full BLAKE3 hash and hard links are counted once.
-- **Apps and startup.** Real app icons; uninstall desktop and Store apps with their own uninstaller and check for leftovers; remove entries of apps that are already gone (with a `.reg` backup); turn startup apps off the reversible way Task Manager does.
+- **Apps and startup.** Real app icons; uninstall desktop and Store apps with their own uninstaller, then review leftover folders in AppData, ProgramData and Program Files, scored by confidence; remove entries of apps that are already gone (with a `.reg` backup); turn startup apps off the reversible way Task Manager does.
 - **Windows tools.** Recycle Bin, hibernation file, component store cleanup (DISM), Delivery Optimization and the previous Windows installation, always through Windows' own commands.
 - **14 languages**: English, Turkish, German, Spanish, French, Italian, Portuguese (Brazil), Polish, Russian, Ukrainian, Indonesian, Japanese, Korean and Simplified Chinese. Light and dark theme, portable mode, a local cleanup history.
 

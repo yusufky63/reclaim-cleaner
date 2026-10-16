@@ -335,8 +335,6 @@ export const fr: Translation = {
     confirmBody: "Le programme de désinstallation de l'application va s'ouvrir. Suivez ses étapes ; ReClaim recherche ensuite les fichiers résiduels.",
     removed: "{{name}} a été désinstallé.",
     notRemoved: "{{name}} est toujours installé.",
-    leftoverTitle: "Dossier résiduel trouvé",
-    leftoverBody: "{{name}} a laissé {{size}} dans son dossier d'installation. Le déplacer vers la Corbeille ?",
     unknownSize: "Inconnue",
     none: "Aucune application ne correspond à votre recherche.",
     scopeMachine: "Tous les utilisateurs",

@@ -346,8 +346,6 @@ export const pl: Translation = {
     confirmBody: "Otworzy się dezinstalator aplikacji. Wykonaj jego kroki; potem ReClaim sprawdzi, czy coś po niej zostało.",
     removed: "Aplikacja {{name}} została odinstalowana.",
     notRemoved: "Aplikacja {{name}} jest nadal zainstalowana.",
-    leftoverTitle: "Znaleziono pozostały folder",
-    leftoverBody: "Aplikacja {{name}} pozostawiła {{size}} w folderze instalacyjnym. Przenieść go do Kosza?",
     unknownSize: "Nieznany",
     none: "Żadna aplikacja nie pasuje do wyszukiwania.",
     scopeMachine: "Wszyscy użytkownicy",

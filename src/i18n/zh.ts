@@ -328,8 +328,6 @@ export const zh: Translation = {
     confirmBody: "将打开应用自带的卸载程序。请按其步骤操作；完成后 ReClaim 会检查残留文件。",
     removed: "{{name}} 已卸载。",
     notRemoved: "{{name}} 仍未卸载。",
-    leftoverTitle: "发现残留文件夹",
-    leftoverBody: "{{name}} 在其安装文件夹中留下了 {{size}}。要移到回收站吗？",
     unknownSize: "未知",
     none: "没有与搜索匹配的应用。",
     scopeMachine: "所有用户",

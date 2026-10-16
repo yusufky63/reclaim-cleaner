@@ -10,7 +10,6 @@ The full plan with sizes and reasons is in [docs/research/README.md](docs/resear
 - **"Analyze with ReClaim"** in the Explorer context menu, plus a path argument.
 - **What is locking this file**, through the Restart Manager; graceful close only.
 - **Steam libraries on every drive**, with shader caches named after their games.
-- **Leftover scan after uninstall** with confidence levels.
 - **Export** scan results to CSV and JSON; restore point and shadow storage panel.
 - **Code signing** through the SignPath Foundation program, then **winget and Scoop** packages.
 

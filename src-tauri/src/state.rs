@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -23,6 +23,9 @@ pub struct AppState {
     pub junk: Mutex<Vec<TargetResult>>,
     pub projects: Mutex<Vec<Project>>,
     pub jobs: Mutex<HashMap<String, Arc<Job>>>,
+    /// Path keys of the leftovers the last uninstall reported. Only these may be removed with
+    /// the leftover guard, so the UI cannot widen it to a path the engine did not find.
+    pub leftovers: Mutex<HashSet<String>>,
 }
 
 impl AppState {
@@ -43,6 +46,7 @@ impl AppState {
             junk: Mutex::new(Vec::new()),
             projects: Mutex::new(Vec::new()),
             jobs: Mutex::new(HashMap::new()),
+            leftovers: Mutex::new(HashSet::new()),
         }
     }
 

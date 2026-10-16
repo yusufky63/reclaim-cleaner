@@ -337,8 +337,6 @@ export const it: Translation = {
     confirmBody: "Si aprirà il programma di disinstallazione dell'app. Segui i passaggi; al termine ReClaim controlla se sono rimasti residui.",
     removed: "Disinstallazione di {{name}} completata.",
     notRemoved: "{{name}} è ancora presente sul PC.",
-    leftoverTitle: "Trovata cartella residua",
-    leftoverBody: "{{name}} ha lasciato {{size}} nella cartella di installazione. Spostarla nel Cestino?",
     unknownSize: "Sconosciuta",
     none: "Nessuna app corrisponde alla ricerca.",
     scopeMachine: "Tutti gli utenti",

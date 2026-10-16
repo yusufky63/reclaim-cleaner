@@ -338,8 +338,6 @@ export const pt: Translation = {
     confirmBody: "O desinstalador do próprio aplicativo será aberto. Siga as etapas; depois, o ReClaim procura arquivos remanescentes.",
     removed: "{{name}} foi desinstalado.",
     notRemoved: "{{name}} ainda está instalado.",
-    leftoverTitle: "Pasta remanescente encontrada",
-    leftoverBody: "{{name}} deixou {{size}} na pasta de instalação. Mover para a Lixeira?",
     unknownSize: "Desconhecido",
     none: "Nenhum aplicativo corresponde à sua pesquisa.",
     scopeMachine: "Todos os usuários",

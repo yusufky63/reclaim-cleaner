@@ -33,6 +33,7 @@ crates/core/        reclaim-core: the engine. Pure Rust, no Tauri dependency, un
   src/empty.rs        empty folder finder
   src/installers.rs   old installers and archives in Downloads and on the Desktop
   src/apps.rs         installed programs (registry) + Store apps
+  src/leftovers.rs    leftover folders after an uninstall, scored by confidence
   src/startup.rs      Run keys and Startup folders, StartupApproved toggles
   src/system.rs       drives, elevation, processes, Recycle Bin API, Windows version
   src/settings.rs     settings + exclusions, portable mode data folder
@@ -72,6 +73,7 @@ These rules are enforced in the engine, not only in the UI.
 8. **Delete method.** Caches, temp files and project build folders are deleted permanently by default, because moving 10 GB of cache or `node_modules` into the Recycle Bin frees nothing. Your own files (large files, duplicates, empty folders, old installers) go to the Recycle Bin by default. Both defaults are in Settings and every confirm dialog states the method and lets you switch it.
 9. **Least privilege.** The app runs as the current user. Rules that need admin rights are cleaned by the same exe started elevated in helper mode (`--elevated-clean`). The helper receives only rule ids and options, never paths, and expands the paths itself, so a tampered plan file cannot point it anywhere else.
 10. **Everything is logged** to `history.jsonl`: time, kind, rule ids, item count, bytes freed, method, errors.
+11. **Leftovers after an uninstall.** The scan looks one level into `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%` and the Program Files folders (two levels inside a publisher folder) and never descends into links. The install folder, an exact name match and `Publisher\App` are high confidence and preselected; a publisher folder alone or a similar name is low confidence. Folders another installed app may still use (a matching name or publisher, or its install folder inside) are not offered. Hand-picked deletes may never touch Program Files or ProgramData, so leftovers use their own guard origin: it opens only `<root>\App` and `<root>\Publisher\App` below those roots, never shared folders such as `Common Files`, `WindowsApps` or `ProgramData\Microsoft`, and only for paths the last scan reported, once.
 
 ## Rules
 
@@ -123,6 +125,6 @@ UI strings live in `src/i18n/en.ts` and `src/i18n/tr.ts`; the Turkish file is ty
 
 ## Testing
 
-- `crates/core`: unit tests for path expansion, protected paths, wildcard matching, rule validation (every shipped rule must parse and pass the guards), walker behavior on junctions, duplicate grouping, empty folder detection, artifact detection and clean plan validation, using temp folders.
+- `crates/core`: unit tests for path expansion, protected paths, wildcard matching, rule validation (every shipped rule must parse and pass the guards), walker behavior on junctions, duplicate grouping, empty folder detection, artifact detection, leftover matching, scoring and link skipping, and clean plan validation, using temp folders.
 - UI: Vitest for the treemap layout, byte formatting, script generation and selection helpers.
 - CI on `windows-latest`: typecheck, ESLint (`--max-warnings=0`), Vitest, build, `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`.

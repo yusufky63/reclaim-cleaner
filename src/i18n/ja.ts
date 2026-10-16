@@ -327,8 +327,6 @@ export const ja: Translation = {
     confirmBody: "アプリ独自のアンインストーラーが開きます。その手順に従ってください。完了後、ReClaim が残ったファイルを確認します。",
     removed: "{{name}} をアンインストールしました。",
     notRemoved: "{{name}} はまだインストールされています。",
-    leftoverTitle: "残っているフォルダーが見つかりました",
-    leftoverBody: "{{name}} のインストール フォルダーに {{size}} が残っています。ごみ箱に移動しますか?",
     unknownSize: "不明",
     none: "検索に一致するアプリはありません。",
     scopeMachine: "すべてのユーザー",

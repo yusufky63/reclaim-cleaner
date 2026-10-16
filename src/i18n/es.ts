@@ -335,8 +335,6 @@ export const es: Translation = {
     confirmBody: "Se abrirá el desinstalador de la propia aplicación. Sigue sus pasos; después, ReClaim buscará restos.",
     removed: "Se desinstaló {{name}}.",
     notRemoved: "No se desinstaló {{name}}.",
-    leftoverTitle: "Se encontró una carpeta residual",
-    leftoverBody: "{{name}} dejó {{size}} en su carpeta de instalación. ¿Moverla a la Papelera de reciclaje?",
     unknownSize: "Desconocido",
     none: "Ninguna aplicación coincide con tu búsqueda.",
     scopeMachine: "Todos los usuarios",

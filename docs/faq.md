@@ -22,6 +22,10 @@ ReClaim counts file sizes, not allocated clusters, and skips online-only OneDriv
 
 Browsers keep their cache files open. Cleaning while the browser runs would fail halfway or corrupt the cache, so the rule waits until the browser is closed.
 
+### What does the leftover scan after an uninstall remove?
+
+Nothing on its own. After the app's own uninstaller has finished, ReClaim lists folders in AppData, ProgramData and Program Files that carry the app's or the publisher's name. The install folder, folders named exactly like the app and `Publisher\App` folders are high confidence and preselected. A publisher folder on its own or a similar name is low confidence and stays unchecked, because it can hold settings, game saves or files of other apps. Folders another installed app may still use are not listed. Removal goes to the Recycle Bin by default; folders in Program Files and ProgramData need administrator rights.
+
 ### Does it clean the registry?
 
 No. Microsoft does not support registry cleaners and the space gain is negligible.
@@ -57,6 +61,10 @@ Sadece `C:\Windows\Temp` ya da Windows Update indirme önbelleği gibi Windows'a
 ### Sayılar Gezgin'le tutmuyor.
 
 ReClaim dosya boyutlarını sayar, sadece bulutta duran OneDrive dosyalarını yerel alan kaplamadıkları için atlar. Okunamayan klasörler "Taranmadı" olarak gösterilir.
+
+### Kaldırma sonrası artık taraması neyi siler?
+
+Kendi başına hiçbir şeyi. Uygulamanın kendi kaldırıcısı bittikten sonra ReClaim, AppData, ProgramData ve Program Files içinde uygulamanın ya da yayıncının adını taşıyan klasörleri listeler. Kurulum klasörü, uygulamayla aynı adı taşıyan klasörler ve `Yayıncı\Uygulama` klasörleri yüksek güvenlidir ve önceden seçilir. Tek başına yayıncı klasörü ya da benzer bir ad düşük güvenlidir ve seçilmez, çünkü ayarlar, oyun kayıtları ya da başka uygulamaların dosyaları olabilir. Kurulu başka bir uygulamanın kullanıyor olabileceği klasörler listelenmez. Varsayılan olarak Geri Dönüşüm Kutusu'na gider; Program Files ve ProgramData içindeki klasörler yönetici izni ister.
 
 ### Kayıt defterini temizliyor mu?
 

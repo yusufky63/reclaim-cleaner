@@ -103,7 +103,7 @@ fn read_hive(hive: &RegKey, flags: u32, tag: &str, scope: &str, out: &mut Vec<In
             // Installers often leave a stale InstallLocation behind; only keep real folders.
             location: s("InstallLocation")
                 .map(|l| l.trim_matches('"').to_string())
-                .filter(|l| std::path::Path::new(l).is_dir()),
+                .filter(|l| Path::new(l).is_dir()),
             icon,
             uninstall,
             quiet_uninstall: s("QuietUninstallString"),
@@ -343,17 +343,6 @@ pub fn uninstall(app: &InstalledApp) -> Result<LaunchOutcome> {
         args
     };
     run_and_wait(&exe, &args, false, true)
-}
-
-/// Leftover install folder after an uninstall, if it still exists and is not empty.
-pub fn leftover(app: &InstalledApp) -> Option<(String, u64)> {
-    let loc = app.location.as_deref()?;
-    let p = Path::new(loc);
-    if !p.is_dir() {
-        return None;
-    }
-    let m = crate::walk::measure_dir(p, None, &crate::job::Job::new());
-    Some((loc.to_string(), m.bytes))
 }
 
 /// Best guess at an app's main exe when the registry names no icon: the exe in the install

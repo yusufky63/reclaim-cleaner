@@ -18,6 +18,7 @@ pub mod icons;
 pub mod installers;
 pub mod job;
 pub mod junk;
+pub mod leftovers;
 pub mod organize;
 pub mod paths;
 pub mod rules;

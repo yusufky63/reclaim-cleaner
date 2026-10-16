@@ -327,8 +327,6 @@ export const de: Translation = {
     confirmBody: "Das Deinstallationsprogramm der App wird geöffnet. Den Schritten folgen; ReClaim sucht danach nach Resten.",
     removed: "{{name}} wurde deinstalliert.",
     notRemoved: "{{name}} ist noch installiert.",
-    leftoverTitle: "Verbliebener Ordner gefunden",
-    leftoverBody: "{{name}} hat {{size}} im Installationsordner hinterlassen. In den Papierkorb verschieben?",
     unknownSize: "Unbekannt",
     none: "Keine Apps entsprechen der Suche.",
     scopeMachine: "Alle Benutzer",
