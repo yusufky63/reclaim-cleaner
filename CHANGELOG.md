@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- Items that cannot be moved to the Recycle Bin now show the real reason. A folder that needs administrator rights, such as one under Program Files or ProgramData, reports "Access denied" instead of "In use by another program"; locked files still report "In use".
+
 ## [0.1.0] - 2026-10-16
 
 First public version.
