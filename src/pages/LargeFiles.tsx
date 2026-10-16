@@ -1,7 +1,8 @@
-import { FileStack, FolderOpen, HardDrive } from "lucide-react";
+import { FileStack, FolderOpen, HardDrive, Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, PathText, ProgressPanel, ReportDialog, SelectionBar } from "../components/common";
+import { LockDialog } from "../components/LockDialog";
 import { useBytes, useLocale } from "../lib/hooks";
 import { FileIcon } from "../components/FileIcons";
 import { Button, Card, Checkbox, EmptyState, PageHeader, Select } from "../components/ui";
@@ -28,6 +29,7 @@ export function LargeFilesPage() {
   const [method, setMethod] = useState<DeleteMethod>(settings?.filesDelete ?? "recycle");
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<CleanReport | null>(null);
+  const [lockPath, setLockPath] = useState<string | null>(null);
   const sys = drives.find((d) => d.system) ?? drives[0];
 
   useEffect(() => {
@@ -170,7 +172,7 @@ export function LargeFilesPage() {
                     <th className="label w-[110px] px-2 py-2 font-normal">{t("common.type")}</th>
                     <th className="label w-[120px] px-2 py-2 font-normal">{t("common.modified")}</th>
                     <th className="label w-[100px] px-2 py-2 text-right font-normal">{t("common.size")}</th>
-                    <th className="w-12 px-2 py-2" />
+                    <th className="w-[76px] px-2 py-2" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -193,7 +195,10 @@ export function LargeFilesPage() {
                       <td className="px-2 py-2 text-ink-secondary">{t(`large.kinds.${fileKind(f.name)}`)}</td>
                       <td className="px-2 py-2 font-mono text-[12px] text-ink-secondary">{formatDate(f.mtime, locale)}</td>
                       <td className="num px-2 py-2 text-right font-mono text-ink">{fmt(f.bytes)}</td>
-                      <td className="px-2 py-2 text-right">
+                      <td className="whitespace-nowrap px-2 py-2 text-right">
+                        <button type="button" title={t("locks.button")} aria-label={t("locks.button")} onClick={() => setLockPath(f.path)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
+                          <Lock size={15} strokeWidth={1.75} />
+                        </button>
                         <button type="button" title={t("common.reveal")} aria-label={t("common.reveal")} onClick={() => void api.reveal(f.path).catch(() => undefined)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
                           <FolderOpen size={15} strokeWidth={1.75} />
                         </button>
@@ -222,6 +227,7 @@ export function LargeFilesPage() {
       )}
       <ConfirmClean open={confirm} onClose={() => setConfirm(false)} onConfirm={() => void remove()} count={chosen.length} bytes={chosenBytes} method={method} onMethod={setMethod} busy={busy} files />
       <ReportDialog report={report} onClose={() => setReport(null)} />
+      <LockDialog path={lockPath} onClose={() => setLockPath(null)} />
     </div>
   );
 }

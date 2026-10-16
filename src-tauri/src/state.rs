@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use parking_lot::{Mutex, RwLock};
 use reclaim_core::artifacts::Project;
 use reclaim_core::explorer::Tree;
+use reclaim_core::hidden::ShadowStorage;
 use reclaim_core::junk::TargetResult;
 use reclaim_core::paths::Guard;
 use reclaim_core::rules::{Mode, Risk, TargetRule, builtin_targets, load_user_targets};
@@ -23,6 +25,12 @@ pub struct AppState {
     pub junk: Mutex<Vec<TargetResult>>,
     pub projects: Mutex<Vec<Project>>,
     pub jobs: Mutex<HashMap<String, Arc<Job>>>,
+    /// Shadow storage measured through the elevated helper, kept for this session.
+    pub shadow: RwLock<Option<Vec<ShadowStorage>>>,
+    /// Folders to analyze that arrived from Explorer and the UI has not picked up yet.
+    pub pending: Mutex<Vec<PathBuf>>,
+    /// A burst of Explorer launches is being collected.
+    pub pending_armed: AtomicBool,
 }
 
 impl AppState {
@@ -43,6 +51,9 @@ impl AppState {
             junk: Mutex::new(Vec::new()),
             projects: Mutex::new(Vec::new()),
             jobs: Mutex::new(HashMap::new()),
+            shadow: RwLock::new(None),
+            pending: Mutex::new(Vec::new()),
+            pending_armed: AtomicBool::new(false),
         }
     }
 

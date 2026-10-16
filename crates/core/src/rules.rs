@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
 
-use crate::paths::ALLOWED_VARS;
+use crate::paths::{ALLOWED_VARS, STEAM_VARS};
 use crate::{Error, Result};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -138,10 +138,16 @@ pub fn validate_target(rule: &TargetRule) -> Result<()> {
     }
     for p in &rule.paths {
         let upper = p.to_ascii_uppercase();
-        let starts_ok = ALLOWED_VARS
-            .iter()
-            .any(|v| upper == format!("%{v}%") || upper.starts_with(&format!("%{v}%\\")));
-        if !starts_ok {
+        let starts_with =
+            |v: &&str| upper == format!("%{v}%") || upper.starts_with(&format!("%{v}%\\"));
+        let steam = STEAM_VARS.iter().any(starts_with);
+        if steam && rule.admin {
+            return Err(invalid(
+                id,
+                format!("administrator rules cannot use Steam folders: {p}"),
+            ));
+        }
+        if !steam && !ALLOWED_VARS.iter().any(starts_with) {
             return Err(invalid(
                 id,
                 format!("path must start with an allowed variable: {p}"),
@@ -285,21 +291,41 @@ mod tests {
         let guard = Guard::new(&[], None);
         for r in builtin_targets() {
             for p in &r.paths {
-                let concrete = expand_vars(&p.replace('*', "sample")).unwrap();
-                let path = PathBuf::from(concrete);
-                let res = match r.mode {
-                    Mode::Contents => guard.check_wipe(&path),
-                    Mode::Folder => guard.check(&path, Origin::Rule),
-                    Mode::Files => guard.check(&path.join("sample.file"), Origin::Rule),
-                    Mode::Report => Ok(()),
+                let sample = p.replace('*', "sample");
+                // Steam folders are found at run time; check the default install folder and a
+                // library on another drive in their place.
+                let concrete: Vec<String> = match sample.split_once('\\') {
+                    Some((var, rest))
+                        if STEAM_VARS
+                            .iter()
+                            .any(|v| var.eq_ignore_ascii_case(&format!("%{v}%"))) =>
+                    {
+                        vec![
+                            expand_vars(&format!(
+                                r"%SYSTEMDRIVE%\Program Files (x86)\Steam\{rest}"
+                            ))
+                            .unwrap(),
+                            format!(r"D:\SteamLibrary\{rest}"),
+                        ]
+                    }
+                    _ => vec![expand_vars(&sample).unwrap()],
                 };
-                assert!(
-                    res.is_ok(),
-                    "rule {} path {} fails the guard: {:?}",
-                    r.id,
-                    p,
-                    res
-                );
+                for c in concrete {
+                    let path = PathBuf::from(c);
+                    let res = match r.mode {
+                        Mode::Contents => guard.check_wipe(&path),
+                        Mode::Folder => guard.check(&path, Origin::Rule),
+                        Mode::Files => guard.check(&path.join("sample.file"), Origin::Rule),
+                        Mode::Report => Ok(()),
+                    };
+                    assert!(
+                        res.is_ok(),
+                        "rule {} path {} fails the guard: {:?}",
+                        r.id,
+                        p,
+                        res
+                    );
+                }
             }
         }
     }
@@ -315,14 +341,32 @@ mod tests {
               {"id":"evil","group":"apps","name":"x","nameTr":"x","description":"d","descriptionTr":"d",
                "paths":["%WINDIR%\\System32"],"mode":"contents","risk":"safe","admin":true},
               {"id":"broad","group":"apps","name":"x","nameTr":"x","description":"d","descriptionTr":"d",
-               "paths":["%LOCALAPPDATA%\\*"],"mode":"contents","risk":"safe","admin":false}
+               "paths":["%LOCALAPPDATA%\\*"],"mode":"contents","risk":"safe","admin":false},
+              {"id":"my-steam","group":"games","name":"x","nameTr":"x","description":"d","descriptionTr":"d",
+               "paths":["%STEAMLIBRARY%\\steamapps\\temp"],"mode":"contents","risk":"safe","admin":false}
             ]"#,
         )
         .unwrap();
         let (rules, problems) = load_user_targets(tmp.path());
-        assert_eq!(rules.len(), 1);
+        assert_eq!(rules.len(), 2);
         assert_eq!(rules[0].id, "my-cache");
         assert!(rules[0].user);
         assert_eq!(problems.len(), 2);
+    }
+
+    #[test]
+    fn steam_folders_are_for_standard_user_rules_only() {
+        let mut rule = builtin_targets()
+            .iter()
+            .find(|r| r.id == "steam-shadercache")
+            .unwrap()
+            .clone();
+        assert!(rule.paths[0].starts_with("%STEAMLIBRARY%"));
+        assert!(validate_target(&rule).is_ok());
+        rule.admin = true;
+        assert!(validate_target(&rule).is_err());
+        rule.admin = false;
+        rule.paths = vec!["%STEAMLIBRARYX%\\steamapps".into()];
+        assert!(validate_target(&rule).is_err());
     }
 }

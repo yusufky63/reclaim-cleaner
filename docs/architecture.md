@@ -35,6 +35,10 @@ crates/core/        reclaim-core: the engine. Pure Rust, no Tauri dependency, un
   src/apps.rs         installed programs (registry) + Store apps
   src/startup.rs      Run keys and Startup folders, StartupApproved toggles
   src/system.rs       drives, elevation, processes, Recycle Bin API, Windows version
+  src/hidden.rs       hidden space: shadow storage (WMI), reserve, MFT, system files, virtual disks
+  src/locks.rs        what is using a file or folder (Restart Manager), graceful close
+  src/shell.rs        Explorer context menu verbs and command-line paths
+  src/steam.rs        Steam folder, libraries, manifests and shader caches
   src/settings.rs     settings + exclusions, portable mode data folder
   src/history.rs      JSON Lines cleanup log
 src-tauri/          the desktop shell: Tauri commands, events, elevation helper
@@ -72,6 +76,8 @@ These rules are enforced in the engine, not only in the UI.
 8. **Delete method.** Caches, temp files and project build folders are deleted permanently by default, because moving 10 GB of cache or `node_modules` into the Recycle Bin frees nothing. Your own files (large files, duplicates, empty folders, old installers) go to the Recycle Bin by default. Both defaults are in Settings and every confirm dialog states the method and lets you switch it.
 9. **Least privilege.** The app runs as the current user. Rules that need admin rights are cleaned by the same exe started elevated in helper mode (`--elevated-clean`). The helper receives only rule ids and options, never paths, and expands the paths itself, so a tampered plan file cannot point it anywhere else.
 10. **Everything is logged** to `history.jsonl`: time, kind, rule ids, item count, bytes freed, method, errors.
+11. **Command-line paths are untrusted.** `--analyze <folder>` may come from Explorer, another program, or (forwarded by the running copy) any process on the desktop. Paths must be existing folders on a drive letter, and they only choose what to map; nothing is ever deleted from a command line.
+12. **Processes are asked, never forced.** "What is using this?" only offers the request a window's close button sends, re-checks that the process id still belongs to the same process, and never ends processes or closes their handles.
 
 ## Rules
 
@@ -105,6 +111,8 @@ The "Cleanup" view switches tiles to neutral and paints only reclaimable space, 
 - The app manifest stays `asInvoker`. No UAC prompt on launch, drag and drop keeps working.
 - "Restart as administrator" relaunches with `ShellExecuteExW("runas")`.
 - Admin rules in a normal session go through helper mode: one UAC prompt per clean, the helper writes a result JSON, the UI reads it.
+- `--elevated-measure` reads shadow storage sizes through WMI (`Win32_ShadowStorage`, `Win32_ShadowCopy`), which Windows only answers for administrators. It takes no input from the request and changes nothing.
+- Explorer integration is a classic per-user verb under `HKCU\Software\Classes` (`Directory`, `Directory\Background`, `Drive`), written and removed by the app. Explorer starts a new process per selected folder; the single-instance plugin forwards each path to the running copy, which merges a burst into one map. When that copy runs as administrator, it lets `WM_COPYDATA` from standard-user processes reach the plugin's window (`ChangeWindowMessageFilterEx`), otherwise the path would be dropped. The NSIS uninstaller removes the verbs, except during updates.
 
 ## Portable mode
 
@@ -124,5 +132,6 @@ UI strings live in `src/i18n/en.ts` and `src/i18n/tr.ts`; the Turkish file is ty
 ## Testing
 
 - `crates/core`: unit tests for path expansion, protected paths, wildcard matching, rule validation (every shipped rule must parse and pass the guards), walker behavior on junctions, duplicate grouping, empty folder detection, artifact detection and clean plan validation, using temp folders.
-- UI: Vitest for the treemap layout, byte formatting, script generation and selection helpers.
+- Windows-facing parts are tested against the real system where it is safe: the Restart Manager finds the test process holding a temp file, registry verbs are written under a throwaway `HKCU\Software\ReClaimTest-*` key and removed, and Steam libraries, manifests and shader caches are built in temp folders.
+- UI: Vitest for the treemap layout, byte formatting, script generation, selection helpers, hidden space arithmetic and the grouping of processes.
 - CI on `windows-latest`: typecheck, ESLint (`--max-warnings=0`), Vitest, build, `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`.

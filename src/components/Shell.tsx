@@ -7,6 +7,7 @@ import {
   Download,
   FileStack,
   FolderX,
+  Gamepad2,
   History,
   LayoutDashboard,
   MessagesSquare,
@@ -56,6 +57,7 @@ const SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { id: "models", icon: Bot },
       { id: "assistants", icon: MessagesSquare },
       { id: "downloads", icon: Download },
+      { id: "games", icon: Gamepad2 },
     ],
   },
   {

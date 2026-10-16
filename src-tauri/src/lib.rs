@@ -17,14 +17,20 @@ use reclaim_core::duplicates::{self, DupGroup};
 use reclaim_core::empty::{self, EmptyFolder};
 use reclaim_core::error::ErrorPayload;
 use reclaim_core::explorer::{ExtStat, FileView, NodeView, ScanSummary, Tree};
+use reclaim_core::hidden::{self, HiddenSpace};
 use reclaim_core::history::{self, HistoryEntry};
 use reclaim_core::icons;
 use reclaim_core::installers::{self, InstallerFile};
 use reclaim_core::junk::{self, TargetResult};
+use reclaim_core::locks::{self, CloseOutcome, LockReport};
 use reclaim_core::organize;
-use reclaim_core::rules::{ArtifactRule, TargetRule, builtin_artifacts, builtin_targets};
+use reclaim_core::rules::{
+    ArtifactRule, Mode, TargetRule, builtin_artifacts, builtin_targets, find_builtin,
+};
 use reclaim_core::settings::{Settings, is_portable};
+use reclaim_core::shell::{self, AnalyzeRequest, MenuStatus};
 use reclaim_core::startup::{self, StartupItem, StartupSource};
+use reclaim_core::steam::{self, SteamReport};
 use reclaim_core::system::{
     self, Drive, LaunchOutcome, LibraryFolders, OsInfo, RecycleBinInfo, SystemFile,
 };
@@ -263,13 +269,40 @@ fn restart_elevated(app: AppHandle) -> CmdResult<bool> {
 
 // ---------------------------------------------------------------- explorer
 
+/// Scans `root`, or only the named folders inside it when `selection` is given (several
+/// folders picked together in Explorer).
 #[tauri::command]
-async fn explorer_scan(app: AppHandle, root: String) -> CmdResult<ScanSummary> {
+async fn explorer_scan(
+    app: AppHandle,
+    root: String,
+    selection: Option<Vec<String>>,
+) -> CmdResult<ScanSummary> {
     let path = PathBuf::from(&root);
     if !path.is_absolute() || !path.is_dir() {
         return Err(err(Error::Other("folder not found".into())));
     }
-    let tree = run_job(&app, "explorer", move |job| Ok(Tree::scan(&path, &job))).await?;
+    // Each name must be one existing folder directly inside `root`.
+    let selection: Option<Vec<String>> = selection
+        .map(|names| {
+            names
+                .into_iter()
+                .filter(|n| {
+                    !n.is_empty()
+                        && !n.contains(['\\', '/', ':'])
+                        && n != ".."
+                        && n != "."
+                        && path.join(n).is_dir()
+                })
+                .collect::<Vec<_>>()
+        })
+        .filter(|n| !n.is_empty());
+    let tree = run_job(&app, "explorer", move |job| {
+        Ok(match &selection {
+            Some(names) => Tree::scan_selection(&path, names, &job),
+            None => Tree::scan(&path, &job),
+        })
+    })
+    .await?;
     let state = app.state::<AppState>();
     let summary = tree.summary.clone();
     *state.tree.write() = Some(tree);
@@ -756,6 +789,11 @@ async fn tool_run(app: AppHandle, id: String) -> CmdResult<CommandResult> {
                 "",
                 false,
             )?),
+            "performance-options" => done(system::launch(
+                &format!(r"{sys32}\SystemPropertiesPerformance.exe"),
+                "",
+                false,
+            )?),
             "storage-sense" => {
                 system::shell_open("ms-settings:storagesense")?;
                 CommandResult {
@@ -872,6 +910,248 @@ async fn app_remove_entry(app: AppHandle, id: String) -> CmdResult<String> {
         .map_err(err)
 }
 
+// ---------------------------------------------------------------- hidden space
+
+/// Explains the used space of a drive. The space map is used when it covers the whole drive.
+#[tauri::command]
+async fn hidden_space(app: AppHandle, root: String) -> CmdResult<HiddenSpace> {
+    let path = PathBuf::from(&root);
+    let k = reclaim_core::paths::key(&path);
+    if !reclaim_core::paths::is_drive_root(&k) || !path.is_dir() {
+        return Err(err(Error::Other("not a drive".into())));
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        // An elevated session can read shadow storage directly; measure it once.
+        if state.shadow.read().is_none()
+            && system::is_elevated()
+            && let Ok(list) = hidden::shadow_storage()
+        {
+            *state.shadow.write() = Some(list);
+        }
+        let shadow = state.shadow.read().clone();
+        let tree = state.tree.read();
+        hidden::hidden_space(&path, tree.as_ref(), shadow.as_deref())
+    })
+    .await
+    .map_err(|e| err(Error::Other(e.to_string())))?
+    .map_err(err)
+}
+
+/// Measures shadow storage, through UAC when this session is not elevated. Returns false when
+/// the user declined.
+#[tauri::command]
+async fn hidden_measure(app: AppHandle) -> CmdResult<bool> {
+    let measured = tauri::async_runtime::spawn_blocking(|| {
+        if system::is_elevated() {
+            hidden::shadow_storage().map(Some)
+        } else {
+            helper::measure_elevated()
+        }
+    })
+    .await
+    .map_err(|e| err(Error::Other(e.to_string())))?
+    .map_err(err)?;
+    let Some(list) = measured else {
+        return Ok(false);
+    };
+    *app.state::<AppState>().shadow.write() = Some(list);
+    Ok(true)
+}
+
+// ---------------------------------------------------------------- what is using this
+
+fn existing_path(path: &str) -> Result<PathBuf, Error> {
+    let p = PathBuf::from(path);
+    if !p.is_absolute() || p.symlink_metadata().is_err() {
+        return Err(Error::io(&p, std::io::ErrorKind::NotFound.into()));
+    }
+    Ok(p)
+}
+
+#[tauri::command]
+async fn locks_find(path: String) -> CmdResult<LockReport> {
+    let p = existing_path(&path).map_err(err)?;
+    tauri::async_runtime::spawn_blocking(move || locks::find_lockers(&p))
+        .await
+        .map_err(|e| err(Error::Other(e.to_string())))?
+        .map_err(err)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CloseResult {
+    outcome: CloseOutcome,
+    report: LockReport,
+}
+
+/// Asks one app that uses `path` to close, like clicking its close button, then checks again.
+/// The app must still be in a fresh list for `path` with the same start time, so the UI cannot
+/// close an arbitrary process.
+#[tauri::command]
+async fn locks_close(path: String, pid: u32, started: u64) -> CmdResult<CloseResult> {
+    let p = existing_path(&path).map_err(err)?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<CloseResult, Error> {
+        let before = locks::find_lockers(&p)?;
+        let allowed = before
+            .lockers
+            .iter()
+            .any(|l| l.pid == pid && l.started == started && l.can_close);
+        let outcome = if allowed {
+            locks::close_gracefully(pid, started, 5_000)
+        } else {
+            CloseOutcome::NotAllowed
+        };
+        // The item may be gone once its app closed (a temp file).
+        let report = match locks::find_lockers(&p) {
+            Ok(r) => r,
+            Err(_) => LockReport {
+                lockers: Vec::new(),
+                ..before
+            },
+        };
+        Ok(CloseResult { outcome, report })
+    })
+    .await
+    .map_err(|e| err(Error::Other(e.to_string())))?
+    .map_err(err)
+}
+
+// ---------------------------------------------------------------- games
+
+#[tauri::command]
+async fn steam_report(app: AppHandle) -> CmdResult<SteamReport> {
+    run_job(&app, "steam", |job| Ok(steam::report(&job))).await
+}
+
+/// Deletes the shader caches of the given Steam app ids. Folders are found again from Steam's
+/// own data, never taken from the UI, and Steam must be closed.
+#[tauri::command]
+async fn steam_clean(
+    app: AppHandle,
+    app_ids: Vec<String>,
+    method: DeleteMethod,
+) -> CmdResult<CleanReport> {
+    let state = app.state::<AppState>();
+    let guard = state.guard().map_err(err)?;
+    let root =
+        steam::steam_root().ok_or_else(|| err(Error::Other("Steam is not installed".into())))?;
+    let ids: Vec<String> = app_ids
+        .into_iter()
+        .filter(|i| !i.is_empty() && i.len() <= 12 && i.chars().all(|c| c.is_ascii_digit()))
+        .collect();
+    let paths = steam::cache_paths_for(&root, &ids);
+    let mut rule = find_builtin("steam-shadercache")
+        .cloned()
+        .ok_or_else(|| err(Error::UnknownRule("steam-shadercache".into())))?;
+    rule.mode = Mode::Folder;
+    rule.paths = paths
+        .iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
+    let report = run_job(&app, "clean", move |job| {
+        Ok(clean::clean_targets(&[&rule], method, &guard, &job, false))
+    })
+    .await?;
+    {
+        let mut tree = state.tree.write();
+        if let Some(tree) = tree.as_mut() {
+            for p in paths.iter().filter(|p| p.symlink_metadata().is_err()) {
+                tree.remove(p);
+            }
+        }
+    }
+    record(&state, "games", method, &report);
+    Ok(report)
+}
+
+// ---------------------------------------------------------------- Explorer integration
+
+fn current_exe() -> Result<PathBuf, Error> {
+    std::env::current_exe().map_err(|e| Error::io("current_exe", e))
+}
+
+#[tauri::command]
+fn shell_menu_status() -> CmdResult<MenuStatus> {
+    Ok(shell::status(&current_exe().map_err(err)?))
+}
+
+/// Adds or removes "Analyze with ReClaim" in Explorer's right-click menu for this user.
+#[tauri::command]
+fn shell_menu_set(enabled: bool, lang: String) -> CmdResult<MenuStatus> {
+    let exe = current_exe().map_err(err)?;
+    if enabled {
+        shell::register(&exe, &lang).map_err(err)?;
+    } else {
+        shell::unregister().map_err(err)?;
+    }
+    Ok(shell::status(&exe))
+}
+
+/// The folders Explorer asked to analyze since the last call, merged into one request.
+#[tauri::command]
+fn shell_take_pending(state: State<'_, AppState>) -> Option<AnalyzeRequest> {
+    let paths: Vec<PathBuf> = std::mem::take(&mut *state.pending.lock());
+    shell::plan_analyze(&paths)
+}
+
+/// Queues paths from a command line and tells the UI once the burst is over. Explorer starts
+/// one process per selected folder, and each forwards its path here separately.
+fn queue_analyze(app: &AppHandle, args: &[String]) {
+    let paths = shell::analyze_args(args);
+    if paths.is_empty() {
+        return;
+    }
+    let state = app.state::<AppState>();
+    {
+        let mut pending = state.pending.lock();
+        for p in paths {
+            if pending.len() < shell::MAX_PATHS {
+                pending.push(p);
+            }
+        }
+    }
+    if state.pending_armed.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(400));
+        app.state::<AppState>()
+            .pending_armed
+            .store(false, Ordering::SeqCst);
+        let _ = app.emit("shell-analyze", ());
+    });
+}
+
+/// Lets a standard-user Explorer reach this copy when it runs as administrator. Windows blocks
+/// messages from lower to higher integrity, so without this the forwarded path would be lost
+/// while the second copy exits. The window is the single-instance plugin's own; its names are
+/// that plugin's convention and need checking when it is upgraded.
+fn allow_forwarding_when_elevated(app: &tauri::App) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        ChangeWindowMessageFilterEx, FindWindowW, GetWindowThreadProcessId, MSGFLT_ALLOW,
+        WM_COPYDATA,
+    };
+    use windows::core::{HSTRING, PCWSTR};
+    if !system::is_elevated() {
+        return;
+    }
+    let id = &app.config().identifier;
+    let class = HSTRING::from(format!("{id}-sic"));
+    let title = HSTRING::from(format!("{id}-siw"));
+    unsafe {
+        let Ok(hwnd) = FindWindowW(PCWSTR(class.as_ptr()), PCWSTR(title.as_ptr())) else {
+            return;
+        };
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == std::process::id() {
+            let _ = ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, None);
+        }
+    }
+}
+
 // ---------------------------------------------------------------- history
 
 #[tauri::command]
@@ -886,7 +1166,8 @@ fn history_clear(state: State<'_, AppState>) -> CmdResult<()> {
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            queue_analyze(app, &args);
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.unminimize();
                 let _ = w.set_focus();
@@ -896,6 +1177,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::load())
+        .setup(|app| {
+            allow_forwarding_when_elevated(app);
+            let args: Vec<String> = std::env::args().collect();
+            queue_analyze(app.handle(), &args);
+            // A moved portable copy or a reinstall elsewhere leaves entries pointing at a
+            // program that no longer exists; point them at this copy.
+            if let Ok(exe) = current_exe() {
+                let _ = shell::repair(&exe);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             app_info,
             drives,
@@ -938,6 +1230,15 @@ pub fn run() {
             assistant_data,
             downloads_report,
             app_remove_entry,
+            hidden_space,
+            hidden_measure,
+            locks_find,
+            locks_close,
+            steam_report,
+            steam_clean,
+            shell_menu_status,
+            shell_menu_set,
+            shell_take_pending,
         ])
         .run(tauri::generate_context!())
         .expect("error while running ReClaim Cleaner");

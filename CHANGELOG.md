@@ -15,6 +15,15 @@ All notable changes to this project are documented here. The format follows [Kee
 - 115 more cleanup rules (233 in total): Office, OneDrive, Dropbox, Google Drive, Signal, Adobe, Blender, OBS, Plex, Jellyfin, EA app, Ubisoft, GOG, Minecraft, NVIDIA and AMD apps, winget, Scoop, Chocolatey, Docker, Vagrant, more browsers and Electron apps.
 - Rules can exclude names. `%TEMP%` cleaning keeps Blender, Krita and Office autosave files.
 - Research round 2 and the resulting plan in `docs/research/`.
+- Hidden space on the Space map: when a whole drive is mapped, its used space is reconciled with the map. Restore points and shadow copies (measured once with administrator rights, read only), reserved storage, the page, hibernation and swap files, the NTFS file table, the Recycle Bin, WSL and Docker disks, unreadable folders and online-only cloud files are listed with their size, whether the map counted them, and a link to Windows' own screen. The Overview shows what Windows keeps on the system drive.
+- "Analyze with ReClaim" in Explorer's right-click menu on folders, folder backgrounds and drives. It is off by default, per user, and turned on in Settings; on Windows 11 it is under "Show more options". The app accepts `--analyze <folder>`, also when it is already running (as administrator too), and folders selected together are mapped as one selection. The setup removes the entry on uninstall but not on update.
+- "What is using this?" in Large files, the Space map and the "in use" lines of clean reports. It lists the apps, background programs, services and Windows processes that hold a file or folder, including programs that run from the folder or have it open as their working folder, and offers a graceful close (like clicking the window's close button) and a re-check. Processes are never ended and handles are never closed.
+- Games page: Steam libraries on every drive, installed games with their sizes, and the shader cache of each game named from Steam's manifests. Caches of removed games are preselected; Steam must be closed to delete.
+
+### Changed
+
+- Steam rules (shader cache, logs and dumps, download leftovers, unfinished downloads, client packages) follow the Steam folder and every library listed in Steam's own settings instead of assuming `C:\Program Files (x86)\Steam`. Rules can use `%STEAM%` and `%STEAMLIBRARY%`.
+- Pages other than the Overview load on first visit, which keeps the startup bundle small.
 
 ### Fixed
 

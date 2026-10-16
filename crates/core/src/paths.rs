@@ -23,6 +23,35 @@ pub const ALLOWED_VARS: &[&str] = &[
     "SYSTEMDRIVE",
 ];
 
+/// Rule variables that stand for folders found at run time rather than environment variables:
+/// `%STEAM%` is the Steam install folder and `%STEAMLIBRARY%` every Steam library folder on any
+/// drive (the install folder included). Both come from Steam's registry key and
+/// `libraryfolders.vdf`, so they expand to nothing when Steam is not installed. Rules that need
+/// administrator rights may not use them: the elevated helper must not take folders from
+/// per-user data.
+pub const STEAM_VARS: &[&str] = &["STEAM", "STEAMLIBRARY"];
+
+/// Splits `%STEAM%\rest` or `%STEAMLIBRARY%\rest` into its folders and `\rest`.
+fn steam_roots(pattern: &str) -> Option<(Vec<PathBuf>, &str)> {
+    let upper = pattern.to_ascii_uppercase();
+    for var in STEAM_VARS {
+        let token = format!("%{var}%");
+        if upper.starts_with(&token) {
+            let rest = &pattern[token.len()..];
+            if !(rest.is_empty() || rest.starts_with('\\')) {
+                return None;
+            }
+            let roots = match crate::steam::steam_root() {
+                Some(root) if *var == "STEAM" => vec![root],
+                Some(root) => crate::steam::libraries_in(&root),
+                None => Vec::new(),
+            };
+            return Some((roots, rest));
+        }
+    }
+    None
+}
+
 pub fn env_path(name: &str) -> Option<PathBuf> {
     std::env::var_os(name)
         .filter(|v| !v.is_empty())
@@ -113,8 +142,22 @@ fn split_absolute(path: &str) -> Result<(String, Vec<String>)> {
 /// Expands a rule pattern into the paths that exist right now. Wildcard segments only match
 /// real folders (never links), and the final paths themselves must not be links.
 pub fn expand_pattern(pattern: &str) -> Result<Vec<PathBuf>> {
-    let expanded = expand_vars(pattern)?;
-    let (drive, segs) = split_absolute(&expanded)?;
+    if let Some((roots, rest)) = steam_roots(pattern) {
+        let mut out = Vec::new();
+        for root in roots {
+            let full = format!("{}{rest}", root.to_string_lossy().trim_end_matches('\\'));
+            out.extend(expand_absolute(&full)?);
+        }
+        out.sort();
+        out.dedup();
+        return Ok(out);
+    }
+    expand_absolute(&expand_vars(pattern)?)
+}
+
+/// [`expand_pattern`] for a path whose variables are already replaced.
+fn expand_absolute(expanded: &str) -> Result<Vec<PathBuf>> {
+    let (drive, segs) = split_absolute(expanded)?;
     let mut current = vec![PathBuf::from(format!("{drive}\\"))];
     for (i, seg) in segs.iter().enumerate() {
         let last = i + 1 == segs.len();

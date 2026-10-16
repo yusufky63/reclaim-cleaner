@@ -130,6 +130,37 @@ pub fn is_elevated() -> bool {
     }
 }
 
+/// The current user's SID as a string (`S-1-5-21-...`), which names their folder in each
+/// drive's `$Recycle.Bin`.
+pub fn current_user_sid() -> Option<String> {
+    use windows::Win32::Foundation::{HLOCAL, LocalFree};
+    use windows::Win32::Security::Authorization::ConvertSidToStringSidW;
+    use windows::Win32::Security::{TOKEN_USER, TokenUser};
+    use windows::core::PWSTR;
+    unsafe {
+        let mut token = HANDLE::default();
+        OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).ok()?;
+        // TOKEN_USER is followed by the SID it points to; 256 bytes hold any SID.
+        let mut buf = [0u64; 32];
+        let mut len = 0u32;
+        let ok = GetTokenInformation(
+            token,
+            TokenUser,
+            Some(buf.as_mut_ptr() as *mut core::ffi::c_void),
+            std::mem::size_of_val(&buf) as u32,
+            &mut len,
+        );
+        let _ = CloseHandle(token);
+        ok.ok()?;
+        let user = &*(buf.as_ptr() as *const TOKEN_USER);
+        let mut text = PWSTR::null();
+        ConvertSidToStringSidW(user.User.Sid, &mut text).ok()?;
+        let sid = text.to_string().ok();
+        let _ = LocalFree(Some(HLOCAL(text.0 as *mut core::ffi::c_void)));
+        sid
+    }
+}
+
 /// Lowercase executable names of every running process.
 pub fn running_processes() -> HashSet<String> {
     let mut out = HashSet::new();
@@ -154,6 +185,32 @@ pub fn running_processes() -> HashSet<String> {
     out
 }
 
+/// Ids of every running process.
+pub fn process_ids() -> Vec<u32> {
+    let mut out = Vec::new();
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else {
+            return out;
+        };
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        if Process32FirstW(snap, &mut entry).is_ok() {
+            loop {
+                if entry.th32ProcessID != 0 {
+                    out.push(entry.th32ProcessID);
+                }
+                if Process32NextW(snap, &mut entry).is_err() {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(snap);
+    }
+    out
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RecycleBinInfo {
@@ -163,11 +220,21 @@ pub struct RecycleBinInfo {
 
 /// Size of the Recycle Bin on all drives.
 pub fn recycle_bin_info() -> RecycleBinInfo {
+    query_recycle_bin(PCWSTR::null())
+}
+
+/// Size of the Recycle Bin on the drive at `root`.
+pub fn recycle_bin_info_on(root: &Path) -> RecycleBinInfo {
+    let w = wide(root);
+    query_recycle_bin(PCWSTR(w.as_ptr()))
+}
+
+fn query_recycle_bin(root: PCWSTR) -> RecycleBinInfo {
     let mut info = SHQUERYRBINFO {
         cbSize: std::mem::size_of::<SHQUERYRBINFO>() as u32,
         ..Default::default()
     };
-    match unsafe { SHQueryRecycleBinW(PCWSTR::null(), &mut info) } {
+    match unsafe { SHQueryRecycleBinW(root, &mut info) } {
         Ok(()) => RecycleBinInfo {
             bytes: info.i64Size.max(0) as u64,
             items: info.i64NumItems.max(0) as u64,
@@ -280,15 +347,20 @@ pub struct SystemFile {
     pub bytes: u64,
 }
 
-/// `hiberfil.sys`, `pagefile.sys` and `swapfile.sys` on the system drive. Read from the
-/// directory listing, because opening them fails while Windows holds them.
+/// `hiberfil.sys`, `pagefile.sys` and `swapfile.sys` on the system drive.
 pub fn system_files() -> Vec<SystemFile> {
     let root = format!(
         "{}\\",
         std::env::var("SYSTEMDRIVE").unwrap_or_else(|_| "C:".into())
     );
+    system_files_on(Path::new(&root))
+}
+
+/// `hiberfil.sys`, `pagefile.sys` and `swapfile.sys` in the root of a drive. Read from the
+/// directory listing, because opening them fails while Windows holds them.
+pub fn system_files_on(root: &Path) -> Vec<SystemFile> {
     let mut out = Vec::new();
-    if let Ok(rd) = std::fs::read_dir(&root) {
+    if let Ok(rd) = std::fs::read_dir(root) {
         for e in rd.flatten() {
             let name = e.file_name().to_string_lossy().to_lowercase();
             if matches!(
@@ -427,5 +499,6 @@ mod tests {
         assert!(!os_info().build.is_empty());
         assert!(!known_folders().is_empty());
         assert!(which("cmd").is_some());
+        assert!(current_user_sid().is_some_and(|s| s.starts_with("S-1-")));
     }
 }

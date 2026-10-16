@@ -1,7 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
+  AnalyzeRequest,
   AppInfo,
+  CloseResult,
+  HiddenSpace,
+  LockReport,
+  MenuStatus,
+  SteamReport,
   CleanOutcome,
   CleanReport,
   CommandResult,
@@ -73,7 +79,7 @@ export const api = {
   open: (path: string) => call<void>("open_path", { path }),
   restartElevated: () => call<boolean>("restart_elevated"),
 
-  explorerScan: (root: string) => call<ScanSummary>("explorer_scan", { root }),
+  explorerScan: (root: string, selection?: string[]) => call<ScanSummary>("explorer_scan", { root, selection: selection ?? null }),
   explorerSummary: () => call<ScanSummary | null>("explorer_summary"),
   explorerNode: (id: number, depth: number, limit: number) => call<NodeView | null>("explorer_node", { id, depth, limit }),
   explorerAncestors: (id: number) => call<Crumb[]>("explorer_ancestors", { id }),
@@ -106,9 +112,25 @@ export const api = {
   downloads: () => call<DownloadsReport>("downloads_report"),
   appRemoveEntry: (id: string) => call<string>("app_remove_entry", { id }),
 
+  hiddenSpace: (root: string) => call<HiddenSpace>("hidden_space", { root }),
+  hiddenMeasure: () => call<boolean>("hidden_measure"),
+  locksFind: (path: string) => call<LockReport>("locks_find", { path }),
+  locksClose: (path: string, pid: number, started: number) => call<CloseResult>("locks_close", { path, pid, started }),
+  steamReport: () => call<SteamReport>("steam_report"),
+  steamClean: (appIds: string[], method: DeleteMethod) => call<CleanReport>("steam_clean", { appIds, method }),
+  shellMenuStatus: () => call<MenuStatus>("shell_menu_status"),
+  shellMenuSet: (enabled: boolean, lang: string) => call<MenuStatus>("shell_menu_set", { enabled, lang }),
+  shellTakePending: () => call<AnalyzeRequest | null>("shell_take_pending"),
+
   history: (limit: number) => call<HistoryEntry[]>("history_list", { limit }),
   historyClear: () => call<void>("history_clear"),
 };
+
+/** Fires when Explorer asked the running app to analyze folders. */
+export function onShellAnalyze(cb: () => void): Promise<UnlistenFn> {
+  if (!isDesktop()) return Promise.resolve(() => {});
+  return listen("shell-analyze", () => cb());
+}
 
 export function onProgress(cb: (e: ProgressEvent) => void): Promise<UnlistenFn> {
   if (!isDesktop()) return Promise.resolve(() => {});
