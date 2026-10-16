@@ -166,7 +166,34 @@ fn png_data_url(width: u32, height: u32, rgba: &[u8]) -> Option<String> {
     ))
 }
 
+/// Small PNG/JPEG/ICO files (Store app logos) are their own icon; send them as they are
+/// instead of asking the shell for the generic image-file icon.
+fn image_file(path: &str) -> Option<String> {
+    let lower = path.to_lowercase();
+    let mime = if lower.ends_with(".png") {
+        "image/png"
+    } else if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
+        "image/jpeg"
+    } else {
+        return None;
+    };
+    let md = std::fs::metadata(path).ok()?;
+    if md.len() > 512 * 1024 {
+        return None;
+    }
+    let bytes = std::fs::read(path).ok()?;
+    Some(format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
+}
+
 fn render(path: &str, size: u32, kind: ImageKind) -> Option<String> {
+    if kind == ImageKind::Icon
+        && let Some(url) = image_file(path)
+    {
+        return Some(url);
+    }
     let flags = match kind {
         ImageKind::Icon => SIIGBF_ICONONLY | SIIGBF_BIGGERSIZEOK,
         ImageKind::Thumb => SIIGBF_THUMBNAILONLY | SIIGBF_BIGGERSIZEOK,

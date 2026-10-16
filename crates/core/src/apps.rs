@@ -6,6 +6,7 @@ use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use winreg::RegKey;
 use winreg::enums::{
@@ -136,6 +137,7 @@ struct AppxRow {
     publisher_display_name: Option<String>,
     display_name: Option<String>,
     install_location: Option<String>,
+    logo: Option<String>,
 }
 
 /// Store apps installed for the current user, excluding frameworks and system apps.
@@ -143,9 +145,14 @@ pub fn store_apps() -> Result<Vec<InstalledApp>> {
     let script = r#"$ErrorActionPreference='SilentlyContinue'; [Console]::OutputEncoding=[Text.Encoding]::UTF8;
 Get-AppxPackage -PackageTypeFilter Main | Where-Object { $_.SignatureKind -eq 'Store' -and -not $_.IsFramework -and -not $_.NonRemovable } | ForEach-Object {
   $m = $null; try { $m = Get-AppxPackageManifest -Package $_.PackageFullName } catch {}
-  $dn = $null; $pub = $null
-  if ($m) { $dn = $m.Package.Properties.DisplayName; $pub = $m.Package.Properties.PublisherDisplayName }
-  [pscustomobject]@{ Name=$_.Name; PackageFullName=$_.PackageFullName; Version=[string]$_.Version; PublisherDisplayName=$pub; DisplayName=$dn; InstallLocation=$_.InstallLocation }
+  $dn = $null; $pub = $null; $logo = $null
+  if ($m) {
+    $dn = $m.Package.Properties.DisplayName; $pub = $m.Package.Properties.PublisherDisplayName
+    $app = @($m.Package.Applications.Application)[0]
+    if ($app -and $app.VisualElements) { $logo = $app.VisualElements.Square44x44Logo }
+    if (-not $logo) { $logo = $m.Package.Properties.Logo }
+  }
+  [pscustomobject]@{ Name=$_.Name; PackageFullName=$_.PackageFullName; Version=[string]$_.Version; PublisherDisplayName=$pub; DisplayName=$dn; InstallLocation=$_.InstallLocation; Logo=[string]$logo }
 } | ConvertTo-Json -Compress"#;
     let out = Command::new("powershell.exe")
         .args([
@@ -170,8 +177,20 @@ Get-AppxPackage -PackageTypeFilter Main | Where-Object { $_.SignatureKind -eq 'S
         vec![serde_json::from_str(text)?]
     };
     let mut apps: Vec<InstalledApp> = rows
-        .into_iter()
+        .into_par_iter()
         .map(|r| {
+            let icon = match (&r.install_location, &r.logo) {
+                (Some(loc), Some(logo)) if !logo.is_empty() => store_logo(loc, logo),
+                _ => None,
+            };
+            // Package folders are small and readable, so measure them for a real size.
+            let bytes = r
+                .install_location
+                .as_deref()
+                .map(|l| {
+                    crate::walk::measure_dir(Path::new(l), None, &crate::job::Job::new()).bytes
+                })
+                .filter(|b| *b > 0);
             let name = r
                 .display_name
                 .filter(|d| !d.starts_with("ms-resource:") && !d.is_empty())
@@ -185,9 +204,9 @@ Get-AppxPackage -PackageTypeFilter Main | Where-Object { $_.SignatureKind -eq 'S
                     .unwrap_or_default(),
                 version: r.version.unwrap_or_default(),
                 installed: None,
-                bytes: None,
+                bytes,
                 location: r.install_location,
-                icon: None,
+                icon,
                 uninstall: None,
                 quiet_uninstall: None,
                 scope: String::from("user"),
@@ -198,6 +217,56 @@ Get-AppxPackage -PackageTypeFilter Main | Where-Object { $_.SignatureKind -eq 'S
         .collect();
     apps.sort_by_key(|a| a.name.to_lowercase());
     Ok(apps)
+}
+
+/// Resolves a manifest logo such as `Assets\Square44x44Logo.png` to the file Windows would
+/// show. Packages ship scaled variants (`.targetsize-48_altform-unplated.png`); the unplated
+/// ones look right on any background, so they win.
+pub fn store_logo(location: &str, rel: &str) -> Option<String> {
+    let rel = rel.replace('/', "\\");
+    if rel.split('\\').any(|s| s == ".." || s.is_empty()) {
+        return None;
+    }
+    let full = Path::new(location).join(&rel);
+    let dir = full.parent()?;
+    let stem = full.file_stem()?.to_string_lossy().to_lowercase();
+    let ext = full.extension()?.to_string_lossy().to_lowercase();
+    let score = |n: &str| -> i32 {
+        if n.contains("contrast-") {
+            return -1;
+        }
+        let unplated = n.contains("altform-unplated");
+        let base = if n.contains("targetsize-48") {
+            40
+        } else if n.contains("targetsize-32") {
+            36
+        } else if n.contains("targetsize-64") || n.contains("targetsize-44") {
+            34
+        } else if n.contains("targetsize") {
+            30
+        } else if n.contains("scale-200") {
+            28
+        } else if n.contains("scale-100") {
+            26
+        } else if n.contains("scale") {
+            24
+        } else {
+            20
+        };
+        base + if unplated { 20 } else { 0 }
+    };
+    std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .filter_map(|e| {
+            let n = e.file_name().to_string_lossy().to_lowercase();
+            let same = n == format!("{stem}.{ext}")
+                || (n.starts_with(&format!("{stem}.")) && n.ends_with(&format!(".{ext}")));
+            same.then(|| (score(&n), e.path()))
+        })
+        .filter(|(s, _)| *s > 0)
+        .max_by_key(|(s, _)| *s)
+        .map(|(_, p)| p.to_string_lossy().into_owned())
 }
 
 /// `Microsoft.WindowsCalculator` -> `Windows Calculator`.
@@ -457,6 +526,28 @@ mod tests {
             pretty_package_name("SpotifyAB.SpotifyMusic"),
             "Spotify Music"
         );
+    }
+
+    #[test]
+    fn picks_the_unplated_store_logo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let assets = tmp.path().join("Assets");
+        std::fs::create_dir_all(&assets).unwrap();
+        for f in [
+            "Square44x44Logo.scale-100.png",
+            "Square44x44Logo.targetsize-48.png",
+            "Square44x44Logo.targetsize-48_altform-unplated.png",
+            "Square44x44Logo.targetsize-48_contrast-black.png",
+            "Other.png",
+        ] {
+            std::fs::write(assets.join(f), b"png").unwrap();
+        }
+        let got = store_logo(&tmp.path().to_string_lossy(), r"Assets\Square44x44Logo.png").unwrap();
+        assert!(
+            got.ends_with("Square44x44Logo.targetsize-48_altform-unplated.png"),
+            "{got}"
+        );
+        assert!(store_logo(&tmp.path().to_string_lossy(), r"..\x.png").is_none());
     }
 
     #[test]

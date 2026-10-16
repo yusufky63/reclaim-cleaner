@@ -1,4 +1,4 @@
-import { AppWindow, ChevronRight, ClipboardCopy, Copy, FileStack, HardDrive, Map as MapIcon, Power, ScanSearch, ShieldCheck, Sparkles } from "lucide-react";
+import { AppWindow, ChevronRight, ClipboardCopy, Copy, FileStack, HardDrive, Map as MapIcon, Power, ScanSearch, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, ProgressPanel, ReportDialog, UsageBar } from "../components/common";
@@ -159,6 +159,86 @@ function QuickActions() {
   );
 }
 
+/** One-click cleanup of the safe, regenerable items: caches, temp files and logs. */
+function QuickClean({ recs }: { recs: Rec[] }) {
+  const { t } = useTranslation();
+  const fmt = useBytes();
+  const { info, settings, junk, running, scanAll, toast, refreshDrives } = useApp();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<CleanReport | null>(null);
+  const elevated = !!info?.elevated;
+  const safeRules = recs.filter((r) => r.kind === "rule" && r.risk === "safe");
+  const items = safeRules.filter((r) => r.blockedBy.length === 0 && (!r.admin || elevated));
+  const skipped = safeRules.length - items.length;
+  const bytes = items.reduce((s, r) => s + r.bytes, 0);
+  const scanning = !!(running.junk || running.projects);
+
+  const start = async () => {
+    if (!junk) await scanAll();
+    setConfirm(true);
+  };
+
+  const run = async () => {
+    if (!settings) return;
+    setBusy(true);
+    try {
+      const out = await cleanRecommendations(items, settings.cacheDelete, settings.filesDelete);
+      setConfirm(false);
+      setReport(out.report);
+      await Promise.all([scanAll(), refreshDrives()]);
+    } catch (e) {
+      toast("danger", errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <section className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-surface px-5 py-4">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+          <Zap size={20} strokeWidth={1.75} aria-hidden />
+        </span>
+        <div className="min-w-[240px] flex-1">
+          <h2 className="display-medium text-[18px] text-ink">{t("overview.quickTitle")}</h2>
+          <p className="text-[13px] text-ink-secondary">{junk ? (items.length > 0 ? t("overview.quickBody") : t("overview.quickNothing")) : t("overview.quickBodyEmpty")}</p>
+          {junk && items.length > 0 && (
+            <p className="mt-0.5 font-mono text-[11px] text-ink-muted">
+              {t("overview.quickIncludes", { count: items.length })}
+              {skipped > 0 ? ` · ${t("overview.quickSkipped")}` : ""}
+            </p>
+          )}
+        </div>
+        {junk && items.length > 0 && <span className="num font-mono text-[28px] font-medium leading-none tracking-tight text-ink">{fmt(bytes)}</span>}
+        <Button
+          variant="primary"
+          size="lg"
+          icon={<Zap size={17} strokeWidth={1.75} />}
+          loading={scanning || busy}
+          disabled={!!junk && items.length === 0}
+          onClick={() => void start()}
+        >
+          {junk ? t("overview.quickButton") : t("overview.quickScanButton")}
+        </Button>
+      </section>
+      <ConfirmClean open={confirm && items.length > 0} onClose={() => setConfirm(false)} onConfirm={() => void run()} count={items.length} bytes={bytes} method={settings?.cacheDelete ?? "permanent"} busy={busy}>
+        <p className="mt-3 text-[13px] text-ink-secondary">{t("overview.quickConfirmBody")}</p>
+        <ul className="mt-3 divide-y divide-line rounded-md border border-line">
+          {items.slice(0, 8).map((r) => (
+            <li key={r.key} className="flex items-center justify-between gap-3 px-3 py-1.5 text-[13px]">
+              <span className="truncate text-ink">{r.title}</span>
+              <span className="num shrink-0 font-mono text-[12px] text-ink-secondary">{fmt(r.bytes)}</span>
+            </li>
+          ))}
+          {items.length > 8 && <li className="px-3 py-1.5 text-[12px] text-ink-muted">{t("overview.quickMore", { count: items.length - 8 })}</li>}
+        </ul>
+      </ConfirmClean>
+      <ReportDialog report={report} onClose={() => setReport(null)} />
+    </>
+  );
+}
+
 export function OverviewPage() {
   const { t, i18n } = useTranslation();
   const locale = useLocale();
@@ -240,6 +320,8 @@ export function OverviewPage() {
           </Button>
         )}
       </div>
+
+      <QuickClean recs={recs} />
 
       <div className="module-grid ticks grid-cols-2 lg:grid-cols-4">
         <Stat
