@@ -1408,10 +1408,10 @@
     "group": "games",
     "name": "Steam shader pre-cache",
     "nameTr": "Steam gölgelendirici ön önbelleği",
-    "description": "Per-game shader caches downloaded or built by Steam's shader pre-caching; rebuilt per game, expect stutter or a shader download on next launch. Other library folders hold their own steamapps\\shadercache.",
-    "descriptionTr": "Steam'in gölgelendirici ön önbelleklemesiyle indirilen veya derlenen oyun başına önbellekler; oyun başına yeniden oluşur, sonraki açılışta takılma veya indirme olabilir. Diğer kütüphane klasörlerinin kendi steamapps\\shadercache klasörü vardır.",
+    "description": "Per-game shader caches downloaded or built by Steam's shader pre-caching, in every Steam library on every drive; rebuilt per game, expect stutter or a shader download on next launch. The Games page lists them per game.",
+    "descriptionTr": "Steam'in gölgelendirici ön önbelleklemesiyle indirilen veya derlenen oyun başına önbellekler, her sürücüdeki her Steam kütüphanesinde; oyun başına yeniden oluşur, sonraki açılışta takılma veya indirme olabilir. Oyunlar sayfası bunları oyun oyun listeler.",
     "paths": [
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\shadercache"
+      "%STEAMLIBRARY%\\steamapps\\shadercache"
     ],
     "mode": "contents",
     "minAgeHours": null,
@@ -1431,9 +1431,9 @@
     "description": "Client logs, crash dumps and the HTTP cache of the Steam client; nothing related to games or accounts is lost.",
     "descriptionTr": "Steam istemcisinin günlükleri, çökme dökümleri ve HTTP önbelleği; oyunlarla veya hesapla ilgili hiçbir şey kaybolmaz.",
     "paths": [
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\logs",
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\dumps",
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\appcache\\httpcache"
+      "%STEAM%\\logs",
+      "%STEAM%\\dumps",
+      "%STEAM%\\appcache\\httpcache"
     ],
     "mode": "contents",
     "minAgeHours": null,
@@ -4688,12 +4688,12 @@
     "group": "games",
     "name": "Steam download leftovers",
     "nameTr": "Steam indirme artıkları",
-    "description": "Temporary files of Steam game and Workshop downloads in the default Steam folder; installed games and their content are not touched.",
-    "descriptionTr": "Varsayılan Steam klasöründeki oyun ve Atölye indirmelerinin geçici dosyaları; kurulu oyunlara ve içeriklerine dokunulmaz.",
+    "description": "Temporary files of Steam game and Workshop downloads in every Steam library; installed games and their content are not touched.",
+    "descriptionTr": "Her Steam kütüphanesindeki oyun ve Atölye indirmelerinin geçici dosyaları; kurulu oyunlara ve içeriklerine dokunulmaz.",
     "paths": [
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\temp",
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\workshop\\downloads",
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\workshop\\temp"
+      "%STEAMLIBRARY%\\steamapps\\temp",
+      "%STEAMLIBRARY%\\steamapps\\workshop\\downloads",
+      "%STEAMLIBRARY%\\steamapps\\workshop\\temp"
     ],
     "mode": "contents",
     "minAgeHours": null,
@@ -4714,7 +4714,7 @@
     "description": "Partly downloaded game updates and installs waiting in Steam's queue; Steam downloads them again from the start, and installed game versions keep working.",
     "descriptionTr": "Steam kuyruğunda bekleyen, yarısı inmiş oyun güncellemeleri ve kurulumları; Steam bunları baştan indirir, kurulu oyun sürümleri çalışmaya devam eder.",
     "paths": [
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\downloading"
+      "%STEAMLIBRARY%\\steamapps\\downloading"
     ],
     "mode": "contents",
     "minAgeHours": null,
@@ -4735,9 +4735,9 @@
     "description": "Steam client update packages, depot manifests and library artwork; Steam downloads them again when needed, so the next start needs an internet connection.",
     "descriptionTr": "Steam istemci güncelleme paketleri, depo bildirimleri ve kitaplık görselleri; Steam gerektiğinde yeniden indirir, bu yüzden sonraki açılışta internet bağlantısı gerekir.",
     "paths": [
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\package",
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\depotcache",
-      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\appcache\\librarycache"
+      "%STEAM%\\package",
+      "%STEAM%\\depotcache",
+      "%STEAM%\\appcache\\librarycache"
     ],
     "mode": "contents",
     "minAgeHours": null,

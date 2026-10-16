@@ -1,26 +1,29 @@
 import { AlertTriangle, MonitorX } from "lucide-react";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Shell } from "./components/Shell";
 import { Banner, EmptyState } from "./components/ui";
-import { isDesktop, onProgress } from "./lib/api";
+import { api, isDesktop, onProgress, onShellAnalyze } from "./lib/api";
 import { checkForUpdate } from "./lib/updates";
-import { AiModelsPage } from "./pages/AiModels";
-import { AppsPage } from "./pages/Apps";
-import { AssistantsPage } from "./pages/Assistants";
-import { DownloadsPage } from "./pages/Downloads";
-import { CleanerPage } from "./pages/Cleaner";
-import { DuplicatesPage } from "./pages/Duplicates";
-import { EmptyFoldersPage } from "./pages/EmptyFolders";
-import { ExplorerPage } from "./pages/Explorer";
-import { HistoryPage } from "./pages/History";
-import { LargeFilesPage } from "./pages/LargeFiles";
 import { OverviewPage } from "./pages/Overview";
-import { ProjectsPage } from "./pages/Projects";
-import { SettingsPage } from "./pages/Settings";
-import { StartupPage } from "./pages/Startup";
-import { ToolsPage } from "./pages/Tools";
 import { useApp } from "./store/app";
+
+// Pages other than the Overview load on first visit, which keeps the startup bundle small.
+const AiModelsPage = lazy(() => import("./pages/AiModels").then((m) => ({ default: m.AiModelsPage })));
+const AppsPage = lazy(() => import("./pages/Apps").then((m) => ({ default: m.AppsPage })));
+const AssistantsPage = lazy(() => import("./pages/Assistants").then((m) => ({ default: m.AssistantsPage })));
+const CleanerPage = lazy(() => import("./pages/Cleaner").then((m) => ({ default: m.CleanerPage })));
+const DownloadsPage = lazy(() => import("./pages/Downloads").then((m) => ({ default: m.DownloadsPage })));
+const DuplicatesPage = lazy(() => import("./pages/Duplicates").then((m) => ({ default: m.DuplicatesPage })));
+const EmptyFoldersPage = lazy(() => import("./pages/EmptyFolders").then((m) => ({ default: m.EmptyFoldersPage })));
+const ExplorerPage = lazy(() => import("./pages/Explorer").then((m) => ({ default: m.ExplorerPage })));
+const GamesPage = lazy(() => import("./pages/Games").then((m) => ({ default: m.GamesPage })));
+const HistoryPage = lazy(() => import("./pages/History").then((m) => ({ default: m.HistoryPage })));
+const LargeFilesPage = lazy(() => import("./pages/LargeFiles").then((m) => ({ default: m.LargeFilesPage })));
+const ProjectsPage = lazy(() => import("./pages/Projects").then((m) => ({ default: m.ProjectsPage })));
+const SettingsPage = lazy(() => import("./pages/Settings").then((m) => ({ default: m.SettingsPage })));
+const StartupPage = lazy(() => import("./pages/Startup").then((m) => ({ default: m.StartupPage })));
+const ToolsPage = lazy(() => import("./pages/Tools").then((m) => ({ default: m.ToolsPage })));
 
 function Page() {
   const page = useApp((s) => s.page);
@@ -45,6 +48,8 @@ function Page() {
       return <AssistantsPage />;
     case "downloads":
       return <DownloadsPage />;
+    case "games":
+      return <GamesPage />;
     case "apps":
       return <AppsPage />;
     case "startup":
@@ -68,7 +73,16 @@ export function App() {
   const go = useApp((s) => s.go);
 
   useEffect(() => {
+    // Folders from Explorer's "Analyze with ReClaim": a cold start leaves them waiting, a
+    // running copy is told when a burst of selected folders has arrived.
+    const takePending = () => {
+      void api
+        .shellTakePending()
+        .then((req) => req && useApp.getState().analyze(req))
+        .catch(() => undefined);
+    };
     void boot().then(() => {
+      takePending();
       const { settings, info, toast } = useApp.getState();
       if (settings?.checkUpdates && info) {
         void checkForUpdate(info.version).then((r) => {
@@ -77,8 +91,10 @@ export function App() {
       }
     });
     const unlisten = onProgress((e) => useApp.getState().setProgress(e));
+    const unlistenShell = onShellAnalyze(takePending);
     return () => {
       void unlisten.then((f) => f());
+      void unlistenShell.then((f) => f());
     };
     // Boot once; `t` only formats the optional update toast.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,7 +132,9 @@ export function App() {
           </Banner>
         </div>
       )}
-      <Page />
+      <Suspense fallback={null}>
+        <Page />
+      </Suspense>
     </Shell>
   );
 }

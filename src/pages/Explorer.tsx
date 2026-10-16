@@ -1,7 +1,9 @@
-import { ArrowUp, ClipboardCopy, ExternalLink, FolderOpen, FolderSearch, Home, Map as MapIcon, ScanSearch, Trash2 } from "lucide-react";
+import { ArrowUp, ClipboardCopy, ExternalLink, FolderOpen, FolderSearch, Home, Lock, Map as MapIcon, ScanSearch, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, PathText, ProgressPanel, ReportDialog } from "../components/common";
+import { HiddenSpacePanel } from "../components/HiddenSpace";
+import { LockDialog } from "../components/LockDialog";
 import { useBytes, useLocale } from "../lib/hooks";
 import { Treemap, type TreemapMode } from "../components/Treemap";
 import { Banner, Button, Card, EmptyState, PageHeader, Segmented } from "../components/ui";
@@ -94,8 +96,8 @@ export function ExplorerPage() {
   const [selected, setSelected] = useState<NodeView | null>(null);
   const [mode, setMode] = useState<TreemapMode>("category");
   const [tab, setTab] = useState<"map" | "types">("map");
-  const [location, setLocation] = useState<string>("home");
   const [confirm, setConfirm] = useState(false);
+  const [lockPath, setLockPath] = useState<string | null>(null);
   const [method, setMethod] = useState<DeleteMethod>(settings?.filesDelete ?? "recycle");
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<CleanReport | null>(null);
@@ -127,19 +129,19 @@ export function ExplorerPage() {
   }
 
   const roots = [{ value: "home", label: t("explorer.home"), path: info?.userProfile ?? "" }, ...drives.map((d) => ({ value: d.root, label: d.root.replace("\\", ""), path: d.root }))];
+  // The selected location follows the last scan, which may also come from Explorer's menu.
+  const location = explorer && explorer.selection.length === 0 ? (roots.find((r) => r.path && r.path.toLowerCase() === explorer.root.toLowerCase())?.value ?? "custom") : "custom";
   const scan = (path: string) => {
     setSelected(null);
     void scanExplorer(path);
   };
   const choose = async () => {
     const [p] = await pickFolders(false);
-    if (p) {
-      setLocation(p);
-      scan(p);
-    }
+    if (p) scan(p);
   };
 
-  const drive = explorer ? drives.find((d) => explorer.root.toLowerCase() === d.root.toLowerCase()) : undefined;
+  const whole = !!explorer && explorer.selection.length === 0;
+  const drive = explorer && whole ? drives.find((d) => explorer.root.toLowerCase() === d.root.toLowerCase()) : undefined;
   const notScanned = drive ? Math.max(0, drive.total - drive.free - explorer!.bytes) : 0;
   const detail = selected ?? node;
 
@@ -168,9 +170,8 @@ export function ExplorerPage() {
         actions={
           <>
             <Segmented
-              value={roots.some((r) => r.value === location) ? location : "custom"}
+              value={location}
               onChange={(v) => {
-                setLocation(v);
                 const r = roots.find((x) => x.value === v);
                 if (r?.path) scan(r.path);
               }}
@@ -184,7 +185,7 @@ export function ExplorerPage() {
         meta={
           explorer && !running.explorer ? (
             <>
-              <span className="selectable font-mono">{explorer.root}</span>
+              <span className="selectable font-mono">{whole ? explorer.root : t("explorer.selection", { count: explorer.selection.length, parent: explorer.root })}</span>
               <span>·</span>
               <span className="num font-mono">{fmt(explorer.bytes)}</span>
               <span>·</span>
@@ -330,6 +331,12 @@ export function ExplorerPage() {
                           <Button size="sm" icon={<FolderOpen size={14} strokeWidth={1.75} />} onClick={() => void api.reveal(detail.path).catch((e) => toast("danger", errorText(e)))}>
                             {t("common.reveal")}
                           </Button>
+                          {/* On a whole drive every running program would match, which says nothing. */}
+                          {!/^[A-Za-z]:\\?$/.test(detail.path) && (
+                            <Button size="sm" variant="ghost" icon={<Lock size={14} strokeWidth={1.75} />} onClick={() => setLockPath(detail.path)}>
+                              {t("locks.button")}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
@@ -398,12 +405,14 @@ export function ExplorerPage() {
               </Button>
             </div>
           </div>
+          {drive && <HiddenSpacePanel root={drive.root} />}
         </>
       )}
       <ConfirmClean open={confirm} onClose={() => setConfirm(false)} onConfirm={() => void remove()} count={1} bytes={detail?.bytes ?? 0} method={method} onMethod={setMethod} busy={busy} files>
         {detail && <PathText path={detail.path} className="mt-3" />}
       </ConfirmClean>
       <ReportDialog report={report} onClose={() => setReport(null)} />
+      <LockDialog path={lockPath} onClose={() => setLockPath(null)} />
     </div>
   );
 }

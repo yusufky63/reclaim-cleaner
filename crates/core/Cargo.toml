@@ -22,16 +22,23 @@ trash = "=5.2.9"
 png = "=0.18.1"
 base64 = "=0.23.1"
 windows = { version = "=0.62.2", features = [
+  "Wdk_Storage_FileSystem",
   "Win32_Foundation",
   "Win32_Graphics_Gdi",
   "Win32_Security",
+  "Win32_Security_Authorization",
   "Win32_Storage_FileSystem",
   "Win32_System_ApplicationInstallationAndServicing",
   "Win32_System_Environment",
+  "Win32_System_IO",
   "Win32_System_Com",
   "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_Ole",
   "Win32_System_Registry",
+  "Win32_System_RestartManager",
   "Win32_System_Threading",
+  "Win32_System_Variant",
+  "Win32_System_Wmi",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
 ] }

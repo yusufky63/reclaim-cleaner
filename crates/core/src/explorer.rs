@@ -60,6 +60,9 @@ struct RawDir {
     small_bytes: u64,
     small_files: u64,
     small_mtime: i64,
+    /// Online-only cloud files below this folder: listed, but not stored on the drive.
+    cloud_bytes: u64,
+    cloud_files: u64,
     dirs: Vec<RawDir>,
 }
 
@@ -68,8 +71,8 @@ struct ExtAcc {
     map: Mutex<HashMap<String, (u64, u64)>>,
 }
 
-fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
-    let mut raw = RawDir {
+fn empty_raw(name: String) -> RawDir {
+    RawDir {
         name,
         bytes: 0,
         files: 0,
@@ -80,8 +83,24 @@ fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
         small_bytes: 0,
         small_files: 0,
         small_mtime: 0,
+        cloud_bytes: 0,
+        cloud_files: 0,
         dirs: Vec::new(),
-    };
+    }
+}
+
+fn add_child_totals(raw: &mut RawDir) {
+    for d in &raw.dirs {
+        raw.bytes += d.bytes;
+        raw.files += d.files;
+        raw.mtime = raw.mtime.max(d.mtime);
+        raw.cloud_bytes += d.cloud_bytes;
+        raw.cloud_files += d.cloud_files;
+    }
+}
+
+fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
+    let mut raw = empty_raw(name);
     if job.is_cancelled() {
         return raw;
     }
@@ -107,6 +126,8 @@ fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
         }
         let Ok(md) = entry.metadata() else { continue };
         if is_cloud_only(&md) {
+            raw.cloud_bytes += md.len();
+            raw.cloud_files += 1;
             continue;
         }
         if is_project_marker(&fname) {
@@ -154,11 +175,7 @@ fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
         .into_par_iter()
         .map(|(p, n)| scan_raw(&p, n, job, ext))
         .collect();
-    for d in &raw.dirs {
-        raw.bytes += d.bytes;
-        raw.files += d.files;
-        raw.mtime = raw.mtime.max(d.mtime);
-    }
+    add_child_totals(&mut raw);
     raw
 }
 
@@ -181,6 +198,12 @@ pub struct ScanSummary {
     pub millis: u64,
     pub scanned_at: i64,
     pub cancelled: bool,
+    /// Online-only cloud files that were skipped: their full size and count.
+    pub cloud_bytes: u64,
+    pub cloud_files: u64,
+    /// Names of the folders scanned inside `root` when only a selection was scanned (several
+    /// folders picked together in Explorer); empty for a scan of the whole root.
+    pub selection: Vec<String>,
 }
 
 pub struct Tree {
@@ -226,11 +249,34 @@ pub struct FileView {
 impl Tree {
     /// Scans `root` (a folder or drive root like `C:\`).
     pub fn scan(root: &Path, job: &Job) -> Tree {
+        Self::scan_inner(root, None, job)
+    }
+
+    /// Scans only the named folders inside `parent`, for several folders picked together in
+    /// Explorer. The tree is rooted at `parent`, so paths and lookups work as usual; files
+    /// directly in `parent` and its other folders are left out.
+    pub fn scan_selection(parent: &Path, names: &[String], job: &Job) -> Tree {
+        Self::scan_inner(parent, Some(names), job)
+    }
+
+    fn scan_inner(root: &Path, selection: Option<&[String]>, job: &Job) -> Tree {
         let started = Instant::now();
         job.set_stage("scan");
         let ext = ExtAcc::default();
         let root_name = root.to_string_lossy().trim_end_matches('\\').to_string();
-        let raw = scan_raw(root, root_name, job, &ext);
+        let raw = match selection {
+            None => scan_raw(root, root_name, job, &ext),
+            Some(names) => {
+                let mut raw = empty_raw(root_name);
+                raw.dirs = names
+                    .par_iter()
+                    .map(|n| scan_raw(&root.join(n), n.clone(), job, &ext))
+                    .collect();
+                add_child_totals(&mut raw);
+                raw
+            }
+        };
+        let (cloud_bytes, cloud_files) = (raw.cloud_bytes, raw.cloud_files);
         let depth0 = root.components().count().saturating_sub(1);
         let mut nodes: Vec<Node> = Vec::with_capacity(
             job.dirs.load(std::sync::atomic::Ordering::Relaxed) as usize * 2 + 16,
@@ -259,6 +305,9 @@ impl Tree {
             millis: started.elapsed().as_millis() as u64,
             scanned_at: now_unix(),
             cancelled: job.is_cancelled(),
+            cloud_bytes,
+            cloud_files,
+            selection: selection.map(<[String]>::to_vec).unwrap_or_default(),
         };
         Tree {
             root_path: root.to_path_buf(),
@@ -350,6 +399,30 @@ impl Tree {
         }
         out.reverse();
         out
+    }
+
+    /// Folders the scan could not read, shallowest first.
+    pub fn denied_paths(&self, limit: usize) -> Vec<String> {
+        let depth = |mut id: u32| {
+            let mut d = 0usize;
+            while id != NO_PARENT && id != 0 {
+                id = self.nodes[id as usize].parent;
+                d += 1;
+            }
+            d
+        };
+        let mut ids: Vec<(usize, u32)> = self
+            .nodes
+            .iter()
+            .enumerate()
+            .filter(|(_, n)| n.denied && !n.removed)
+            .map(|(i, _)| (depth(i as u32), i as u32))
+            .collect();
+        ids.sort_unstable();
+        ids.into_iter()
+            .take(limit)
+            .map(|(_, id)| self.path_of(id).to_string_lossy().into_owned())
+            .collect()
     }
 
     pub fn large_files(&self, min_bytes: u64, limit: usize) -> Vec<FileView> {
@@ -574,5 +647,25 @@ mod tests {
         assert_eq!(tree.summary.files, 3);
         assert_eq!(tree.nodes[0].reclaim_safe, 0);
         assert!(tree.find(&nm).is_none());
+    }
+
+    #[test]
+    fn scans_a_selection_rooted_at_the_parent() {
+        let tmp = tempfile::tempdir().unwrap();
+        write(&tmp.path().join(r"a\one.bin"), 10);
+        write(&tmp.path().join(r"b\two.bin"), 20);
+        write(&tmp.path().join(r"c\three.bin"), 40);
+        write(&tmp.path().join("loose.bin"), 80);
+        let tree = Tree::scan_selection(tmp.path(), &["a".into(), "c".into()], &Job::new());
+        assert_eq!(tree.summary.bytes, 50);
+        assert_eq!(
+            tree.summary.selection,
+            vec!["a".to_string(), "c".to_string()]
+        );
+        let c = tree.find(&tmp.path().join("c")).unwrap();
+        assert_eq!(tree.path_of(c), tmp.path().join("c"));
+        assert!(tree.find(&tmp.path().join("b")).is_none());
+        assert!(tree.denied_paths(5).is_empty());
+        assert_eq!(tree.summary.cloud_files, 0);
     }
 }

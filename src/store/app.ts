@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import i18n, { setLanguage } from "../i18n";
 import { ApiError, api } from "../lib/api";
-import type { AppInfo, Drive, InstallerFile, ProgressEvent, Project, RulesPayload, ScanSummary, Settings, TargetResult } from "../lib/types";
+import type { AnalyzeRequest, AppInfo, Drive, InstallerFile, ProgressEvent, Project, RulesPayload, ScanSummary, Settings, TargetResult } from "../lib/types";
 
-export type PageId = "overview" | "explorer" | "large" | "duplicates" | "empty" | "junk" | "projects" | "models" | "assistants" | "downloads" | "apps" | "startup" | "tools" | "history" | "settings";
+export type PageId = "overview" | "explorer" | "large" | "duplicates" | "empty" | "junk" | "projects" | "models" | "assistants" | "downloads" | "games" | "apps" | "startup" | "tools" | "history" | "settings";
 
 export interface Toast {
   id: number;
@@ -38,7 +38,9 @@ interface AppState {
   scanJunk: () => Promise<void>;
   scanProjects: (roots?: string[]) => Promise<void>;
   scanInstallers: () => Promise<void>;
-  scanExplorer: (root: string) => Promise<ScanSummary | null>;
+  scanExplorer: (root: string, selection?: string[]) => Promise<ScanSummary | null>;
+  /** Opens the space map for folders Explorer asked to analyze. */
+  analyze: (req: AnalyzeRequest) => Promise<void>;
   scanAll: () => Promise<void>;
   setProgress: (e: ProgressEvent) => void;
   setRunning: (kind: string, on: boolean) => void;
@@ -164,10 +166,10 @@ export const useApp = create<AppState>((set, get) => ({
     }
   },
 
-  scanExplorer: async (root) => {
+  scanExplorer: async (root, selection) => {
     get().setRunning("explorer", true);
     try {
-      const summary = await api.explorerScan(root);
+      const summary = await api.explorerScan(root, selection);
       set({ explorer: summary, explorerVersion: get().explorerVersion + 1 });
       return summary;
     } catch (e) {
@@ -176,6 +178,12 @@ export const useApp = create<AppState>((set, get) => ({
     } finally {
       get().setRunning("explorer", false);
     }
+  },
+
+  analyze: async (req) => {
+    set({ page: "explorer" });
+    if (req.kind === "one") await get().scanExplorer(req.path);
+    else await get().scanExplorer(req.parent, req.names);
   },
 
   scanAll: async () => {

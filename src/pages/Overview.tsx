@@ -2,6 +2,7 @@ import { AppWindow, ChevronRight, ClipboardCopy, Copy, FileStack, HardDrive, Map
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, ProgressPanel, ReportDialog, UsageBar } from "../components/common";
+import { HiddenSummary } from "../components/HiddenSpace";
 import { useBytes, useLocale } from "../lib/hooks";
 import { Badge, Button, Card, CardHeader, Checkbox, EmptyState, RiskDot, SectionTitle, Stat } from "../components/ui";
 import { cx } from "../lib/cx";
@@ -417,6 +418,7 @@ export function OverviewPage() {
         </Card>
         <div className="space-y-5">
           <Drives />
+          <HiddenSummary />
           <WhereSpace />
           <QuickActions />
         </div>

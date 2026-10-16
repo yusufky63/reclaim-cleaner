@@ -1,5 +1,5 @@
-import { AlertTriangle, FolderPlus, ShieldAlert, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { AlertTriangle, FolderPlus, Lock, ShieldAlert, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { pickFolders } from "../lib/api";
 import { formatBytes, formatCount, shortPath } from "../lib/format";
@@ -8,6 +8,7 @@ import { api } from "../lib/api";
 import { useBytes, useLocale } from "../lib/hooks";
 import { useApp } from "../store/app";
 import { Banner, Button, Dialog, ProgressBar, Segmented } from "./ui";
+import { LockDialog } from "./LockDialog";
 import { cx } from "../lib/cx";
 
 /** Live progress of one job kind, with a cancel button. */
@@ -179,11 +180,19 @@ export function ConfirmClean({
   );
 }
 
+/** Paths of failures that "What is using this?" can check: files or folders that were in use. */
+function lockable(reason: string, path: string): boolean {
+  return reason === "in_use" && /^[A-Za-z]:\\/.test(path);
+}
+
 export function ReportDialog({ report, onClose }: { report: CleanReport | null; onClose: () => void }) {
   const { t } = useTranslation();
   const fmt = useBytes();
   const locale = useLocale();
+  const [lockPath, setLockPath] = useState<string | null>(null);
   if (!report) return null;
+  // The lock check replaces the report while it is open, so the two dialogs never stack.
+  if (lockPath) return <LockDialog path={lockPath} onClose={() => setLockPath(null)} />;
   return (
     <Dialog
       open
@@ -217,7 +226,14 @@ export function ReportDialog({ report, onClose }: { report: CleanReport | null; 
             {report.failures.map((f, i) => (
               <li key={`${f.path}-${i}`} className="flex items-center justify-between gap-3 px-3 py-2">
                 <PathText path={f.path} />
-                <span className="shrink-0 text-[12px] text-ink-secondary">{t(`reasons.${f.reason}`, { defaultValue: f.reason })}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="text-[12px] text-ink-secondary">{t(`reasons.${f.reason}`, { defaultValue: f.reason })}</span>
+                  {lockable(f.reason, f.path) && (
+                    <Button size="sm" variant="ghost" icon={<Lock size={13} strokeWidth={1.75} />} onClick={() => setLockPath(f.path)}>
+                      {t("locks.button")}
+                    </Button>
+                  )}
+                </span>
               </li>
             ))}
           </ul>

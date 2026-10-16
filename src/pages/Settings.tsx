@@ -1,5 +1,5 @@
 import { ExternalLink, FolderOpen, GitBranch, RefreshCw, ShieldCheck } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { FolderList } from "../components/common";
 import { useBytes } from "../lib/hooks";
@@ -7,8 +7,50 @@ import { Banner, Button, Card, CardHeader, PageHeader, Segmented, Select, Switch
 import { LANGUAGES } from "../i18n/languages";
 import { api, openUrl } from "../lib/api";
 import { REPO_URL, checkForUpdate, type UpdateResult } from "../lib/updates";
-import type { DeleteMethod } from "../lib/types";
+import type { DeleteMethod, MenuStatus } from "../lib/types";
 import { errorText, useApp } from "../store/app";
+
+/** The per-user "Analyze with ReClaim" entry in Explorer's right-click menu. */
+function ExplorerMenu() {
+  const { t, i18n } = useTranslation();
+  const toast = useApp((s) => s.toast);
+  const [status, setStatus] = useState<MenuStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void api.shellMenuStatus().then(setStatus, () => setStatus(null));
+  }, []);
+  const set = async (enabled: boolean) => {
+    setBusy(true);
+    try {
+      const next = await api.shellMenuSet(enabled, i18n.language);
+      setStatus(next);
+      toast("positive", enabled ? t("settings.explorerAdded") : t("settings.explorerRemoved"));
+    } catch (e) {
+      toast("danger", errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const other = status?.enabled && !status.current && status.exe;
+  return (
+    <Card>
+      <CardHeader title={t("settings.explorerTitle")} />
+      <div className="divide-y divide-line">
+        <Row label={t("settings.explorerMenu")} hint={t("settings.explorerMenuHint")}>
+          <Switch checked={!!status?.enabled} disabled={!status || busy} onChange={(v) => void set(v)} label={t("settings.explorerMenu")} />
+        </Row>
+        {other && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <span className="selectable min-w-0 break-all font-mono text-[12px] text-ink-muted">{t("settings.explorerOther", { path: status.exe })}</span>
+            <Button size="sm" loading={busy} onClick={() => void set(true)}>
+              {t("settings.explorerUseThis")}
+            </Button>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -137,6 +179,8 @@ export function SettingsPage() {
           </div>
         </div>
       </Card>
+
+      <ExplorerMenu />
 
       <Card>
         <CardHeader title={t("settings.updates")} />

@@ -4,14 +4,18 @@ What is planned after 0.1.0, roughly in order. The research behind each item is 
 
 The full plan with sizes and reasons is in [docs/research/README.md](docs/research/README.md).
 
+## Done for the next release
+
+- **Hidden space explainer**: why used space and scanned space differ (shadow copies, reserved storage, pagefile, hiberfil, MFT, unreadable folders, WSL and Docker disks, online-only files).
+- **"Analyze with ReClaim"** in the Explorer context menu (classic per-user entry), plus a path argument.
+- **What is using this file**, through the Restart Manager; graceful close only.
+- **Steam libraries on every drive**, with shader caches named after their games.
+- **Leftover scan after uninstall** with confidence levels.
+
 ## Next
 
-- **Hidden space explainer**: why used space and scanned space differ (shadow copies, reserved storage, pagefile, hiberfil, MFT, unreadable folders, WSL and Docker disks).
-- **"Analyze with ReClaim"** in the Explorer context menu, plus a path argument.
-- **What is locking this file**, through the Restart Manager; graceful close only.
-- **Steam libraries on every drive**, with shader caches named after their games.
 - **Export** scan results to CSV and JSON; restore point and shadow storage panel.
-- **Code signing** through the SignPath Foundation program, then **winget and Scoop** packages.
+- **Code signing** through the SignPath Foundation program, then **winget and Scoop** packages, and the **Windows 11 top-level context menu**, which only accepts signed packages with an identity.
 
 ## Later
 

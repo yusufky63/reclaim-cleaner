@@ -45,7 +45,8 @@
         "installMode": "currentUser",
         "languages": ["English", "Turkish"],
         "displayLanguageSelector": true,
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "installerHooks": "windows/hooks.nsh"
       },
       "wix": {
         "language": ["en-US", "tr-TR"],

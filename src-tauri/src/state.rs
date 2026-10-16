@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use parking_lot::{Mutex, RwLock};
 use reclaim_core::artifacts::Project;
 use reclaim_core::explorer::Tree;
+use reclaim_core::hidden::ShadowStorage;
 use reclaim_core::junk::TargetResult;
 use reclaim_core::paths::Guard;
 use reclaim_core::rules::{Mode, Risk, TargetRule, builtin_targets, load_user_targets};
@@ -26,6 +28,12 @@ pub struct AppState {
     /// Path keys of the leftovers the last uninstall reported. Only these may be removed with
     /// the leftover guard, so the UI cannot widen it to a path the engine did not find.
     pub leftovers: Mutex<HashSet<String>>,
+    /// Shadow storage measured through the elevated helper, kept for this session.
+    pub shadow: RwLock<Option<Vec<ShadowStorage>>>,
+    /// Folders to analyze that arrived from Explorer and the UI has not picked up yet.
+    pub pending: Mutex<Vec<PathBuf>>,
+    /// A burst of Explorer launches is being collected.
+    pub pending_armed: AtomicBool,
 }
 
 impl AppState {
@@ -47,6 +55,9 @@ impl AppState {
             projects: Mutex::new(Vec::new()),
             jobs: Mutex::new(HashMap::new()),
             leftovers: Mutex::new(HashSet::new()),
+            shadow: RwLock::new(None),
+            pending: Mutex::new(Vec::new()),
+            pending_armed: AtomicBool::new(false),
         }
     }
 

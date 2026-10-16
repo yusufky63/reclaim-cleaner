@@ -23,6 +23,7 @@ These came straight out of the research and user feedback and are implemented:
 - **Leftover uninstall entries.** Apps whose uninstaller is gone (or that Windows Installer no longer knows) are flagged and can be removed from the list after a `.reg` backup.
 - **115 more cleanup rules** (233 in total) and a new `exclude` field. `%TEMP%` cleaning now keeps Blender, Krita and Office autosave and recovery files, which the research found at risk.
 - **Themed dropdowns.** The native select popup ignored the dark theme in WebView2.
+- **The first four "Next release" items below**: hidden space explainer, "Analyze with ReClaim" in Explorer, "What is using this?", and Steam libraries with per-game shader caches. Two findings changed the plan on the way: the Restart Manager takes about a tenth of a second per file, so folders are checked with `FileProcessIdsUsingFileInformation` in parallel under a time budget (which also finds terminals that use the folder as their working folder); and the storage reserve size comes from `GetDiskSpaceInformationW` without admin rights.
 
 ## Plan
 

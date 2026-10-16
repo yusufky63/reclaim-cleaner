@@ -8,6 +8,11 @@ fn main() {
         let code = reclaim_app::helper::run(args.get(pos + 1).map(String::as_str));
         std::process::exit(code);
     }
+    // Elevated helper mode: measure shadow storage (read only) and exit.
+    if let Some(pos) = args.iter().position(|a| a == "--elevated-measure") {
+        let code = reclaim_app::helper::run_measure(args.get(pos + 1).map(String::as_str));
+        std::process::exit(code);
+    }
     // After "Restart as administrator" the old instance may still be closing; wait for it so
     // the single-instance check does not mistake it for a second copy.
     if let Some(pid) = args

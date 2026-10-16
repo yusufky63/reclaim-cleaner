@@ -10,10 +10,14 @@ An open-source disk cleaner and space analyzer for Windows 10 and 11. It shows w
 
 - **Overview.** Free space now and after cleanup, split into "Safe to remove" and "Needs review", with one list of recommendations you can clean or export as a PowerShell script.
 - **Space map.** A treemap of any drive or folder, coloured by category (projects, media, caches, apps, AI models, Windows). The Cleanup view paints only reclaimable space.
+- **Hidden space.** When a drive uses more than its folders add up to, the Space map shows where the rest is: restore points and shadow copies, reserved storage, the page and hibernation files, the NTFS file table, WSL and Docker disks, folders that could not be read. Each part links to the Windows screen that manages it.
+- **Analyze from Explorer.** An optional "Analyze with ReClaim" entry on folders, folder backgrounds and drives, for the current user only. On Windows 11 it sits under "Show more options"; the new top-level menu only takes signed app packages, which ReClaim does not ship yet.
+- **What is using this?** Shows which apps, services or Windows processes hold a file or folder, from Large files, the Space map and failed cleans. The only action is a graceful close, never a forced one.
 - **Junk and caches.** 233 known locations: Windows temp and logs, crash dumps, browser caches (Chrome, Edge, Brave, Firefox and more), app caches (Discord, Slack, Teams, VS Code, Spotify), game launchers, and developer caches (npm, pnpm, pip, uv, Cargo, Gradle, NuGet, Go, Playwright).
 - **Developer.** Finds `node_modules`, `target`, `.next`, `__pycache__`, `.venv` and 40 other build folders inside your projects, and preselects only projects you have not touched for 30 days.
 - **AI models and assistants.** Every model in Hugging Face, LM Studio, Ollama and ComfyUI in one list, with copies stored by two tools flagged; and the sessions, checkpoints and logs that Claude Code, Codex and Gemini CLI keep.
 - **Downloads.** Your Downloads folder by type and age, with thumbnails and browser re-downloads such as `file (1).pdf` flagged.
+- **Games.** Steam libraries on every drive and the shader cache of each game, named after the game; caches of games you removed are preselected.
 - **Large files, duplicates, empty folders.** Filters by type and age; duplicates are confirmed with a full BLAKE3 hash and hard links are counted once.
 - **Apps and startup.** Real app icons; uninstall desktop and Store apps with their own uninstaller, then review leftover folders in AppData, ProgramData and Program Files, scored by confidence; remove entries of apps that are already gone (with a `.reg` backup); turn startup apps off the reversible way Task Manager does.
 - **Windows tools.** Recycle Bin, hibernation file, component store cleanup (DISM), Delivery Optimization and the previous Windows installation, always through Windows' own commands.

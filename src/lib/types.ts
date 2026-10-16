@@ -176,6 +176,10 @@ export interface ScanSummary {
   millis: number;
   scannedAt: number;
   cancelled: boolean;
+  cloudBytes: number;
+  cloudFiles: number;
+  /** Folders scanned inside `root` when only a selection was scanned; empty for the whole root. */
+  selection: string[];
 }
 
 export interface NodeView {
@@ -320,7 +324,7 @@ export interface HistoryEntry {
   elevated: boolean;
 }
 
-export type ToolId = "dism-cleanup" | "delivery-optimization" | "hibernate-off" | "hibernate-on" | "windows-old" | "disk-cleanup" | "storage-sense" | "system-protection";
+export type ToolId = "dism-cleanup" | "delivery-optimization" | "hibernate-off" | "hibernate-on" | "windows-old" | "disk-cleanup" | "storage-sense" | "system-protection" | "performance-options";
 
 export type ImageKind = "icon" | "thumb";
 
@@ -374,3 +378,98 @@ export interface DownloadsReport {
   files: DownloadFile[];
   truncated: boolean;
 }
+
+export type HiddenKind = "shadowCopies" | "reservedStorage" | "pageFile" | "hiberFile" | "swapFile" | "mft" | "recycleBin" | "virtualDisk" | "unreadable" | "cloudOnly";
+
+export interface HiddenPart {
+  kind: HiddenKind;
+  bytes: number | null;
+  inScan: boolean;
+  path: string | null;
+  label: string | null;
+  limit: number | null;
+  count: number | null;
+  needsAdmin: boolean;
+}
+
+export interface HiddenSpace {
+  root: string;
+  total: number;
+  free: number;
+  used: number;
+  scanned: number | null;
+  parts: HiddenPart[];
+  unexplained: number | null;
+  deniedPaths: string[];
+}
+
+export type LockerKind = "app" | "background" | "service" | "explorer" | "console" | "system";
+
+export interface Locker {
+  pid: number;
+  started: number;
+  name: string;
+  exe: string | null;
+  service: string | null;
+  kind: LockerKind;
+  usesFiles: boolean;
+  runsFrom: boolean;
+  canClose: boolean;
+}
+
+export interface LockReport {
+  path: string;
+  isDir: boolean;
+  checked: number;
+  folders: number;
+  truncated: boolean;
+  unchecked: number;
+  lockers: Locker[];
+}
+
+export type CloseOutcome = "closed" | "stillRunning" | "denied" | "gone" | "notAllowed";
+
+export interface CloseResult {
+  outcome: CloseOutcome;
+  report: LockReport;
+}
+
+export interface SteamGame {
+  appId: string;
+  name: string;
+  bytes: number;
+}
+
+export interface SteamLibrary {
+  path: string;
+  games: SteamGame[];
+  bytes: number;
+  free: number | null;
+}
+
+export interface ShaderCache {
+  appId: string;
+  name: string | null;
+  installed: boolean;
+  risk: Risk;
+  library: string;
+  path: string;
+  bytes: number;
+  files: number;
+}
+
+export interface SteamReport {
+  root: string | null;
+  running: boolean;
+  libraries: SteamLibrary[];
+  caches: ShaderCache[];
+}
+
+export interface MenuStatus {
+  enabled: boolean;
+  exe: string | null;
+  current: boolean;
+  exeExists: boolean;
+}
+
+export type AnalyzeRequest = { kind: "one"; path: string } | { kind: "selection"; parent: string; names: string[] };

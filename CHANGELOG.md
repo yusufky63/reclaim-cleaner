@@ -17,6 +17,15 @@ All notable changes to this project are documented here. The format follows [Kee
 - Research round 2 and the resulting plan in `docs/research/`.
 - 12 more UI languages: German, Spanish, French, Italian, Portuguese (Brazil), Polish, Russian, Ukrainian, Indonesian, Japanese, Korean and Simplified Chinese. Missing strings fall back to English; dates and numbers follow the chosen language.
 - Leftover scan after uninstall. Once the app's own uninstaller has finished, folders in AppData, ProgramData and Program Files named after the app or its publisher are listed with a confidence level. Only high-confidence folders (the install folder, an exact name match, `Publisher\App`) are preselected; publisher folders and similar names are left for you to check, and folders another installed app may still use are not listed. Removal goes to the Recycle Bin by default.
+- Hidden space on the Space map: when a whole drive is mapped, its used space is reconciled with the map. Restore points and shadow copies (measured once with administrator rights, read only), reserved storage, the page, hibernation and swap files, the NTFS file table, the Recycle Bin, WSL and Docker disks, unreadable folders and online-only cloud files are listed with their size, whether the map counted them, and a link to Windows' own screen. The Overview shows what Windows keeps on the system drive.
+- "Analyze with ReClaim" in Explorer's right-click menu on folders, folder backgrounds and drives. It is off by default, per user, and turned on in Settings; on Windows 11 it is under "Show more options". The app accepts `--analyze <folder>`, also when it is already running (as administrator too), and folders selected together are mapped as one selection. The setup removes the entry on uninstall but not on update.
+- "What is using this?" in Large files, the Space map and the "in use" lines of clean reports. It lists the apps, background programs, services and Windows processes that hold a file or folder, including programs that run from the folder or have it open as their working folder, and offers a graceful close (like clicking the window's close button) and a re-check. Processes are never ended and handles are never closed.
+- Games page: Steam libraries on every drive, installed games with their sizes, and the shader cache of each game named from Steam's manifests. Caches of removed games are preselected; Steam must be closed to delete.
+
+### Changed
+
+- Steam rules (shader cache, logs and dumps, download leftovers, unfinished downloads, client packages) follow the Steam folder and every library listed in Steam's own settings instead of assuming `C:\Program Files (x86)\Steam`. Rules can use `%STEAM%` and `%STEAMLIBRARY%`.
+- Pages other than the Overview load on first visit, which keeps the startup bundle small.
 
 ### Fixed
 
