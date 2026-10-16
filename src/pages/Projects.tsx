@@ -7,6 +7,7 @@ import { Badge, Button, Card, Checkbox, EmptyState, PageHeader, RiskBadge, Selec
 import { cx } from "../lib/cx";
 import { api } from "../lib/api";
 import { daysSince, formatAgo } from "../lib/format";
+import { idleProjects, safeArtifactPaths } from "../lib/recommend";
 import type { CleanReport, DeleteMethod, Project } from "../lib/types";
 import { effectiveRoots, errorText, useApp } from "../store/app";
 
@@ -16,7 +17,8 @@ export function ProjectsPage() {
   const locale = useLocale();
   const { info, settings, projects, running, scanProjects, saveSettings, toast, refreshDrives } = useApp();
   const roots = effectiveRoots(settings, info);
-  const [idle, setIdle] = useState<number>(settings?.idleDays ?? 30);
+  // Every project is listed and selected by default; "Select idle" narrows it to the idle ones.
+  const [idle, setIdle] = useState<number>(0);
   const [manual, setManual] = useState<{ for: Project[] | null; set: Set<string> } | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [method, setMethod] = useState<DeleteMethod>(settings?.cacheDelete ?? "permanent");
@@ -26,16 +28,12 @@ export function ProjectsPage() {
 
   const list: Project[] = useMemo(() => (projects ?? []).filter((p) => idle === 0 || daysSince(p.lastActivity) >= idle), [projects, idle]);
 
-  const idleDefault = useMemo(() => {
-    const next = new Set<string>();
-    for (const p of projects ?? []) if (daysSince(p.lastActivity) >= (settings?.idleDays ?? 30)) for (const a of p.artifacts) if (a.risk === "safe") next.add(a.path);
-    return next;
-  }, [projects, settings?.idleDays]);
+  const allSafe = useMemo(() => safeArtifactPaths(projects ?? []), [projects]);
   // A manual selection only applies to the scan it was made on.
-  const selected = manual && manual.for === projects ? manual.set : idleDefault;
+  const selected = manual && manual.for === projects ? manual.set : allSafe;
   const setSelected = (next: Set<string> | ((prev: Set<string>) => Set<string>)) =>
     setManual({ for: projects, set: typeof next === "function" ? next(selected) : next });
-  const selectIdle = () => setManual(null);
+  const selectIdle = () => setSelected(safeArtifactPaths(idleProjects(projects ?? [], settings?.idleDays ?? 30)));
 
   const all = list.flatMap((p) => p.artifacts);
   const chosen = all.filter((a) => selected.has(a.path));

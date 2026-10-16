@@ -44,6 +44,11 @@ export function idleProjects(projects: Project[], idleDays: number, now = Date.n
   return projects.filter((p) => daysSince(p.lastActivity, now) >= idleDays);
 }
 
+/** Build folders that rebuild themselves; `review` ones (like a venv) are never preselected. */
+export function safeArtifactPaths(projects: Project[]): Set<string> {
+  return new Set(projects.flatMap((p) => p.artifacts.filter((a) => a.risk === "safe").map((a) => a.path)));
+}
+
 export function buildRecommendations(args: {
   rules: TargetRule[];
   junk: TargetResult[] | null;

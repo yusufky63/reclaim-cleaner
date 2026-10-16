@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRecommendations, defaultSelection, mergeReports } from "./recommend";
+import { buildRecommendations, defaultSelection, idleProjects, mergeReports, safeArtifactPaths } from "./recommend";
 import type { Project, Settings, TargetResult, TargetRule } from "./types";
 
 const t = (key: string, opts?: Record<string, unknown>) => `${key}${opts ? JSON.stringify(opts) : ""}`;
@@ -97,6 +97,23 @@ describe("buildRecommendations", () => {
   it("uses Turkish names", () => {
     const trRecs = buildRecommendations({ rules, junk, projects: null, installers: null, settings, lang: "tr", profile: "", t, now });
     expect(trRecs.find((r) => r.key === "rule:npm")?.title).toBe("npm-tr");
+  });
+});
+
+describe("safeArtifactPaths", () => {
+  const now = Date.UTC(2026, 9, 16);
+  const art = (path: string, risk: "safe" | "review") => ({ path, ruleId: "x", dirName: path.split("\\").pop() ?? "", risk, bytes: 1, files: 1 });
+  const projects: Project[] = [
+    { path: "C:\\p\\old", name: "old", lastActivity: now / 1000 - 90 * 86400, hasGit: false, bytes: 2, artifacts: [art("C:\\p\\old\\node_modules", "safe"), art("C:\\p\\old\\.venv", "review")] },
+    { path: "C:\\p\\new", name: "new", lastActivity: now / 1000 - 2 * 86400, hasGit: false, bytes: 1, artifacts: [art("C:\\p\\new\\target", "safe")] },
+  ];
+
+  it("selects the safe folders of every project, active ones too", () => {
+    expect([...safeArtifactPaths(projects)].sort()).toEqual(["C:\\p\\new\\target", "C:\\p\\old\\node_modules"]);
+  });
+
+  it("narrows to idle projects when combined with idleProjects", () => {
+    expect([...safeArtifactPaths(idleProjects(projects, 30, now))]).toEqual(["C:\\p\\old\\node_modules"]);
   });
 });
 

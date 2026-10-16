@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Developer page: every project is listed and all of its rebuildable folders are selected by default ("Idle for" starts at "Any project"). "Select idle" narrows the selection to projects untouched for the number of days set in Settings. Folders marked "Review first", such as virtual environments, are still not preselected.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added
