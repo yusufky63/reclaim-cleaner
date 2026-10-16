@@ -19,10 +19,13 @@
   ; (`settings::data_dir`). Same condition as Tauri's own removal: the box is unticked by default
   ; and never shown in silent and passive runs, so replacing the installed copy keeps the data
   ; unless the user ticks it. The portable build keeps its data beside the exe and has no
-  ; uninstaller.
+  ; uninstaller. The `$APPDATA` check keeps an unresolved shell folder from turning the path into
+  ; `\ReClaim` at the root of the current drive.
   ${If} $DeleteAppDataCheckboxState = 1
   ${AndIf} $UpdateMode <> 1
     SetShellVarContext current
-    RmDir /r "$APPDATA\ReClaim"
+    ${If} $APPDATA != ""
+      RmDir /r "$APPDATA\ReClaim"
+    ${EndIf}
   ${EndIf}
 !macroend
