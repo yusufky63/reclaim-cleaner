@@ -7,7 +7,6 @@ What is planned after 0.1.0, roughly in order. The research behind each item is 
 - **Code signing** through the SignPath Foundation program, so SmartScreen stops warning.
 - **winget and Scoop** packages after the first published release.
 - **Steam libraries from the registry and `libraryfolders.vdf`**, so shader caches on other drives are found too (today only the default Steam folder is checked).
-- **Leftover scan after uninstall** with confidence levels: AppData and ProgramData folders named after the app or publisher, preselecting only exact matches.
 - **Scan snapshots**: reopen the last space map instantly and compare two scans to see what grew.
 
 ## Later

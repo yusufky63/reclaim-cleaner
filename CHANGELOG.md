@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Leftover scan after uninstall. Once the app's own uninstaller has finished, folders in AppData, ProgramData and Program Files named after the app or its publisher are listed with a confidence level. Only high-confidence folders (the install folder, an exact name match, `Publisher\App`) are preselected; publisher folders and similar names are left for you to check, and folders another installed app may still use are not listed. Removal goes to the Recycle Bin by default.
+
+### Fixed
+
+- A leftover install folder under Program Files could not be removed, because hand-picked deletes may never touch Program Files. A dedicated leftover guard now allows exactly the folders the scan reported, one or two levels below Program Files or ProgramData, when ReClaim runs as administrator.
+
 ## [0.1.0] - 2026-10-16
 
 First public version.

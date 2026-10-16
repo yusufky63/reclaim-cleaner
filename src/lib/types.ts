@@ -274,11 +274,25 @@ export interface InstalledApp {
   source: "desktop" | "store";
 }
 
+export type LeftoverConfidence = "high" | "low";
+export type LeftoverReason = "install" | "name" | "publisherName" | "publisher" | "similar";
+
+export interface Leftover {
+  path: string;
+  bytes: number;
+  files: number;
+  confidence: LeftoverConfidence;
+  reason: LeftoverReason;
+  /** Below Program Files or ProgramData, where removing usually needs administrator rights. */
+  admin: boolean;
+}
+
 export interface UninstallResult {
   cancelled: boolean;
   exitCode: number | null;
   removed: boolean;
-  leftover: { path: string; bytes: number } | null;
+  /** High confidence first. Empty unless the app was removed. */
+  leftovers: Leftover[];
 }
 
 export type StartupSource = "runUser" | "runMachine" | "runMachine32" | "folderUser" | "folderCommon";

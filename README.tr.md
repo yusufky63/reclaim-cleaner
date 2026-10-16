@@ -13,7 +13,7 @@ Windows 10 ve 11 için açık kaynak disk temizleyici ve alan analizcisi. Alanı
 - **Gereksiz dosyalar.** Bilinen 118 konum: Windows geçici dosyaları ve kayıtları, çökme dökümleri, tarayıcı önbellekleri (Chrome, Edge, Brave, Firefox ve diğerleri), uygulama önbellekleri (Discord, Slack, Teams, VS Code, Spotify), oyun başlatıcıları ve geliştirici önbellekleri (npm, pnpm, pip, uv, Cargo, Gradle, NuGet, Go, Playwright).
 - **Geliştirici.** Projelerindeki `node_modules`, `target`, `.next`, `__pycache__`, `.venv` ve 40 başka derleme klasörünü bulur; sadece 30 gündür dokunmadığın projeleri önceden seçer.
 - **Büyük dosyalar, kopyalar, boş klasörler.** Tür ve yaşa göre süzülür; kopyalar tam BLAKE3 özetiyle doğrulanır, sabit bağlantılar bir kez sayılır.
-- **Uygulamalar ve başlangıç.** Masaüstü ve Store uygulamalarını kendi kaldırıcılarıyla kaldırır, artık klasör kontrol eder; başlangıç uygulamalarını Görev Yöneticisi'nin yaptığı gibi geri alınabilir şekilde kapatır.
+- **Uygulamalar ve başlangıç.** Masaüstü ve Store uygulamalarını kendi kaldırıcılarıyla kaldırır, ardından AppData, ProgramData ve Program Files'taki artık klasörleri güven düzeyiyle listeler; başlangıç uygulamalarını Görev Yöneticisi'nin yaptığı gibi geri alınabilir şekilde kapatır.
 - **Windows araçları.** Geri Dönüşüm Kutusu, hazırda bekleme dosyası, bileşen deposu temizliği (DISM), Teslim İyileştirme ve önceki Windows kurulumu; hepsi Windows'un kendi komutlarıyla.
 - **Türkçe ve İngilizce**, açık ve koyu tema, taşınabilir mod, yerel temizlik geçmişi.
 

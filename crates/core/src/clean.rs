@@ -403,21 +403,33 @@ pub fn clean_paths(
     guard: &Guard,
     job: &Job,
 ) -> CleanReport {
+    let picked: Vec<(PathBuf, Origin)> = paths.iter().map(|p| (p.clone(), Origin::User)).collect();
+    clean_picked(&picked, method, guard, job)
+}
+
+/// Like [`clean_paths`], with the guard origin chosen per path. The caller decides which paths
+/// count as [`Origin::Leftover`]; only paths the engine itself reported as leftovers should.
+pub fn clean_picked(
+    picked: &[(PathBuf, Origin)],
+    method: DeleteMethod,
+    guard: &Guard,
+    job: &Job,
+) -> CleanReport {
     job.set_stage("clean");
-    job.set_total(paths.len() as u64);
+    job.set_total(picked.len() as u64);
     let acc = Acc::new(job);
-    for p in paths {
+    for (p, origin) in picked {
         if job.is_cancelled() {
             break;
         }
         job.set_current(p);
-        remove_one(p, method, Origin::User, guard, &acc);
+        remove_one(p, method, *origin, guard, &acc);
         job.add_done(1);
     }
     acc.into_report(
-        paths
+        picked
             .iter()
-            .map(|p| p.to_string_lossy().into_owned())
+            .map(|(p, _)| p.to_string_lossy().into_owned())
             .collect(),
     )
 }
@@ -636,6 +648,40 @@ mod tests {
         assert!(!f.exists());
         assert_eq!(report.failed, 1);
         assert_eq!(report.failures[0].reason, "protected");
+    }
+
+    #[test]
+    fn leftover_origin_reaches_app_folders_only() {
+        let tmp = tempfile::tempdir().unwrap();
+        let pf = tmp.path().join("PF");
+        let app = pf.join("Acme");
+        fs::create_dir_all(app.join("bin")).unwrap();
+        fs::write(app.join(r"bin\acme.exe"), [0u8; 32]).unwrap();
+        let guard = Guard::new(&[], None).with_app_root(&pf);
+
+        let report = clean_paths(
+            std::slice::from_ref(&app),
+            DeleteMethod::Permanent,
+            &guard,
+            &Job::new(),
+        );
+        assert_eq!(report.failures[0].reason, "protected");
+        assert!(
+            app.exists(),
+            "a hand-picked delete may not touch Program Files"
+        );
+
+        let picked = [
+            (pf.clone(), Origin::Leftover),
+            (app.join(r"bin\deeper"), Origin::Leftover),
+            (app.clone(), Origin::Leftover),
+        ];
+        let report = clean_picked(&picked, DeleteMethod::Permanent, &guard, &Job::new());
+        assert_eq!(report.freed, 32);
+        assert!(!app.exists());
+        assert!(pf.exists(), "the root itself is refused");
+        let reasons: Vec<&str> = report.failures.iter().map(|f| f.reason.as_str()).collect();
+        assert_eq!(reasons, ["protected", "protected"]);
     }
 
     #[test]

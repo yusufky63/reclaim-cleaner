@@ -13,7 +13,7 @@ An open-source disk cleaner and space analyzer for Windows 10 and 11. It shows w
 - **Junk and caches.** 118 known locations: Windows temp and logs, crash dumps, browser caches (Chrome, Edge, Brave, Firefox and more), app caches (Discord, Slack, Teams, VS Code, Spotify), game launchers, and developer caches (npm, pnpm, pip, uv, Cargo, Gradle, NuGet, Go, Playwright).
 - **Developer.** Finds `node_modules`, `target`, `.next`, `__pycache__`, `.venv` and 40 other build folders inside your projects, and preselects only projects you have not touched for 30 days.
 - **Large files, duplicates, empty folders.** Filters by type and age; duplicates are confirmed with a full BLAKE3 hash and hard links are counted once.
-- **Apps and startup.** Uninstall desktop and Store apps with their own uninstaller and check for leftovers; turn startup apps off the reversible way Task Manager does.
+- **Apps and startup.** Uninstall desktop and Store apps with their own uninstaller, then review leftover folders in AppData, ProgramData and Program Files, scored by confidence; turn startup apps off the reversible way Task Manager does.
 - **Windows tools.** Recycle Bin, hibernation file, component store cleanup (DISM), Delivery Optimization and the previous Windows installation, always through Windows' own commands.
 - **English and Turkish**, light and dark theme, portable mode, a local cleanup history.
 

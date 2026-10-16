@@ -17,6 +17,7 @@ pub mod history;
 pub mod installers;
 pub mod job;
 pub mod junk;
+pub mod leftovers;
 pub mod paths;
 pub mod rules;
 pub mod settings;

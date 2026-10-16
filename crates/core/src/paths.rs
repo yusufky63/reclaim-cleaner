@@ -189,7 +189,51 @@ pub fn is_drive_root(k: &str) -> bool {
 pub enum Origin {
     Rule,
     User,
+    /// A folder an uninstalled app left behind, as found by [`crate::leftovers`]. The same
+    /// limits as `User`, except that an app's own folder one or two levels below Program Files
+    /// or ProgramData (`<root>\App`, `<root>\Publisher\App`) may be removed.
+    Leftover,
 }
+
+/// Folders below Program Files and ProgramData that Windows or many apps share. They are never
+/// treated as an app's leftover, and nothing inside them is either.
+pub const SHARED_APP_FOLDERS: &[&str] = &[
+    "application data",
+    "common files",
+    "desktop",
+    "documents",
+    "dotnet",
+    "favorites",
+    "internet explorer",
+    "microsoft",
+    "microsoft.net",
+    "modifiablewindowsapps",
+    "msbuild",
+    "package cache",
+    "packages",
+    "reference assemblies",
+    "regid.1991-06.com.microsoft",
+    "softwaredistribution",
+    "ssh",
+    "start menu",
+    "templates",
+    "uninstall information",
+    "usoprivate",
+    "usoshared",
+    "windows",
+    "windows defender",
+    "windows defender advanced threat protection",
+    "windows mail",
+    "windows media player",
+    "windows multimedia platform",
+    "windows nt",
+    "windows photo viewer",
+    "windows portable devices",
+    "windows security",
+    "windows sidebar",
+    "windowsapps",
+    "windowspowershell",
+];
 
 #[derive(Debug, Clone, Default)]
 pub struct Guard {
@@ -202,6 +246,8 @@ pub struct Guard {
     subtree: Vec<String>,
     /// Additionally off limits for hand-picked deletes.
     user_subtree: Vec<String>,
+    /// Program Files and ProgramData: app folders right below them may be removed as leftovers.
+    app_roots: Vec<String>,
     exclusions: Vec<String>,
 }
 
@@ -297,17 +343,17 @@ impl Guard {
             sysroot.join("Boot"),
             sysroot.join("EFI"),
         ];
-        let mut user_subtree = vec![windir.clone()];
-        for var in [
+        let app_roots: Vec<PathBuf> = [
             "PROGRAMFILES",
             "PROGRAMFILES(X86)",
             "ProgramW6432",
             "PROGRAMDATA",
-        ] {
-            if let Some(p) = env_path(var) {
-                user_subtree.push(p);
-            }
-        }
+        ]
+        .iter()
+        .filter_map(|v| env_path(v))
+        .collect();
+        let mut user_subtree = vec![windir.clone()];
+        user_subtree.extend(app_roots.iter().cloned());
 
         g.no_wipe = dedup_keys(no_wipe);
         g.no_delete = dedup_keys(no_delete);
@@ -316,6 +362,8 @@ impl Guard {
             g.subtree.push(key(own));
         }
         g.user_subtree = dedup_keys(user_subtree);
+        g.app_roots = dedup_keys(app_roots);
+        g.app_roots.retain(|r| !is_drive_root(r));
         g.exclusions = exclusions
             .iter()
             .filter(|e| !e.trim().is_empty())
@@ -348,13 +396,46 @@ impl Guard {
         {
             return deny("system folder");
         }
-        if origin == Origin::User && self.user_subtree.iter().any(|p| is_within(&k, p)) {
+        if origin != Origin::Rule
+            && self.user_subtree.iter().any(|p| is_within(&k, p))
+            && !(origin == Origin::Leftover && self.is_app_folder(&k))
+        {
             return deny("Windows or program folder");
         }
         if self.is_excluded(&k) {
             return deny("excluded in settings");
         }
         Ok(())
+    }
+
+    /// True for `<root>\App` and `<root>\Publisher\App` below Program Files or ProgramData when
+    /// no part of it is a folder Windows or many apps share. `k` must be a key.
+    fn is_app_folder(&self, k: &str) -> bool {
+        self.app_roots.iter().any(|root| {
+            let Some(rest) = k
+                .strip_prefix(root.as_str())
+                .and_then(|r| r.strip_prefix('\\'))
+            else {
+                return false;
+            };
+            let segs: Vec<&str> = rest.split('\\').collect();
+            (1..=2).contains(&segs.len())
+                && segs
+                    .iter()
+                    .all(|s| !s.is_empty() && !SHARED_APP_FOLDERS.contains(s))
+        })
+    }
+
+    /// Treats `root` like Program Files, so tests can exercise [`Origin::Leftover`] in a temp
+    /// folder.
+    #[cfg(test)]
+    pub(crate) fn with_app_root(mut self, root: &Path) -> Guard {
+        let k = key(root);
+        self.no_wipe.push(k.clone());
+        self.no_delete.push(k.clone());
+        self.user_subtree.push(k.clone());
+        self.app_roots.push(k);
+        self
     }
 
     /// May the contents of `dir` be removed as a whole (rule `contents` mode)?
@@ -483,5 +564,44 @@ mod tests {
         assert!(g.check_wipe(&profile.join("Downloads")).is_err());
         assert!(g.check_wipe(&env_path("TEMP").unwrap()).is_ok());
         assert!(g.check(&env_path("TEMP").unwrap(), Origin::Rule).is_err());
+    }
+
+    #[test]
+    fn leftover_origin_opens_only_app_folders() {
+        let pf = env_path("PROGRAMFILES").unwrap();
+        let pd = env_path("PROGRAMDATA").unwrap();
+        let g = Guard::new(&[pf.join("Kept App").to_string_lossy().into_owned()], None);
+        let ok = |p: &Path| g.check(p, Origin::Leftover).is_ok();
+
+        for app in [pf.join("Acme"), pf.join(r"Acme\Writer"), pd.join("Acme")] {
+            assert!(ok(&app), "{}", app.display());
+            assert!(g.check(&app, Origin::User).is_err(), "{}", app.display());
+        }
+        assert!(!ok(&pf), "the root itself");
+        assert!(!ok(&pd));
+        assert!(
+            !ok(&pf.join(r"Acme\Writer\bin")),
+            "deeper than Publisher\\App"
+        );
+        assert!(!ok(&pf.join("Common Files")));
+        assert!(
+            !ok(&pf.join(r"Common Files\Acme")),
+            "inside a shared folder"
+        );
+        assert!(!ok(&pf.join("WindowsApps")));
+        assert!(!ok(&pd.join("Microsoft")));
+        assert!(!ok(&pd.join(r"Microsoft\Windows")));
+        assert!(!ok(&pf.join(r"Acme\.git")));
+        assert!(!ok(&pf.join("Kept App")), "user exclusions still apply");
+        // Everything else behaves exactly like a hand-picked delete.
+        let windir = env_path("WINDIR").unwrap();
+        let profile = env_path("USERPROFILE").unwrap();
+        assert!(!ok(&windir.join("Acme")));
+        assert!(!ok(&windir.join(r"System32\Acme")));
+        assert!(!ok(&profile.join("Documents")));
+        assert!(!ok(Path::new(r"C:\")));
+        assert!(ok(&env_path("APPDATA").unwrap().join("Acme")));
+        assert!(!ok(&env_path("APPDATA").unwrap().join("Microsoft")));
+        assert!(ok(Path::new(r"D:\Apps\Acme")));
     }
 }
