@@ -6,8 +6,8 @@ Package identifier: `yusufky63.ReClaimCleaner`.
 
 ```bash
 # First submission
-komac new --id yusufky63.ReClaimCleaner --version 0.1.0 \
-  --urls "https://github.com/yusufky63/reclaim-cleaner/releases/download/v0.1.0/ReClaim-Cleaner_0.1.0_x64-setup.exe"
+komac new --id yusufky63.ReClaimCleaner --version 0.2.0 \
+  --urls "https://github.com/yusufky63/reclaim-cleaner/releases/download/v0.2.0/ReClaim-Cleaner_0.2.0_x64-setup.exe"
 
 # Later versions
 komac update yusufky63.ReClaimCleaner --version X.Y.Z --urls <setup url> --submit
