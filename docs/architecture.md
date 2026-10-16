@@ -112,7 +112,7 @@ The "Cleanup" view switches tiles to neutral and paints only reclaimable space, 
 - "Restart as administrator" relaunches with `ShellExecuteExW("runas")`.
 - Admin rules in a normal session go through helper mode: one UAC prompt per clean, the helper writes a result JSON, the UI reads it.
 - `--elevated-measure` reads shadow storage sizes through WMI (`Win32_ShadowStorage`, `Win32_ShadowCopy`), which Windows only answers for administrators. It takes no input from the request and changes nothing.
-- Explorer integration is a classic per-user verb under `HKCU\Software\Classes` (`Directory`, `Directory\Background`, `Drive`), written and removed by the app. Explorer starts a new process per selected folder; the single-instance plugin forwards each path to the running copy, which merges a burst into one map. When that copy runs as administrator, it lets `WM_COPYDATA` from standard-user processes reach the plugin's window (`ChangeWindowMessageFilterEx`), otherwise the path would be dropped. The NSIS uninstaller removes the verbs, except during updates.
+- Explorer integration is a classic per-user verb under `HKCU\Software\Classes` (`Directory`, `Directory\Background`, `Drive`), written and removed by the app. Explorer starts a new process per selected folder; the single-instance plugin forwards each path to the running copy, which merges a burst into one map. When that copy runs as administrator, it lets `WM_COPYDATA` from standard-user processes reach the plugin's window (`ChangeWindowMessageFilterEx`), otherwise the path would be dropped. The NSIS uninstaller removes the verbs, except when a setup replaces the installed copy (it runs the uninstaller in place, `_?=`, while a real uninstall runs from a copy in TEMP).
 
 ## Portable mode
 
