@@ -34,6 +34,7 @@ cargo test --workspace
 ```
 
 - UI changes: check light and dark theme and the minimum window width (980 px). Attach screenshots.
+- Screenshots committed to the repository come from the demo profile (`node scripts/demo-profile.mjs`, then `node scripts/screenshots.mjs --demo`). Never commit screenshots, paths or measurements from your own machine: they show your user name, folders, files and installed apps.
 - Engine changes: add a test that uses a temporary folder. Anything that deletes needs a test proving it does not follow junctions and respects exclusions.
 - User-visible changes: add a line to `CHANGELOG.md` under "Unreleased".
 

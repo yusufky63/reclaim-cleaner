@@ -27,6 +27,8 @@ An open-source disk cleaner and space analyzer for Windows 10 and 11. It shows w
 |---|---|
 | ![Space map](docs/screenshots/explorer-dark.png) | ![Junk and caches](docs/screenshots/junk-dark.png) |
 
+Screenshots are taken on a generated demo profile, not on a real PC.
+
 ## Download
 
 | File | For |
@@ -81,7 +83,8 @@ pnpm app:build
 | `pnpm test` | Frontend unit tests (Vitest) |
 | `cargo test --workspace` | Engine tests, including junction and protected-path cases |
 | `pnpm portable` | Zips the release exe with the portable marker and writes checksums |
-| `node scripts/screenshots.mjs --scan` | Captures README screenshots from the running dev app |
+| `node scripts/demo-profile.mjs` | Creates the demo profile for screenshots (sparse files, no real data) and prints how to start the app on it |
+| `node scripts/screenshots.mjs --demo` | Captures README screenshots from the app running on the demo profile |
 
 ## Adding cleanup rules
 

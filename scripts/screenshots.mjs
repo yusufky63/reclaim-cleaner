@@ -1,20 +1,26 @@
 // Captures README screenshots from the running dev app over the WebView2 DevTools protocol.
 //
-// 1. Start the app with a debugging port (PowerShell):
-//      $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333"; pnpm tauri dev
-// 2. Run: node scripts/screenshots.mjs [--out docs/screenshots] [--scan]
+// Screenshots that go into the repository never show a real PC: build the demo profile with
+// `node scripts/demo-profile.mjs`, start the app on it as that script prints, then run
+//   node scripts/screenshots.mjs --demo [C:\ReClaimDemo] [--out docs/screenshots]
+// `--demo` refuses to run unless the app uses the demo profile. It scans the profile, then drops
+// what still comes from the machine itself: results outside the profile (system folders other
+// than Windows', installed apps' data), installers from the real Downloads folder, removable
+// drives. Without `--demo` the script captures whatever the app shows, for local checks only.
 //
-// It drives the real app (real scans of this PC), switches theme and width, and saves PNGs.
-// No browser is launched, so there is nothing to clean up afterwards.
+// It switches theme and width over the WebView2 DevTools protocol and saves PNGs. No browser is
+// launched, so there is nothing to clean up afterwards.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
 const outDir = args.includes("--out") ? args[args.indexOf("--out") + 1] : "docs/screenshots";
-const doScan = args.includes("--scan");
+const demo = args.includes("--demo");
+const demoRoot = demo && args[args.indexOf("--demo") + 1] && !args[args.indexOf("--demo") + 1].startsWith("--") ? args[args.indexOf("--demo") + 1] : "C:\\ReClaimDemo";
 const port = process.env.CDP_PORT ?? "9333";
-const pages = (args.includes("--pages") ? args[args.indexOf("--pages") + 1] : "overview,explorer,junk,projects,large,apps,tools,settings").split(",");
+// Apps, startup and tools always show the real machine, so the demo set leaves them out.
+const pages = (args.includes("--pages") ? args[args.indexOf("--pages") + 1] : demo ? "overview,explorer,junk,projects" : "overview,explorer,junk,projects,large,apps,tools,settings").split(",");
 const themes = (args.includes("--themes") ? args[args.indexOf("--themes") + 1] : "light,dark").split(",");
 const widths = (args.includes("--widths") ? args[args.indexOf("--widths") + 1] : "1440").split(",").map(Number);
 const lang = args.includes("--lang") ? args[args.indexOf("--lang") + 1] : null;
@@ -67,10 +73,37 @@ const evaluate = async (expression) => {
 };
 
 await mkdir(outDir, { recursive: true });
-await evaluate(`(async () => { for (let i = 0; i < 50 && !window.__reclaim; i++) await new Promise(r => setTimeout(r, 200)); return !!window.__reclaim })()`);
+// Right after launch the page can still reload once, which destroys the context being evaluated.
+for (let i = 0; ; i++) {
+  try {
+    if (await evaluate(`(async () => { for (let i = 0; i < 50 && !window.__reclaim?.getState().ready; i++) await new Promise(r => setTimeout(r, 200)); return !!window.__reclaim?.getState().ready })()`)) break;
+  } catch (e) {
+    if (i >= 20) throw e;
+  }
+  await sleep(1000);
+}
 if (lang) await evaluate(`window.__reclaimSetLang(${JSON.stringify(lang)})`);
-if (doScan) {
-  await evaluate(`(async () => { const s = window.__reclaim.getState(); await Promise.all([s.scanAll(), s.scanExplorer(s.info.userProfile)]); return true })()`);
+if (demo) {
+  const result = await evaluate(`(async () => {
+    const root = ${JSON.stringify(demoRoot)}.toLowerCase().replace(/\\\\+$/, "") + "\\\\";
+    const inside = (p) => String(p ?? "").toLowerCase().startsWith(root);
+    const g = window.__reclaim.getState;
+    for (let i = 0; i < 100 && !g().ready; i++) await new Promise((r) => setTimeout(r, 200));
+    if (!inside(g().info?.userProfile)) return "the app is not running on the demo profile (USERPROFILE is " + g().info?.userProfile + ")";
+    await g().scanExplorer(g().info.userProfile);
+    await g().scanAll();
+    const sys = (g().drives.find((d) => d.system)?.root ?? "C:\\\\").toLowerCase() + "windows\\\\";
+    const own = (p) => inside(p) || String(p).toLowerCase().startsWith(sys);
+    window.__reclaim.setState({
+      junk: g().junk.filter((r) => r.found.every((f) => own(f.path))),
+      installers: g().installers.filter((f) => inside(f.path)),
+      projects: g().projects.filter((p) => inside(p.path)),
+      drives: g().drives.filter((d) => !d.removable),
+      info: { ...g().info, suggestedRoots: g().info.suggestedRoots.filter(inside) },
+    });
+    return "ok";
+  })()`);
+  if (result !== "ok") throw new Error(result);
 }
 
 for (const width of widths) {

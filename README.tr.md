@@ -6,6 +6,8 @@ Windows 10 ve 11 için açık kaynak disk temizleyici ve alan analizcisi. Alanı
 
 ![Genel bakış](docs/screenshots/overview-light.png)
 
+Ekran görüntüleri gerçek bir bilgisayarda değil, üretilmiş bir demo profilinde alınır.
+
 ## Neler yapar
 
 - **Genel bakış.** Şu anki ve temizlik sonrası boş alan; "Silinmesi güvenli" ve "Gözden geçirilecek" olarak ayrılmış tek bir öneri listesi. Seçtiklerini hemen temizleyebilir ya da PowerShell betiği olarak alabilirsin.
