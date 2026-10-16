@@ -30,6 +30,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - Dropdowns showed light popups in dark mode.
+- "Delete the application data" in the setup's uninstaller left settings, history, user rules and `.reg` backups in `%APPDATA%\ReClaim`. It now removes that folder too; with the box unticked, the folder stays.
 - Future timestamps on single files no longer make folders look recently modified.
 - Items that cannot be moved to the Recycle Bin now show the real reason. A folder that needs administrator rights, such as one under Program Files or ProgramData, reports "Access denied" instead of "In use by another program"; locked files still report "In use".
 - A leftover install folder under Program Files could not be removed, because hand-picked deletes may never touch Program Files. A dedicated leftover guard now allows exactly the folders the scan reported, one or two levels below Program Files or ProgramData, when ReClaim runs as administrator.
