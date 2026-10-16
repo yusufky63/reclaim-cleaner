@@ -82,6 +82,7 @@ export interface TargetRule {
   paths: string[];
   mode: Mode;
   include: string[];
+  exclude: string[];
   minAgeHours: number | null;
   risk: Risk;
   admin: boolean;
@@ -272,6 +273,7 @@ export interface InstalledApp {
   quietUninstall: string | null;
   scope: string;
   source: "desktop" | "store";
+  broken: boolean;
 }
 
 export interface UninstallResult {
@@ -304,3 +306,56 @@ export interface HistoryEntry {
 }
 
 export type ToolId = "dism-cleanup" | "delivery-optimization" | "hibernate-off" | "hibernate-on" | "windows-old" | "disk-cleanup" | "storage-sense" | "system-protection";
+
+export type ImageKind = "icon" | "thumb";
+
+export interface AiModel {
+  id: string;
+  name: string;
+  source: "huggingface" | "lmstudio" | "ollama" | "comfyui";
+  kind: string;
+  formats: string[];
+  bytes: number;
+  files: number;
+  mtime: number;
+  path: string;
+  remove: string[];
+  command: string | null;
+  sameAs: string[];
+}
+
+export interface DataItem {
+  name: string;
+  path: string;
+  bytes: number;
+  files: number;
+  mtime: number;
+}
+
+export interface AssistantData {
+  id: string;
+  tool: string;
+  path: string;
+  bytes: number;
+  files: number;
+  mtime: number;
+  risk: Risk;
+  items: DataItem[];
+}
+
+export interface DownloadFile {
+  path: string;
+  name: string;
+  folder: string;
+  ext: string;
+  bytes: number;
+  mtime: number;
+  copy: boolean;
+}
+
+export interface DownloadsReport {
+  root: string;
+  bytes: number;
+  files: DownloadFile[];
+  truncated: boolean;
+}

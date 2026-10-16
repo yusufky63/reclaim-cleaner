@@ -164,7 +164,7 @@ fn remove_file(path: &Path) -> std::io::Result<()> {
 /// Deletes everything inside `dir` permanently. Files newer than `cutoff` and anything inside
 /// `keep` (exclusion keys) stay. Links are removed as links, never followed. Returns true when
 /// `dir` ended up empty.
-fn purge_dir(dir: &Path, cutoff: Option<i64>, keep: &[String], acc: &Acc) -> bool {
+fn purge_dir(dir: &Path, cutoff: Option<i64>, keep: &[String], skip: &[String], acc: &Acc) -> bool {
     if acc.job.is_cancelled() {
         return false;
     }
@@ -179,6 +179,12 @@ fn purge_dir(dir: &Path, cutoff: Option<i64>, keep: &[String], acc: &Acc) -> boo
     let mut subdirs = Vec::new();
     for entry in rd.flatten() {
         let path = entry.path();
+        if !skip.is_empty()
+            && crate::walk::name_excluded(&entry.file_name().to_string_lossy(), skip)
+        {
+            empty = false;
+            continue;
+        }
         if !keep.is_empty() {
             let k = key(&path);
             if keep.iter().any(|x| is_within(&k, x) || is_within(x, &k)) {
@@ -233,7 +239,7 @@ fn purge_dir(dir: &Path, cutoff: Option<i64>, keep: &[String], acc: &Acc) -> boo
     let results: Vec<bool> = subdirs
         .par_iter()
         .map(|sub| {
-            if purge_dir(sub, cutoff, keep, acc) {
+            if purge_dir(sub, cutoff, keep, skip, acc) {
                 match fs::remove_dir(sub) {
                     Ok(()) => {
                         acc.dirs.fetch_add(1, Ordering::Relaxed);
@@ -302,11 +308,22 @@ fn recycle(paths: Vec<PathBuf>, acc: &Acc) {
 }
 
 /// Files below `dir` eligible for deletion (respecting cutoff and exclusions), for recycling.
-fn eligible_files(dir: &Path, cutoff: Option<i64>, keep: &[String], out: &mut Vec<PathBuf>) {
+fn eligible_files(
+    dir: &Path,
+    cutoff: Option<i64>,
+    keep: &[String],
+    skip: &[String],
+    out: &mut Vec<PathBuf>,
+) {
     let Ok(rd) = fs::read_dir(dir) else { return };
     for entry in rd.flatten() {
         let path = entry.path();
         if !keep.is_empty() && keep.iter().any(|x| is_within(&key(&path), x)) {
+            continue;
+        }
+        if !skip.is_empty()
+            && crate::walk::name_excluded(&entry.file_name().to_string_lossy(), skip)
+        {
             continue;
         }
         let Ok(ft) = entry.file_type() else { continue };
@@ -314,7 +331,7 @@ fn eligible_files(dir: &Path, cutoff: Option<i64>, keep: &[String], out: &mut Ve
             continue;
         }
         if ft.is_dir() {
-            eligible_files(&path, cutoff, keep, out);
+            eligible_files(&path, cutoff, keep, skip, out);
         } else if let Ok(md) = entry.metadata()
             && !is_cloud_only(&md)
             && cutoff.is_none_or(|c| mtime(&md) <= c)
@@ -324,7 +341,14 @@ fn eligible_files(dir: &Path, cutoff: Option<i64>, keep: &[String], out: &mut Ve
     }
 }
 
-fn wipe_contents(dir: &Path, cutoff: Option<i64>, method: DeleteMethod, guard: &Guard, acc: &Acc) {
+fn wipe_contents(
+    dir: &Path,
+    cutoff: Option<i64>,
+    skip: &[String],
+    method: DeleteMethod,
+    guard: &Guard,
+    acc: &Acc,
+) {
     if let Err(e) = guard.check_wipe(dir) {
         acc.fail(dir, e.code());
         return;
@@ -338,7 +362,7 @@ fn wipe_contents(dir: &Path, cutoff: Option<i64>, method: DeleteMethod, guard: &
     let keep = guard.exclusions_inside(dir);
     match method {
         DeleteMethod::Permanent => {
-            purge_dir(dir, cutoff, &keep, acc);
+            purge_dir(dir, cutoff, &keep, skip, acc);
         }
         DeleteMethod::Recycle => {
             let mut targets = Vec::new();
@@ -351,7 +375,7 @@ fn wipe_contents(dir: &Path, cutoff: Option<i64>, method: DeleteMethod, guard: &
                     );
                 }
             } else {
-                eligible_files(dir, cutoff, &keep, &mut targets);
+                eligible_files(dir, cutoff, &keep, skip, &mut targets);
             }
             recycle(targets, acc);
         }
@@ -379,7 +403,7 @@ fn remove_one(path: &Path, method: DeleteMethod, origin: Origin, guard: &Guard, 
             recycle(vec![path.to_path_buf()], acc);
         }
         DeleteMethod::Permanent if md.is_dir() => {
-            if purge_dir(path, None, &keep, acc) {
+            if purge_dir(path, None, &keep, &[], acc) {
                 match fs::remove_dir(path) {
                     Ok(()) => {
                         acc.dirs.fetch_add(1, Ordering::Relaxed);
@@ -479,7 +503,7 @@ pub fn clean_targets(
                 for pattern in &rule.paths {
                     for p in expand_pattern(pattern).unwrap_or_default() {
                         job.set_current(&p);
-                        wipe_contents(&p, cutoff, method, guard, &acc);
+                        wipe_contents(&p, cutoff, &rule.exclude, method, guard, &acc);
                     }
                 }
             }
@@ -538,6 +562,7 @@ mod tests {
             paths: vec![path.to_string_lossy().into_owned()],
             mode,
             include: vec!["*.log".into()],
+            exclude: vec![],
             min_age_hours: None,
             risk: Risk::Safe,
             admin: false,
@@ -599,6 +624,32 @@ mod tests {
         assert_eq!(report.freed, 5);
         assert!(cache.join(r"keepme\k.bin").exists());
         assert!(!cache.join("drop").exists());
+    }
+
+    #[test]
+    fn excluded_names_survive_a_wipe() {
+        let tmp = tempfile::tempdir().unwrap();
+        let temp = tmp.path().join("Temp");
+        fs::create_dir_all(temp.join("gradio")).unwrap();
+        fs::create_dir_all(temp.join("junk")).unwrap();
+        fs::write(temp.join("quit.blend"), [1u8; 3]).unwrap();
+        fs::write(temp.join(r"gradio\out.png"), [1u8; 4]).unwrap();
+        fs::write(temp.join("junk").join("a.tmp"), [1u8; 5]).unwrap();
+        let mut r = rule(&temp, Mode::Contents);
+        r.exclude = vec!["*.blend".into(), "gradio".into()];
+        let report = clean_targets(
+            &[&r],
+            DeleteMethod::Permanent,
+            &Guard::new(&[], None),
+            &Job::new(),
+            false,
+        );
+        assert_eq!(report.freed, 5);
+        assert!(temp.join("quit.blend").exists());
+        assert!(temp.join(r"gradio\out.png").exists());
+        assert!(!temp.join("junk").exists());
+        let m = crate::walk::measure_dir_except(&temp, None, &r.exclude, &Job::new());
+        assert_eq!(m.bytes, 0);
     }
 
     #[test]

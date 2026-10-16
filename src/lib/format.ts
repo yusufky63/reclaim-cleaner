@@ -80,6 +80,19 @@ export function shortPath(path: string, profile: string): string {
   return path;
 }
 
+/** The program part of a command line: `"C:\App\app.exe" --x` -> `C:\App\app.exe`. */
+export function exeFromCommand(cmd: string): string {
+  const s = cmd.trim();
+  if (s.startsWith('"')) {
+    const end = s.indexOf('"', 1);
+    return end > 0 ? s.slice(1, end) : s.slice(1);
+  }
+  const lower = s.toLowerCase();
+  const exe = lower.indexOf(".exe");
+  if (exe > 0) return s.slice(0, exe + 4);
+  return s.split(/\s+/)[0] ?? s;
+}
+
 export function extOf(name: string): string {
   const i = name.lastIndexOf(".");
   return i > 0 ? name.slice(i + 1).toLowerCase() : "";

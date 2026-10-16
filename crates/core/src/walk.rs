@@ -36,6 +36,17 @@ impl Measure {
 /// Size of everything below `dir` (not counting `dir` itself). Files newer than `cutoff`
 /// (Unix seconds) are skipped when a cutoff is given. Links are not followed.
 pub fn measure_dir(dir: &Path, cutoff: Option<i64>, job: &Job) -> Measure {
+    measure_dir_except(dir, cutoff, &[], job)
+}
+
+/// Like [`measure_dir`], but entries whose name matches one of `exclude` (globs, any depth)
+/// are skipped, matching what a cleanup with the same rule would keep.
+pub fn measure_dir_except(
+    dir: &Path,
+    cutoff: Option<i64>,
+    exclude: &[String],
+    job: &Job,
+) -> Measure {
     if job.is_cancelled() {
         return Measure::default();
     }
@@ -48,6 +59,9 @@ pub fn measure_dir(dir: &Path, cutoff: Option<i64>, job: &Job) -> Measure {
     for entry in rd.flatten() {
         let Ok(ft) = entry.file_type() else { continue };
         if is_link(&ft) {
+            continue;
+        }
+        if !exclude.is_empty() && name_excluded(&entry.file_name().to_string_lossy(), exclude) {
             continue;
         }
         if ft.is_dir() {
@@ -71,9 +85,15 @@ pub fn measure_dir(dir: &Path, cutoff: Option<i64>, job: &Job) -> Measure {
     job.add_dir();
     let sub = subdirs
         .par_iter()
-        .map(|p| measure_dir(p, cutoff, job))
+        .map(|p| measure_dir_except(p, cutoff, exclude, job))
         .reduce(Measure::default, Measure::merge);
     m.merge(sub)
+}
+
+pub fn name_excluded(name: &str, exclude: &[String]) -> bool {
+    exclude
+        .iter()
+        .any(|g| crate::paths::wildcard_match(g, name))
 }
 
 /// Measures a path that may be a file or a folder.

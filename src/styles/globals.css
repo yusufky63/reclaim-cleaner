@@ -351,6 +351,40 @@ textarea {
   background: var(--surface-muted);
 }
 
+/* File-type palette for the Downloads breakdown: the validated 8-slot categorical order. */
+.kind-document { --kind: #2a78d6; }
+.kind-image { --kind: #eb6834; }
+.kind-video { --kind: #1baf7a; }
+.kind-archive { --kind: #eda100; }
+.kind-installer { --kind: #e87ba4; }
+.kind-disk { --kind: #008300; }
+.kind-audio { --kind: #6250d6; }
+.kind-model { --kind: #e34948; }
+.kind-other { --kind: var(--cat-other); }
+html[data-theme="dark"] .kind-document { --kind: #3987e5; }
+html[data-theme="dark"] .kind-image { --kind: #d95926; }
+html[data-theme="dark"] .kind-video { --kind: #199e70; }
+html[data-theme="dark"] .kind-archive { --kind: #c98500; }
+html[data-theme="dark"] .kind-installer { --kind: #d55181; }
+html[data-theme="dark"] .kind-audio { --kind: #9085e9; }
+html[data-theme="dark"] .kind-model { --kind: #e66767; }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .kind-document { --kind: #3987e5; }
+  html:not([data-theme="light"]) .kind-image { --kind: #d95926; }
+  html:not([data-theme="light"]) .kind-video { --kind: #199e70; }
+  html:not([data-theme="light"]) .kind-archive { --kind: #c98500; }
+  html:not([data-theme="light"]) .kind-installer { --kind: #d55181; }
+  html:not([data-theme="light"]) .kind-audio { --kind: #9085e9; }
+  html:not([data-theme="light"]) .kind-model { --kind: #e66767; }
+}
+.kind-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--kind);
+  flex: none;
+}
+
 /* ---------- Focus ---------- */
 :focus-visible {
   outline: 2px solid var(--primary);

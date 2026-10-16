@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "src-tauri", "crates", "target", "node_modules", "docs"] },
+  { ignores: ["dist", "src-tauri", "crates", "target", "node_modules", "docs", "release", ".claude"] },
   {
     files: ["**/*.{ts,tsx,js}"],
     extends: [js.configs.recommended, ...tseslint.configs.recommended, reactHooks.configs.flat.recommended, reactRefresh.configs.vite],

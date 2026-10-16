@@ -12,7 +12,7 @@ use crate::job::Job;
 use crate::paths::{expand_pattern, wildcard_match};
 use crate::rules::{Mode, TargetRule};
 use crate::system::recycle_bin_info;
-use crate::walk::{Measure, measure_dir, measure_path};
+use crate::walk::{Measure, measure_dir_except, measure_path};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -117,7 +117,7 @@ pub fn scan_target(rule: &TargetRule, running: &HashSet<String>, job: &Job) -> T
                                 newest: t,
                             })
                         }),
-                    Mode::Contents => measure_dir(&p, cutoff, &local),
+                    Mode::Contents => measure_dir_except(&p, cutoff, &rule.exclude, &local),
                     Mode::Folder | Mode::Report => measure_path(&p, cutoff, &local),
                 };
                 let errors = local.errors.load(std::sync::atomic::Ordering::Relaxed);
@@ -186,6 +186,7 @@ mod tests {
             paths,
             mode,
             include,
+            exclude: vec![],
             min_age_hours: None,
             risk: Risk::Safe,
             admin: false,

@@ -4,8 +4,8 @@
     "group": "system",
     "name": "User temp files",
     "nameTr": "Kullanıcı geçici dosyaları",
-    "description": "Per-user temporary files left by installers and apps; files untouched for 24 hours are removed and anything in use is skipped.",
-    "descriptionTr": "Kurulum programlarının ve uygulamaların bıraktığı kullanıcıya ait geçici dosyalar; 24 saattir değişmeyenler silinir, kullanımda olanlar atlanır.",
+    "description": "Per-user temporary files left by installers and apps; files untouched for 24 hours are removed and anything in use is skipped. Autosave and recovery files from Blender, Krita and Office are kept.",
+    "descriptionTr": "Kurulum programlarının ve uygulamaların bıraktığı kullanıcıya ait geçici dosyalar; 24 saattir değişmeyenler silinir, kullanımda olanlar atlanır. Blender, Krita ve Office otomatik kurtarma dosyaları korunur.",
     "paths": [
       "%TEMP%"
     ],
@@ -15,7 +15,17 @@
     "admin": false,
     "closeApps": [],
     "verified": true,
-    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr"
+    "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr",
+    "exclude": [
+      "*.blend",
+      "*.blend1",
+      "quit.blend",
+      "*.kra",
+      "*.kra~",
+      "*autosave*",
+      "gradio",
+      "~$*"
+    ]
   },
   {
     "id": "windows-temp",
@@ -2512,5 +2522,2955 @@
     "closeApps": [],
     "verified": true,
     "source": "https://github.com/openai/whisper/blob/main/whisper/__init__.py"
+  },
+  {
+    "id": "office-addin-cache",
+    "group": "apps",
+    "name": "Office add-in cache",
+    "nameTr": "Office eklenti önbelleği",
+    "description": "Wef and web caches of Office add-ins; store add-ins download again, but sideloaded add-ins are removed and some add-ins ask you to sign in again.",
+    "descriptionTr": "Office eklentilerinin Wef ve web önbellekleri; mağaza eklentileri yeniden iner, ancak elle yüklenen eklentiler kaldırılır ve bazı eklentiler yeniden oturum açmanızı ister.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Office\\16.0\\Wef",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.Win32WebViewHost_cw5n1h2txyewy\\AC\\#!123\\INetCache",
+      "%LOCALAPPDATA%\\Microsoft\\Outlook\\HubAppFileCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "WINWORD.EXE",
+      "EXCEL.EXE",
+      "POWERPNT.EXE",
+      "OUTLOOK.EXE",
+      "ONENOTE.EXE",
+      "MSACCESS.EXE"
+    ],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/office/dev/add-ins/testing/clear-cache"
+  },
+  {
+    "id": "office-document-cache",
+    "group": "apps",
+    "name": "Office Document Cache",
+    "nameTr": "Office Belge Önbelleği",
+    "description": "Local copies of cloud documents, including edits that have not finished uploading; measured only. Clear it in Office under File > Options > Save > Cache Settings > Delete cached files.",
+    "descriptionTr": "Bulut belgelerinin yerel kopyaları, yüklemesi bitmemiş düzenlemeler dahil; yalnızca ölçülür. Office'te Dosya > Seçenekler > Kaydet > Önbellek Ayarları > Önbelleğe alınan dosyaları sil ile temizleyin.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Office\\16.0\\OfficeFileCache"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://support.microsoft.com/topic/managing-office-document-cache-size-ea64af72-b597-408e-8ecf-fd55daa02476"
+  },
+  {
+    "id": "outlook-secure-temp",
+    "group": "apps",
+    "name": "Outlook attachment temp folder",
+    "nameTr": "Outlook ek geçici klasörü",
+    "description": "Copies of attachments opened from classic Outlook, often left behind after a crash; an attachment you edited and saved there exists only in this folder.",
+    "descriptionTr": "Klasik Outlook'ta açılan eklerin kopyaları, çoğu zaman bir çökmeden sonra geride kalır; orada düzenleyip kaydettiğiniz bir ek yalnızca bu klasörde bulunur.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache\\Content.Outlook\\*"
+    ],
+    "mode": "contents",
+    "minAgeHours": 168,
+    "risk": "caution",
+    "admin": false,
+    "closeApps": [
+      "OUTLOOK.EXE"
+    ],
+    "verified": false,
+    "source": "https://www.slipstick.com/outlook/securetemp-files-folder/"
+  },
+  {
+    "id": "onedrive-logs",
+    "group": "apps",
+    "name": "OneDrive logs",
+    "nameTr": "OneDrive günlükleri",
+    "description": "Diagnostic logs of the OneDrive sync client; sync state and your files are not touched, and logs in use are skipped.",
+    "descriptionTr": "OneDrive eşitleme istemcisinin tanılama günlükleri; eşitleme durumuna ve dosyalarınıza dokunulmaz, kullanımdaki günlükler atlanır.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\OneDrive\\logs",
+      "%LOCALAPPDATA%\\Microsoft\\OneDrive\\setup\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://learn.microsoft.com/en-us/answers/questions/2101718/microsoft-onedrive-logs-information-for-it-adminis"
+  },
+  {
+    "id": "dropbox-cache",
+    "group": "apps",
+    "name": "Dropbox cache",
+    "nameTr": "Dropbox önbelleği",
+    "description": "The hidden .dropbox.cache folder inside your Dropbox folder; Dropbox empties it every few days by itself and keeps recently deleted files there for a short time.",
+    "descriptionTr": "Dropbox klasörünüzdeki gizli .dropbox.cache klasörü; Dropbox onu birkaç günde bir kendisi boşaltır ve yakın zamanda silinen dosyaları kısa süre orada tutar.",
+    "paths": [
+      "%USERPROFILE%\\*Dropbox*\\.dropbox.cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Dropbox.exe"
+    ],
+    "verified": true,
+    "source": "https://help.dropbox.com/delete-restore/cache-folder"
+  },
+  {
+    "id": "google-drive-logs",
+    "group": "apps",
+    "name": "Google Drive logs",
+    "nameTr": "Google Drive günlükleri",
+    "description": "Log files of Google Drive for desktop; the file cache with pending uploads is not touched, and logs in use are skipped.",
+    "descriptionTr": "Masaüstü için Google Drive'ın günlük dosyaları; yüklemesi bekleyen dosya önbelleğine dokunulmaz, kullanımdaki günlükler atlanır.",
+    "paths": [
+      "%LOCALAPPDATA%\\Google\\DriveFS\\Logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://knowledge.workspace.google.com/admin/drive/capture-google-drive-for-desktop-logs-for-support"
+  },
+  {
+    "id": "google-drive-content-cache",
+    "group": "apps",
+    "name": "Google Drive file cache",
+    "nameTr": "Google Drive dosya önbelleği",
+    "description": "Offline copies and files waiting to upload in Google Drive for desktop; measured only, because deleting it loses uploads in progress. Turn off offline access in Drive instead.",
+    "descriptionTr": "Masaüstü için Google Drive'daki çevrimdışı kopyalar ve yüklenmeyi bekleyen dosyalar; yalnızca ölçülür, çünkü silmek süren yüklemeleri kaybettirir. Bunun yerine Drive'da çevrimdışı erişimi kapatın.",
+    "paths": [
+      "%LOCALAPPDATA%\\Google\\DriveFS\\*\\content_cache"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://support.google.com/drive/answer/13470231"
+  },
+  {
+    "id": "signal-cache",
+    "group": "apps",
+    "name": "Signal cache and logs",
+    "nameTr": "Signal önbelleği ve günlükleri",
+    "description": "Browser caches, logs, the temp folder and the update download cache of Signal Desktop; messages, attachments and the database key are not touched.",
+    "descriptionTr": "Signal Desktop'ın tarayıcı önbellekleri, günlükleri, geçici klasörü ve güncelleme indirme önbelleği; mesajlara, eklere ve veritabanı anahtarına dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Signal\\Cache",
+      "%APPDATA%\\Signal\\Code Cache",
+      "%APPDATA%\\Signal\\GPUCache",
+      "%APPDATA%\\Signal\\DawnCache",
+      "%APPDATA%\\Signal\\DawnGraphiteCache",
+      "%APPDATA%\\Signal\\DawnWebGPUCache",
+      "%APPDATA%\\Signal\\logs",
+      "%APPDATA%\\Signal\\temp",
+      "%APPDATA%\\Signal\\update-cache",
+      "%APPDATA%\\Signal Beta\\Cache",
+      "%APPDATA%\\Signal Beta\\Code Cache",
+      "%APPDATA%\\Signal Beta\\GPUCache",
+      "%APPDATA%\\Signal Beta\\DawnCache",
+      "%APPDATA%\\Signal Beta\\DawnGraphiteCache",
+      "%APPDATA%\\Signal Beta\\DawnWebGPUCache",
+      "%APPDATA%\\Signal Beta\\logs",
+      "%APPDATA%\\Signal Beta\\temp",
+      "%APPDATA%\\Signal Beta\\update-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Signal.exe",
+      "Signal Beta.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/signalapp/Signal-Desktop/blob/main/app/attachments.node.ts"
+  },
+  {
+    "id": "evernote-cache",
+    "group": "apps",
+    "name": "Evernote cache",
+    "nameTr": "Evernote önbelleği",
+    "description": "Browser caches of the Evernote desktop app; the local note database (conduit-storage) is not touched.",
+    "descriptionTr": "Evernote masaüstü uygulamasının tarayıcı önbellekleri; yerel not veritabanına (conduit-storage) dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Evernote\\Cache",
+      "%APPDATA%\\Evernote\\Code Cache",
+      "%APPDATA%\\Evernote\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Evernote.exe"
+    ],
+    "verified": false,
+    "source": "https://help.evernote.com/hc/en-us/articles/34767819457299"
+  },
+  {
+    "id": "skype-leftovers",
+    "group": "apps",
+    "name": "Skype leftovers",
+    "nameTr": "Skype kalıntıları",
+    "description": "Data of the Skype desktop app, which Microsoft retired in May 2025; measured only, because it may hold your only copy of old chats and media. Export what you need, then uninstall Skype.",
+    "descriptionTr": "Microsoft'un Mayıs 2025'te kapattığı Skype masaüstü uygulamasının verileri; yalnızca ölçülür, çünkü eski sohbetlerin ve medyanın tek kopyası olabilir. Gerekenleri dışa aktarın, sonra Skype'ı kaldırın.",
+    "paths": [
+      "%APPDATA%\\Microsoft\\Skype for Desktop"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://support.microsoft.com/skype/"
+  },
+  {
+    "id": "apple-device-backups",
+    "group": "media",
+    "name": "iPhone and iPad backups",
+    "nameTr": "iPhone ve iPad yedekleri",
+    "description": "Device backups made by iTunes or the Apple Devices app; measured only. Delete old ones in Apple Devices or iTunes under Manage Backups.",
+    "descriptionTr": "iTunes veya Apple Aygıtlar uygulamasının aldığı cihaz yedekleri; yalnızca ölçülür. Eskilerini Apple Aygıtlar veya iTunes'ta Yedeklemeleri Yönet bölümünden silin.",
+    "paths": [
+      "%APPDATA%\\Apple Computer\\MobileSync\\Backup",
+      "%USERPROFILE%\\Apple\\MobileSync\\Backup"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://support.apple.com/en-us/108809"
+  },
+  {
+    "id": "itunes-firmware-files",
+    "group": "media",
+    "name": "iOS firmware downloads",
+    "nameTr": "iOS yazılım indirmeleri",
+    "description": "iPhone, iPad and iPod firmware files (.ipsw) that iTunes downloaded for updates and restores; they download again when needed, unless you kept an older version on purpose.",
+    "descriptionTr": "iTunes'un güncelleme ve geri yükleme için indirdiği iPhone, iPad ve iPod yazılım dosyaları (.ipsw); gerektiğinde yeniden iner, eski bir sürümü bilerek sakladıysanız dikkat edin.",
+    "paths": [
+      "%APPDATA%\\Apple Computer\\iTunes\\iP* Software Updates",
+      "%LOCALAPPDATA%\\Packages\\AppleInc.iTunes_*\\LocalCache\\Roaming\\Apple Computer\\iTunes\\iP* Software Updates"
+    ],
+    "mode": "files",
+    "include": [
+      "*.ipsw"
+    ],
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "iTunes.exe",
+      "AppleDevices.exe"
+    ],
+    "verified": false,
+    "source": "https://support.apple.com/en-us/108809"
+  },
+  {
+    "id": "vlc-art-cache",
+    "group": "media",
+    "name": "VLC album art cache",
+    "nameTr": "VLC albüm kapağı önbelleği",
+    "description": "Cover art VLC downloaded for played media; fetched again when needed. Preferences, the media library and recent files are not touched.",
+    "descriptionTr": "VLC'nin oynatılan medya için indirdiği kapak görselleri; gerektiğinde yeniden alınır. Tercihlere, medya kitaplığına ve son dosyalara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\vlc\\art"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "vlc.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/videolan/vlc/blob/3.0.x/src/playlist/art.c"
+  },
+  {
+    "id": "plex-server-logs",
+    "group": "media",
+    "name": "Plex Media Server logs",
+    "nameTr": "Plex Media Server günlükleri",
+    "description": "Older log files and crash reports of Plex Media Server; the library database and metadata are not touched, and logs in use are skipped.",
+    "descriptionTr": "Plex Media Server'ın eski günlük dosyaları ve çökme raporları; kitaplık veritabanına ve meta verilere dokunulmaz, kullanımdaki günlükler atlanır.",
+    "paths": [
+      "%LOCALAPPDATA%\\Plex Media Server\\Logs",
+      "%LOCALAPPDATA%\\Plex Media Server\\Crash Reports"
+    ],
+    "mode": "contents",
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://support.plex.tv/articles/200250417-plex-media-server-log-files/"
+  },
+  {
+    "id": "plex-server-cache",
+    "group": "media",
+    "name": "Plex transcoder cache",
+    "nameTr": "Plex dönüştürücü önbelleği",
+    "description": "Leftover transcode files, resized photo thumbnails and old update installers of Plex Media Server; thumbnails are rebuilt as you browse. Stop the server first.",
+    "descriptionTr": "Plex Media Server'ın artakalan dönüştürme dosyaları, yeniden boyutlanmış fotoğraf küçük resimleri ve eski güncelleme kurulumları; küçük resimler gezindikçe yeniden oluşur. Önce sunucuyu durdurun.",
+    "paths": [
+      "%LOCALAPPDATA%\\Plex Media Server\\Cache\\Transcode",
+      "%LOCALAPPDATA%\\Plex Media Server\\Cache\\PhotoTranscoder",
+      "%LOCALAPPDATA%\\Plex Media Server\\Updates"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Plex Media Server.exe",
+      "Plex Transcoder.exe",
+      "Plex Update Service.exe"
+    ],
+    "verified": false,
+    "source": "https://forums.plex.tv/t/huge-size-of-phototranscoder-folder/631581"
+  },
+  {
+    "id": "jellyfin-server-cache",
+    "group": "media",
+    "name": "Jellyfin transcodes and logs",
+    "nameTr": "Jellyfin dönüştürmeleri ve günlükleri",
+    "description": "Temporary transcode files and log files of a Jellyfin server installed as a service; the library, metadata and settings are not touched. Stop the server first.",
+    "descriptionTr": "Hizmet olarak kurulan Jellyfin sunucusunun geçici dönüştürme dosyaları ve günlükleri; kitaplığa, meta verilere ve ayarlara dokunulmaz. Önce sunucuyu durdurun.",
+    "paths": [
+      "%PROGRAMDATA%\\Jellyfin\\Server\\cache\\transcodes",
+      "%PROGRAMDATA%\\Jellyfin\\Server\\log"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [
+      "jellyfin.exe"
+    ],
+    "verified": true,
+    "source": "https://jellyfin.org/docs/general/administration/configuration/"
+  },
+  {
+    "id": "jellyfin-user-cache",
+    "group": "media",
+    "name": "Jellyfin transcodes and logs (user)",
+    "nameTr": "Jellyfin dönüştürmeleri ve günlükleri (kullanıcı)",
+    "description": "Temporary transcode files and log files of a Jellyfin server started without the installer; the library, metadata and settings are not touched.",
+    "descriptionTr": "Kurulum programı olmadan başlatılan Jellyfin sunucusunun geçici dönüştürme dosyaları ve günlükleri; kitaplığa, meta verilere ve ayarlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\jellyfin\\cache\\transcodes",
+      "%LOCALAPPDATA%\\jellyfin\\log"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "jellyfin.exe"
+    ],
+    "verified": true,
+    "source": "https://jellyfin.org/docs/general/administration/configuration/"
+  },
+  {
+    "id": "adobe-peak-files",
+    "group": "media",
+    "name": "Adobe audio waveform files",
+    "nameTr": "Adobe ses dalga formu dosyaları",
+    "description": "Audio waveform (.pek) files that Premiere Pro, After Effects and Audition draw on the timeline; rebuilt when a project opens.",
+    "descriptionTr": "Premiere Pro, After Effects ve Audition'ın zaman çizelgesinde çizdiği ses dalga formu (.pek) dosyaları; proje açıldığında yeniden oluşur.",
+    "paths": [
+      "%APPDATA%\\Adobe\\Common\\Peak Files"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Adobe Premiere Pro.exe",
+      "AfterFX.exe",
+      "Adobe Media Encoder.exe",
+      "Adobe Audition.exe"
+    ],
+    "verified": false,
+    "source": "https://helpx.adobe.com/premiere/desktop/troubleshooting/media-issues/delete-media-cache-files-manually.html"
+  },
+  {
+    "id": "camera-raw-cache",
+    "group": "media",
+    "name": "Camera Raw cache",
+    "nameTr": "Camera Raw önbelleği",
+    "description": "Decoded raw image data shared by Camera Raw in Photoshop, Bridge and the Develop module of Lightroom Classic; rebuilt as you open photos. Same as Purge Cache in Camera Raw preferences.",
+    "descriptionTr": "Photoshop'taki Camera Raw, Bridge ve Lightroom Classic'in Geliştir modülünün paylaştığı çözülmüş ham görüntü verisi; fotoğrafları açtıkça yeniden oluşur. Camera Raw tercihlerindeki Önbelleği Temizle ile aynıdır.",
+    "paths": [
+      "%LOCALAPPDATA%\\Adobe\\CameraRaw\\Cache2",
+      "%LOCALAPPDATA%\\Adobe\\CameraRaw\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Photoshop.exe",
+      "Lightroom.exe",
+      "Bridge.exe",
+      "Adobe Bridge.exe"
+    ],
+    "verified": false,
+    "source": "https://www.lightroomqueen.com/community/threads/camera-raw-cache2.43395/"
+  },
+  {
+    "id": "adobe-crash-reports",
+    "group": "media",
+    "name": "Adobe crash reports",
+    "nameTr": "Adobe çökme raporları",
+    "description": "Crash logs and minidumps written by Adobe apps, normally removed after upload but often left behind; they can grow to many gigabytes.",
+    "descriptionTr": "Adobe uygulamalarının yazdığı çökme günlükleri ve küçük döküm dosyaları; normalde gönderildikten sonra silinir ama çoğu zaman kalır ve gigabaytlarca yer tutabilir.",
+    "paths": [
+      "%APPDATA%\\Adobe\\CRLogs\\crashlogs",
+      "%APPDATA%\\Adobe\\CRLogs\\dumps",
+      "%USERPROFILE%\\AppData\\LocalLow\\Adobe\\CRLogs\\crashlogs",
+      "%USERPROFILE%\\AppData\\LocalLow\\Adobe\\CRLogs\\dumps"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://community.adobe.com/t5/download-install-discussions/large-hidden-files-in-crlogs-folder/m-p/9553666"
+  },
+  {
+    "id": "blender-cache",
+    "group": "media",
+    "name": "Blender cache",
+    "nameTr": "Blender önbelleği",
+    "description": "Blender's persistent cache of asset library indexes and GPU shaders; rebuilt automatically. Preferences, add-ons and autosaves are not touched.",
+    "descriptionTr": "Blender'ın kalıcı varlık kitaplığı dizinleri ve GPU gölgelendirici önbelleği; kendiliğinden yeniden oluşur. Tercihlere, eklentilere ve otomatik kayıtlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Blender Foundation\\Blender\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "blender.exe",
+      "blender-launcher.exe"
+    ],
+    "verified": true,
+    "source": "https://docs.blender.org/manual/en/latest/advanced/blender_directory_layout.html"
+  },
+  {
+    "id": "capcut-cache",
+    "group": "media",
+    "name": "CapCut cache",
+    "nameTr": "CapCut önbelleği",
+    "description": "Downloaded effects, thumbnails, audio waveforms and the built-in browser cache of CapCut desktop; downloaded again when needed. Projects, drafts, presets and recordings are not touched.",
+    "descriptionTr": "CapCut masaüstünün indirilmiş efektleri, küçük resimleri, ses dalga formları ve dahili tarayıcı önbelleği; gerektiğinde yeniden iner. Projelere, taslaklara, hazır ayarlara ve kayıtlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Cache\\effect",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Cache\\artistEffect",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Cache\\image",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Cache\\fontImage",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Cache\\frameThumbnail",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Cache\\audioWave",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Cache\\VENetworkPlayer",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\CEF\\Cache",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\CEF\\GrShaderCache",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\CEF\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\CEF\\ShaderCache",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Log",
+      "%LOCALAPPDATA%\\CapCut\\User Data\\Crash\\reports"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "CapCut.exe",
+      "VEDetector.exe",
+      "VEHelper.exe"
+    ],
+    "verified": false,
+    "source": "https://www.capcut.com/help"
+  },
+  {
+    "id": "obs-logs",
+    "group": "media",
+    "name": "OBS Studio logs",
+    "nameTr": "OBS Studio günlükleri",
+    "description": "Session logs, crash reports and profiler data of OBS Studio; scenes, profiles and settings are not touched.",
+    "descriptionTr": "OBS Studio'nun oturum günlükleri, çökme raporları ve profil oluşturucu verileri; sahnelere, profillere ve ayarlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\obs-studio\\logs",
+      "%APPDATA%\\obs-studio\\crashes",
+      "%APPDATA%\\obs-studio\\profiler_data"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "obs64.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/obsproject/obs-studio/blob/master/frontend/obs-main.cpp"
+  },
+  {
+    "id": "obs-browser-cache",
+    "group": "media",
+    "name": "OBS browser source cache",
+    "nameTr": "OBS tarayıcı kaynağı önbelleği",
+    "description": "HTTP, code and GPU caches of the browser sources and docks in OBS Studio; rebuilt when they load. Cookies and dock logins are not touched.",
+    "descriptionTr": "OBS Studio'daki tarayıcı kaynaklarının ve yerleşik panellerin HTTP, kod ve GPU önbellekleri; yüklendiklerinde yeniden oluşur. Çerezlere ve panel oturumlarına dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\Cache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\Code Cache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\GPUCache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\GrShaderCache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\ShaderCache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\GraphiteDawnCache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\Default\\Cache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\Default\\Code Cache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\Default\\GPUCache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\Default\\DawnGraphiteCache",
+      "%APPDATA%\\obs-studio\\plugin_config\\obs-browser\\Default\\DawnWebGPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "obs64.exe",
+      "obs-browser-page.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/obsproject/obs-browser/blob/master/obs-browser-plugin.cpp"
+  },
+  {
+    "id": "gimp-temp",
+    "group": "media",
+    "name": "GIMP temp files",
+    "nameTr": "GIMP geçici dosyaları",
+    "description": "Temporary files GIMP leaves in its tmp folder after a crash; GIMP normally deletes them when it closes.",
+    "descriptionTr": "GIMP'in bir çökmeden sonra tmp klasöründe bıraktığı geçici dosyalar; GIMP normalde kapanırken bunları siler.",
+    "paths": [
+      "%APPDATA%\\GIMP\\*\\tmp"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "gimp-2.10.exe",
+      "gimp-3.exe",
+      "gimp-3.0.exe",
+      "gimp.exe"
+    ],
+    "verified": true,
+    "source": "https://docs.gimp.org/3.0/en/gimp-prefs-folders.html"
+  },
+  {
+    "id": "handbrake-logs",
+    "group": "media",
+    "name": "HandBrake logs",
+    "nameTr": "HandBrake günlükleri",
+    "description": "Activity and encode logs that HandBrake keeps until they are deleted by hand; presets, settings and the queue are not touched.",
+    "descriptionTr": "HandBrake'in elle silinene kadar tuttuğu etkinlik ve kodlama günlükleri; hazır ayarlara, ayarlara ve kuyruğa dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\HandBrake\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "HandBrake.exe",
+      "HandBrake.Worker.exe"
+    ],
+    "verified": true,
+    "source": "https://handbrake.fr/docs/en/latest/help/activity-log.html"
+  },
+  {
+    "id": "winget-logs",
+    "group": "dev",
+    "name": "winget logs",
+    "nameTr": "winget günlükleri",
+    "description": "Diagnostic logs of the Windows Package Manager and of the installers it ran; winget trims its own logs, but installer logs stay behind.",
+    "descriptionTr": "Windows Paket Yöneticisi'nin ve çalıştırdığı kurulum programlarının tanılama günlükleri; winget kendi günlüklerini kırpar, ancak kurulum günlükleri kalır.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\\LocalState\\DiagOutputDir"
+    ],
+    "mode": "files",
+    "include": [
+      "*.log"
+    ],
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows/package-manager/winget/troubleshooting"
+  },
+  {
+    "id": "chocolatey-leftovers",
+    "group": "dev",
+    "name": "Chocolatey upgrade leftovers",
+    "nameTr": "Chocolatey yükseltme artıkları",
+    "description": "Package backups left by interrupted Chocolatey upgrades (lib-bkp) and failed installs moved aside (lib-bad); installed packages are not touched.",
+    "descriptionTr": "Yarıda kalan Chocolatey yükseltmelerinin bıraktığı paket yedekleri (lib-bkp) ve kenara alınan başarısız kurulumlar (lib-bad); kurulu paketlere dokunulmaz.",
+    "paths": [
+      "%PROGRAMDATA%\\chocolatey\\lib-bkp",
+      "%PROGRAMDATA%\\chocolatey\\lib-bad"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [
+      "choco.exe",
+      "chocolatey.exe",
+      "ChocolateyGUI.exe",
+      "chocolatey-agent.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/chocolatey/choco/blob/develop/src/chocolatey/infrastructure.app/ApplicationParameters.cs"
+  },
+  {
+    "id": "chocolatey-logs",
+    "group": "dev",
+    "name": "Chocolatey old logs",
+    "nameTr": "Chocolatey eski günlükleri",
+    "description": "Rotated Chocolatey log files (up to 50 copies of 10 MB each); the current logs are kept.",
+    "descriptionTr": "Döndürülmüş Chocolatey günlük dosyaları (10 MB'lık 50 kopyaya kadar); güncel günlükler korunur.",
+    "paths": [
+      "%PROGRAMDATA%\\chocolatey\\logs"
+    ],
+    "mode": "files",
+    "include": [
+      "chocolatey.*.log",
+      "choco.summary.*.log"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/chocolatey/choco/blob/develop/src/chocolatey/infrastructure/logging/Log4NetAppenderConfiguration.cs"
+  },
+  {
+    "id": "scoop-cache",
+    "group": "dev",
+    "name": "Scoop download cache",
+    "nameTr": "Scoop indirme önbelleği",
+    "description": "Installers and archives Scoop downloaded; installed apps keep working and Scoop downloads again when it needs a file.",
+    "descriptionTr": "Scoop'un indirdiği kurulum dosyaları ve arşivler; kurulu uygulamalar çalışmaya devam eder, Scoop gerektiğinde dosyayı yeniden indirir.",
+    "paths": [
+      "%USERPROFILE%\\scoop\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "command": "scoop cache rm *",
+    "verified": true,
+    "source": "https://github.com/ScoopInstaller/Scoop/blob/master/libexec/scoop-cache.ps1"
+  },
+  {
+    "id": "visualstudio-package-cache",
+    "group": "dev",
+    "name": "Visual Studio installer cache",
+    "nameTr": "Visual Studio kurulum önbelleği",
+    "description": "Packages the Visual Studio Installer keeps for repair and offline changes; measured only. Run the Installer with --nocache once to remove them, or set the KeepDownloadedPayloads policy.",
+    "descriptionTr": "Visual Studio Yükleyicisi'nin onarım ve çevrimdışı değişiklikler için sakladığı paketler; yalnızca ölçülür. Kaldırmak için Yükleyiciyi bir kez --nocache ile çalıştırın ya da KeepDownloadedPayloads ilkesini ayarlayın.",
+    "paths": [
+      "%PROGRAMDATA%\\Microsoft\\VisualStudio\\Packages"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/visualstudio/install/disable-or-move-the-package-cache"
+  },
+  {
+    "id": "vscode-extension-temp",
+    "group": "dev",
+    "name": "VS Code unfinished extension installs",
+    "nameTr": "VS Code yarım kalan eklenti kurulumları",
+    "description": "Temporary folders left when VS Code was closed or crashed while unpacking or removing an extension; VS Code does not clean the unpacking folders later. Installed extensions are not touched.",
+    "descriptionTr": "VS Code bir eklentiyi açarken veya kaldırırken kapandığında ya da çöktüğünde geride kalan geçici klasörler; VS Code açma klasörlerini daha sonra temizlemez. Kurulu eklentilere dokunulmaz.",
+    "paths": [
+      "%USERPROFILE%\\.vscode\\extensions\\.????????-????-????-????-????????????",
+      "%USERPROFILE%\\.vscode\\extensions\\*.vsctmp",
+      "%USERPROFILE%\\.vscode-insiders\\extensions\\.????????-????-????-????-????????????",
+      "%USERPROFILE%\\.vscode-insiders\\extensions\\*.vsctmp"
+    ],
+    "mode": "folder",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Code.exe",
+      "Code - Insiders.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/microsoft/vscode/blob/main/src/vs/platform/extensionManagement/node/extensionManagementService.ts"
+  },
+  {
+    "id": "jetbrains-toolbox-cache",
+    "group": "dev",
+    "name": "JetBrains Toolbox logs and downloads",
+    "nameTr": "JetBrains Toolbox günlükleri ve indirmeleri",
+    "description": "Logs and leftover IDE downloads of the JetBrains Toolbox App; installed IDEs and their settings are not touched.",
+    "descriptionTr": "JetBrains Toolbox uygulamasının günlükleri ve artakalan IDE indirmeleri; kurulu IDE'lere ve ayarlarına dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\JetBrains\\Toolbox\\logs",
+      "%LOCALAPPDATA%\\JetBrains\\Toolbox\\download"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "jetbrains-toolbox.exe"
+    ],
+    "verified": false,
+    "source": "https://www.jetbrains.com/help/toolbox-app/frequently-asked-questions.html"
+  },
+  {
+    "id": "android-sdk-temp",
+    "group": "dev",
+    "name": "Android SDK download leftovers",
+    "nameTr": "Android SDK indirme artıkları",
+    "description": "Temporary and partially downloaded packages of the Android SDK manager; nothing in use while no SDK install is running.",
+    "descriptionTr": "Android SDK yöneticisinin geçici ve yarım inmiş paketleri; çalışan bir SDK kurulumu yokken hiçbiri kullanılmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Android\\Sdk\\.temp",
+      "%LOCALAPPDATA%\\Android\\Sdk\\.downloadIntermediates"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "studio64.exe",
+      "sdkmanager.exe"
+    ],
+    "verified": true,
+    "source": "https://android.googlesource.com/platform/tools/base/+/refs/heads/mirror-goog-studio-main/repository/src/main/java/com/android/repository/impl/installer/AbstractPackageOperation.java"
+  },
+  {
+    "id": "android-legacy-build-cache",
+    "group": "dev",
+    "name": "Old Android build cache",
+    "nameTr": "Eski Android derleme önbelleği",
+    "description": "Build cache of Android Gradle Plugin versions before 4.1, which no longer use it; current builds use the Gradle cache instead.",
+    "descriptionTr": "Artık kullanılmayan, 4.1 öncesi Android Gradle Plugin sürümlerinin derleme önbelleği; güncel derlemeler bunun yerine Gradle önbelleğini kullanır.",
+    "paths": [
+      "%USERPROFILE%\\.android\\build-cache"
+    ],
+    "mode": "folder",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "studio64.exe"
+    ],
+    "verified": true,
+    "source": "https://developer.android.com/build/releases/past-releases/agp-4-1-0-release-notes"
+  },
+  {
+    "id": "android-ndk-versions",
+    "group": "dev",
+    "name": "Android NDK versions",
+    "nameTr": "Android NDK sürümleri",
+    "description": "Side-by-side Android NDK installs, often several gigabytes each; measured only. Remove versions your projects no longer use in the SDK Manager or with sdkmanager --uninstall.",
+    "descriptionTr": "Yan yana kurulu Android NDK sürümleri, çoğu zaman her biri birkaç gigabayt; yalnızca ölçülür. Projelerinizin artık kullanmadığı sürümleri SDK Manager'dan veya sdkmanager --uninstall ile kaldırın.",
+    "paths": [
+      "%LOCALAPPDATA%\\Android\\Sdk\\ndk",
+      "%LOCALAPPDATA%\\Android\\Sdk\\ndk-bundle"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://developer.android.com/tools/sdkmanager"
+  },
+  {
+    "id": "insomnia-cache",
+    "group": "dev",
+    "name": "Insomnia cache and logs",
+    "nameTr": "Insomnia önbelleği ve günlükleri",
+    "description": "Browser caches and logs of the Insomnia API client; collections, environments and response history are not touched.",
+    "descriptionTr": "Insomnia API istemcisinin tarayıcı önbellekleri ve günlükleri; koleksiyonlara, ortamlara ve yanıt geçmişine dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Insomnia\\Cache",
+      "%APPDATA%\\Insomnia\\Code Cache",
+      "%APPDATA%\\Insomnia\\GPUCache",
+      "%APPDATA%\\Insomnia\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Insomnia.exe"
+    ],
+    "verified": true,
+    "source": "https://developer.konghq.com/insomnia/collected-data/"
+  },
+  {
+    "id": "dbeaver-logs",
+    "group": "dev",
+    "name": "DBeaver logs",
+    "nameTr": "DBeaver günlükleri",
+    "description": "Debug and workspace log files of DBeaver; connections, scripts and saved credentials are not touched.",
+    "descriptionTr": "DBeaver'ın hata ayıklama ve çalışma alanı günlük dosyaları; bağlantılara, betiklere ve kayıtlı kimlik bilgilerine dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\DBeaverData\\workspace6\\.metadata"
+    ],
+    "mode": "files",
+    "include": [
+      "dbeaver-debug*.log",
+      ".log",
+      ".bak_*.log"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "dbeaver.exe"
+    ],
+    "verified": true,
+    "source": "https://dbeaver.com/docs/dbeaver/Log-files/"
+  },
+  {
+    "id": "github-desktop-cache",
+    "group": "dev",
+    "name": "GitHub Desktop cache",
+    "nameTr": "GitHub Desktop önbelleği",
+    "description": "Browser caches and logs of GitHub Desktop; repositories, sign-in and settings are not touched.",
+    "descriptionTr": "GitHub Desktop'ın tarayıcı önbellekleri ve günlükleri; depolara, oturuma ve ayarlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\GitHub Desktop\\Cache",
+      "%APPDATA%\\GitHub Desktop\\Code Cache",
+      "%APPDATA%\\GitHub Desktop\\GPUCache",
+      "%APPDATA%\\GitHub Desktop\\DawnCache",
+      "%APPDATA%\\GitHub Desktop\\DawnGraphiteCache",
+      "%APPDATA%\\GitHub Desktop\\DawnWebGPUCache",
+      "%APPDATA%\\GitHub Desktop\\GraphiteDawnCache",
+      "%APPDATA%\\GitHub Desktop\\GrShaderCache",
+      "%APPDATA%\\GitHub Desktop\\ShaderCache",
+      "%APPDATA%\\GitHub Desktop\\GPUPersistentCache",
+      "%APPDATA%\\GitHub Desktop\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "GitHubDesktop.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/desktop/desktop/blob/development/app/src/main-process/desktop-file-transport.ts"
+  },
+  {
+    "id": "docker-desktop-logs",
+    "group": "dev",
+    "name": "Docker Desktop logs and cache",
+    "nameTr": "Docker Desktop günlükleri ve önbelleği",
+    "description": "Host and VM logs of Docker Desktop and the caches of its dashboard window; images, containers and volumes are not touched.",
+    "descriptionTr": "Docker Desktop'ın ana makine ve sanal makine günlükleri ile pano penceresinin önbellekleri; imajlara, kapsayıcılara ve birimlere dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Docker\\log\\host",
+      "%LOCALAPPDATA%\\Docker\\log\\vm",
+      "%APPDATA%\\Docker Desktop\\Cache",
+      "%APPDATA%\\Docker Desktop\\Code Cache",
+      "%APPDATA%\\Docker Desktop\\GPUCache",
+      "%APPDATA%\\Docker Desktop\\DawnCache",
+      "%APPDATA%\\Docker Desktop\\DawnGraphiteCache",
+      "%APPDATA%\\Docker Desktop\\DawnWebGPUCache",
+      "%APPDATA%\\Docker Desktop\\GraphiteDawnCache",
+      "%APPDATA%\\Docker Desktop\\GrShaderCache",
+      "%APPDATA%\\Docker Desktop\\ShaderCache",
+      "%APPDATA%\\Docker Desktop\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Docker Desktop.exe",
+      "com.docker.backend.exe",
+      "com.docker.build.exe"
+    ],
+    "verified": true,
+    "source": "https://docs.docker.com/engine/daemon/logs/"
+  },
+  {
+    "id": "rancher-desktop-cache",
+    "group": "dev",
+    "name": "Rancher Desktop cache and logs",
+    "nameTr": "Rancher Desktop önbelleği ve günlükleri",
+    "description": "Downloaded Kubernetes (k3s) releases and logs of Rancher Desktop; downloaded again when needed, so offline clusters cannot start until then. Containers and images are not touched.",
+    "descriptionTr": "Rancher Desktop'ın indirdiği Kubernetes (k3s) sürümleri ve günlükleri; gerektiğinde yeniden iner, o zamana kadar çevrimdışı küme başlatılamaz. Kapsayıcılara ve imajlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\rancher-desktop\\cache",
+      "%LOCALAPPDATA%\\rancher-desktop\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Rancher Desktop.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/rancher-sandbox/rancher-desktop/blob/main/src/go/rdctl/pkg/paths/paths_windows.go"
+  },
+  {
+    "id": "podman-machine-images",
+    "group": "dev",
+    "name": "Podman machine image cache",
+    "nameTr": "Podman makine imajı önbelleği",
+    "description": "Downloaded base images for Podman machines; existing machines keep working, and a new machine downloads the image again.",
+    "descriptionTr": "Podman makineleri için indirilmiş temel imajlar; mevcut makineler çalışmaya devam eder, yeni bir makine imajı yeniden indirir.",
+    "paths": [
+      "%USERPROFILE%\\.local\\share\\containers\\podman\\machine\\*\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "podman.exe",
+      "Podman Desktop.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/containers/podman/blob/main/pkg/machine/env/dir.go"
+  },
+  {
+    "id": "vagrant-boxes",
+    "group": "dev",
+    "name": "Vagrant boxes",
+    "nameTr": "Vagrant kutuları",
+    "description": "Base box images Vagrant downloaded; measured only. The official command removes outdated box versions and keeps the ones your machines use.",
+    "descriptionTr": "Vagrant'ın indirdiği temel kutu imajları; yalnızca ölçülür. Resmî komut eski kutu sürümlerini siler, makinelerinizin kullandıklarını korur.",
+    "paths": [
+      "%USERPROFILE%\\.vagrant.d\\boxes"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "command": "vagrant box prune --force --keep-active-boxes",
+    "verified": true,
+    "source": "https://developer.hashicorp.com/vagrant/docs/cli/box"
+  },
+  {
+    "id": "vagrant-temp",
+    "group": "dev",
+    "name": "Vagrant temp files",
+    "nameTr": "Vagrant geçici dosyaları",
+    "description": "Temporary files of Vagrant runs and box downloads that did not finish.",
+    "descriptionTr": "Vagrant çalıştırmalarının ve tamamlanmamış kutu indirmelerinin geçici dosyaları.",
+    "paths": [
+      "%USERPROFILE%\\.vagrant.d\\tmp"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "vagrant.exe",
+      "ruby.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/hashicorp/vagrant/blob/main/lib/vagrant/environment.rb"
+  },
+  {
+    "id": "virtualbox-old-logs",
+    "group": "dev",
+    "name": "VirtualBox old VM logs",
+    "nameTr": "VirtualBox eski sanal makine günlükleri",
+    "description": "Logs of earlier runs (VBox.log.1 to .3) for virtual machines in the default VirtualBox VMs folder; disks, snapshots and settings are not touched.",
+    "descriptionTr": "Varsayılan VirtualBox VMs klasöründeki sanal makinelerin önceki çalışmalarına ait günlükler (VBox.log.1 ile .3 arası); disklere, anlık görüntülere ve ayarlara dokunulmaz.",
+    "paths": [
+      "%USERPROFILE%\\VirtualBox VMs\\*\\Logs"
+    ],
+    "mode": "files",
+    "include": [
+      "VBox.log.?"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://www.virtualbox.org/manual/ch12.html"
+  },
+  {
+    "id": "hyperv-virtual-disks",
+    "group": "dev",
+    "name": "Hyper-V virtual disks",
+    "nameTr": "Hyper-V sanal diskleri",
+    "description": "Virtual disks and checkpoints in the default Hyper-V folder; measured only. Never delete .avhdx files by hand; remove checkpoints in Hyper-V Manager so they are merged.",
+    "descriptionTr": "Varsayılan Hyper-V klasöründeki sanal diskler ve denetim noktaları; yalnızca ölçülür. .avhdx dosyalarını asla elle silmeyin; denetim noktalarını birleştirilmeleri için Hyper-V Yöneticisi'nden kaldırın.",
+    "paths": [
+      "%PROGRAMDATA%\\Microsoft\\Windows\\Virtual Hard Disks"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "caution",
+    "admin": true,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/checkpoints"
+  },
+  {
+    "id": "powertoys-updates",
+    "group": "dev",
+    "name": "PowerToys update installers",
+    "nameTr": "PowerToys güncelleme kurulumları",
+    "description": "Update installers PowerToys downloaded; it normally deletes them after updating.",
+    "descriptionTr": "PowerToys'un indirdiği güncelleme kurulum dosyaları; normalde güncellemeden sonra kendisi siler.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\PowerToys\\Updates"
+    ],
+    "mode": "files",
+    "include": [
+      "*.exe",
+      "*.msi"
+    ],
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/microsoft/PowerToys/blob/main/src/common/updating/updating.cpp"
+  },
+  {
+    "id": "windows-update-etl-logs",
+    "group": "system",
+    "name": "Windows Update trace logs",
+    "nameTr": "Windows Update izleme günlükleri",
+    "description": "Older Windows Update and Update Orchestrator trace files (.etl), used only for troubleshooting; Windows keeps writing new ones.",
+    "descriptionTr": "Yalnızca sorun gidermede kullanılan eski Windows Update ve Güncelleme Düzenleyicisi izleme dosyaları (.etl); Windows yenilerini yazmaya devam eder.",
+    "paths": [
+      "%WINDIR%\\Logs\\WindowsUpdate",
+      "%PROGRAMDATA%\\USOShared\\Logs",
+      "%PROGRAMDATA%\\USOShared\\Logs\\System",
+      "%PROGRAMDATA%\\USOShared\\Logs\\User"
+    ],
+    "mode": "files",
+    "include": [
+      "*.etl"
+    ],
+    "minAgeHours": 168,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://learn.microsoft.com/en-us/windows/deployment/update/windows-update-logs"
+  },
+  {
+    "id": "windows-search-index",
+    "group": "system",
+    "name": "Windows Search index",
+    "nameTr": "Windows Arama dizini",
+    "description": "The database behind Windows Search; measured only. If it has grown very large, rebuild it in Indexing Options > Advanced > Rebuild.",
+    "descriptionTr": "Windows Arama'nın kullandığı veritabanı; yalnızca ölçülür. Çok büyüdüyse Dizin Oluşturma Seçenekleri > Gelişmiş > Yeniden Oluştur ile yeniden oluşturun.",
+    "paths": [
+      "%PROGRAMDATA%\\Microsoft\\Search\\Data\\Applications\\Windows"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://support.microsoft.com/windows/search-indexing-in-windows-da061c83-af6b-095c-0f7a-4dfecda4d15a"
+  },
+  {
+    "id": "electron-updater-cache",
+    "group": "apps",
+    "name": "Desktop app update downloads",
+    "nameTr": "Masaüstü uygulama güncelleme indirmeleri",
+    "description": "Update installers that Cursor, LM Studio, Unity Hub, Antigravity, Comfy Desktop and other Electron apps downloaded; the next update downloads in full instead of as a small patch.",
+    "descriptionTr": "Cursor, LM Studio, Unity Hub, Antigravity, Comfy Desktop ve diğer Electron uygulamalarının indirdiği güncelleme kurulumları; sonraki güncelleme küçük bir yama yerine tam olarak iner.",
+    "paths": [
+      "%LOCALAPPDATA%\\cursor-updater",
+      "%LOCALAPPDATA%\\lm-studio-updater",
+      "%LOCALAPPDATA%\\unityhub-updater",
+      "%LOCALAPPDATA%\\antigravity-updater",
+      "%LOCALAPPDATA%\\comfyui-desktop-2-updater",
+      "%LOCALAPPDATA%\\comfyui-electron-updater",
+      "%LOCALAPPDATA%\\@comfyorgcomfyui-electron-updater",
+      "%LOCALAPPDATA%\\curseforge-updater",
+      "%LOCALAPPDATA%\\redisinsight-updater",
+      "%LOCALAPPDATA%\\spline-updater"
+    ],
+    "mode": "contents",
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/electron-userland/electron-builder/blob/master/packages/electron-updater/src/AppAdapter.ts"
+  },
+  {
+    "id": "electron-crash-reports",
+    "group": "apps",
+    "name": "Desktop app crash dumps",
+    "nameTr": "Masaüstü uygulama çökme dökümleri",
+    "description": "Crash minidumps (.dmp) that Electron apps such as VS Code, Cursor, Slack, Discord and Claude keep in their Crashpad folders; useful only for crash reports.",
+    "descriptionTr": "VS Code, Cursor, Slack, Discord ve Claude gibi Electron uygulamalarının Crashpad klasörlerinde tuttuğu çökme dökümleri (.dmp); yalnızca çökme raporları için işe yarar.",
+    "paths": [
+      "%APPDATA%\\Code\\Crashpad\\reports",
+      "%APPDATA%\\Code - Insiders\\Crashpad\\reports",
+      "%APPDATA%\\Cursor\\Crashpad\\reports",
+      "%APPDATA%\\Windsurf\\Crashpad\\reports",
+      "%APPDATA%\\Antigravity\\Crashpad\\reports",
+      "%APPDATA%\\Antigravity IDE\\Crashpad\\reports",
+      "%APPDATA%\\Claude\\Crashpad\\reports",
+      "%APPDATA%\\Slack\\Crashpad\\reports",
+      "%APPDATA%\\discord\\Crashpad\\reports",
+      "%APPDATA%\\Notion\\Crashpad\\reports",
+      "%APPDATA%\\obsidian\\Crashpad\\reports",
+      "%APPDATA%\\Postman\\Crashpad\\reports",
+      "%APPDATA%\\Docker Desktop\\Crashpad\\reports",
+      "%APPDATA%\\LM Studio\\Crashpad\\reports",
+      "%APPDATA%\\UnityHub\\Crashpad\\reports",
+      "%APPDATA%\\Comfy Desktop\\Crashpad\\reports",
+      "%APPDATA%\\GitHub Desktop\\Crashpad\\reports",
+      "%APPDATA%\\Signal\\Crashpad\\reports",
+      "%APPDATA%\\G HUB\\Crashpad\\reports"
+    ],
+    "mode": "files",
+    "include": [
+      "*.dmp"
+    ],
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/crash-reporter"
+  },
+  {
+    "id": "packaged-app-npm-cache",
+    "group": "dev",
+    "name": "npm cache inside Store apps",
+    "nameTr": "Mağaza uygulamalarındaki npm önbelleği",
+    "description": "npm caches that Windows redirected into the private folder of a packaged app (for example tools started by Claude or Codex desktop); packages download again when needed.",
+    "descriptionTr": "Windows'un paketlenmiş bir uygulamanın özel klasörüne yönlendirdiği npm önbellekleri (örneğin Claude veya Codex masaüstünün başlattığı araçlar); paketler gerektiğinde yeniden iner.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\*\\LocalCache\\Local\\npm-cache\\_cacache",
+      "%LOCALAPPDATA%\\Packages\\*\\LocalCache\\Local\\npm-cache\\_npx",
+      "%LOCALAPPDATA%\\Packages\\*\\LocalCache\\Local\\npm-cache\\_logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes"
+  },
+  {
+    "id": "packaged-app-pip-cache",
+    "group": "dev",
+    "name": "pip cache inside Store apps",
+    "nameTr": "Mağaza uygulamalarındaki pip önbelleği",
+    "description": "pip download caches that Windows redirected into a packaged app's folder, mainly the Microsoft Store Python; installed packages in local-packages are not touched.",
+    "descriptionTr": "Windows'un paketlenmiş bir uygulamanın klasörüne yönlendirdiği pip indirme önbellekleri, çoğunlukla Microsoft Store Python'u; local-packages içindeki kurulu paketlere dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\*\\LocalCache\\Local\\pip\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://docs.python.org/3/using/windows.html#redirection-of-local-data-registry-and-temporary-paths"
+  },
+  {
+    "id": "claude-desktop-cache",
+    "group": "apps",
+    "name": "Claude desktop cache",
+    "nameTr": "Claude masaüstü önbelleği",
+    "description": "HTTP, code and GPU caches and logs of the Claude desktop app; chats, settings, sessions and the Cowork virtual machine are not touched.",
+    "descriptionTr": "Claude masaüstü uygulamasının HTTP, kod ve GPU önbellekleri ile günlükleri; sohbetlere, ayarlara, oturumlara ve Cowork sanal makinesine dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Claude\\Cache",
+      "%APPDATA%\\Claude\\Code Cache",
+      "%APPDATA%\\Claude\\GPUCache",
+      "%APPDATA%\\Claude\\DawnCache",
+      "%APPDATA%\\Claude\\DawnGraphiteCache",
+      "%APPDATA%\\Claude\\DawnWebGPUCache",
+      "%APPDATA%\\Claude\\GraphiteDawnCache",
+      "%APPDATA%\\Claude\\GrShaderCache",
+      "%APPDATA%\\Claude\\ShaderCache",
+      "%APPDATA%\\Claude\\GPUPersistentCache",
+      "%APPDATA%\\Claude\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "claude.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "codex-desktop-cache",
+    "group": "apps",
+    "name": "Codex desktop cache",
+    "nameTr": "Codex masaüstü önbelleği",
+    "description": "HTTP, code and GPU caches of the Codex desktop app from the Microsoft Store; sign-in and settings are not touched.",
+    "descriptionTr": "Microsoft Store'dan kurulan Codex masaüstü uygulamasının HTTP, kod ve GPU önbellekleri; oturuma ve ayarlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\Cache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\Code Cache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\GPUCache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\DawnCache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\GrShaderCache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\ShaderCache",
+      "%LOCALAPPDATA%\\Packages\\OpenAI.Codex_*\\LocalCache\\Roaming\\Codex\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Codex.exe"
+    ],
+    "verified": false,
+    "source": "https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes"
+  },
+  {
+    "id": "windsurf-cache",
+    "group": "apps",
+    "name": "Windsurf cache",
+    "nameTr": "Windsurf önbelleği",
+    "description": "HTTP, code and GPU caches, cached extension packages and logs of the Windsurf editor; settings, unsaved-file backups and workspace state are not touched.",
+    "descriptionTr": "Windsurf düzenleyicisinin HTTP, kod ve GPU önbellekleri, önbelleğe alınmış eklenti paketleri ve günlükleri; ayarlara, kaydedilmemiş dosya yedeklerine ve çalışma alanı durumuna dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Windsurf\\Cache",
+      "%APPDATA%\\Windsurf\\Code Cache",
+      "%APPDATA%\\Windsurf\\CachedData",
+      "%APPDATA%\\Windsurf\\CachedExtensionVSIXs",
+      "%APPDATA%\\Windsurf\\GPUCache",
+      "%APPDATA%\\Windsurf\\DawnGraphiteCache",
+      "%APPDATA%\\Windsurf\\DawnWebGPUCache",
+      "%APPDATA%\\Windsurf\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Windsurf.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "antigravity-cache",
+    "group": "apps",
+    "name": "Antigravity cache",
+    "nameTr": "Antigravity önbelleği",
+    "description": "HTTP, code and GPU caches, cached extension packages and logs of Google Antigravity; settings, unsaved-file backups and workspace state are not touched.",
+    "descriptionTr": "Google Antigravity'nin HTTP, kod ve GPU önbellekleri, önbelleğe alınmış eklenti paketleri ve günlükleri; ayarlara, kaydedilmemiş dosya yedeklerine ve çalışma alanı durumuna dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Antigravity\\Cache",
+      "%APPDATA%\\Antigravity\\Code Cache",
+      "%APPDATA%\\Antigravity\\CachedData",
+      "%APPDATA%\\Antigravity\\CachedExtensionVSIXs",
+      "%APPDATA%\\Antigravity\\GPUCache",
+      "%APPDATA%\\Antigravity\\DawnGraphiteCache",
+      "%APPDATA%\\Antigravity\\DawnWebGPUCache",
+      "%APPDATA%\\Antigravity\\logs",
+      "%APPDATA%\\Antigravity IDE\\Cache",
+      "%APPDATA%\\Antigravity IDE\\Code Cache",
+      "%APPDATA%\\Antigravity IDE\\CachedData",
+      "%APPDATA%\\Antigravity IDE\\CachedExtensionVSIXs",
+      "%APPDATA%\\Antigravity IDE\\GPUCache",
+      "%APPDATA%\\Antigravity IDE\\DawnGraphiteCache",
+      "%APPDATA%\\Antigravity IDE\\DawnWebGPUCache",
+      "%APPDATA%\\Antigravity IDE\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Antigravity.exe",
+      "Antigravity IDE.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "vscode-forks-cache",
+    "group": "apps",
+    "name": "VSCodium, Kiro and Trae cache",
+    "nameTr": "VSCodium, Kiro ve Trae önbelleği",
+    "description": "HTTP, code and GPU caches, cached extension packages and logs of editors built on VS Code; settings, unsaved-file backups and workspace state are not touched.",
+    "descriptionTr": "VS Code tabanlı düzenleyicilerin HTTP, kod ve GPU önbellekleri, önbelleğe alınmış eklenti paketleri ve günlükleri; ayarlara, kaydedilmemiş dosya yedeklerine ve çalışma alanı durumuna dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\VSCodium\\Cache",
+      "%APPDATA%\\VSCodium\\Code Cache",
+      "%APPDATA%\\VSCodium\\CachedData",
+      "%APPDATA%\\VSCodium\\CachedExtensionVSIXs",
+      "%APPDATA%\\VSCodium\\GPUCache",
+      "%APPDATA%\\VSCodium\\DawnGraphiteCache",
+      "%APPDATA%\\VSCodium\\DawnWebGPUCache",
+      "%APPDATA%\\VSCodium\\logs",
+      "%APPDATA%\\Kiro\\Cache",
+      "%APPDATA%\\Kiro\\Code Cache",
+      "%APPDATA%\\Kiro\\CachedData",
+      "%APPDATA%\\Kiro\\CachedExtensionVSIXs",
+      "%APPDATA%\\Kiro\\GPUCache",
+      "%APPDATA%\\Kiro\\DawnGraphiteCache",
+      "%APPDATA%\\Kiro\\DawnWebGPUCache",
+      "%APPDATA%\\Kiro\\logs",
+      "%APPDATA%\\Trae\\Cache",
+      "%APPDATA%\\Trae\\Code Cache",
+      "%APPDATA%\\Trae\\CachedData",
+      "%APPDATA%\\Trae\\CachedExtensionVSIXs",
+      "%APPDATA%\\Trae\\GPUCache",
+      "%APPDATA%\\Trae\\DawnGraphiteCache",
+      "%APPDATA%\\Trae\\DawnWebGPUCache",
+      "%APPDATA%\\Trae\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "VSCodium.exe",
+      "Kiro.exe",
+      "Trae.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "lmstudio-app-cache",
+    "group": "ai",
+    "name": "LM Studio app cache",
+    "nameTr": "LM Studio uygulama önbelleği",
+    "description": "Browser caches and logs of the LM Studio window; models, chats and runtimes in the .lmstudio folder are not touched.",
+    "descriptionTr": "LM Studio penceresinin tarayıcı önbellekleri ve günlükleri; .lmstudio klasöründeki modellere, sohbetlere ve çalışma zamanlarına dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\LM Studio\\Cache",
+      "%APPDATA%\\LM Studio\\Code Cache",
+      "%APPDATA%\\LM Studio\\GPUCache",
+      "%APPDATA%\\LM Studio\\DawnCache",
+      "%APPDATA%\\LM Studio\\DawnGraphiteCache",
+      "%APPDATA%\\LM Studio\\DawnWebGPUCache",
+      "%APPDATA%\\LM Studio\\GraphiteDawnCache",
+      "%APPDATA%\\LM Studio\\GrShaderCache",
+      "%APPDATA%\\LM Studio\\ShaderCache",
+      "%APPDATA%\\LM Studio\\GPUPersistentCache",
+      "%APPDATA%\\LM Studio\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "LM Studio.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "unity-hub-cache",
+    "group": "dev",
+    "name": "Unity Hub cache",
+    "nameTr": "Unity Hub önbelleği",
+    "description": "Browser caches of the Unity Hub window; installed editors, projects and sign-in are not touched.",
+    "descriptionTr": "Unity Hub penceresinin tarayıcı önbellekleri; kurulu düzenleyicilere, projelere ve oturuma dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\UnityHub\\Cache",
+      "%APPDATA%\\UnityHub\\Code Cache",
+      "%APPDATA%\\UnityHub\\GPUCache",
+      "%APPDATA%\\UnityHub\\DawnCache",
+      "%APPDATA%\\UnityHub\\DawnGraphiteCache",
+      "%APPDATA%\\UnityHub\\DawnWebGPUCache",
+      "%APPDATA%\\UnityHub\\GraphiteDawnCache",
+      "%APPDATA%\\UnityHub\\GrShaderCache",
+      "%APPDATA%\\UnityHub\\ShaderCache",
+      "%APPDATA%\\UnityHub\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Unity Hub.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "element-cache",
+    "group": "apps",
+    "name": "Element cache",
+    "nameTr": "Element önbelleği",
+    "description": "Browser caches of the Element (Matrix) desktop app; messages, encryption keys and the search index are not touched.",
+    "descriptionTr": "Element (Matrix) masaüstü uygulamasının tarayıcı önbellekleri; mesajlara, şifreleme anahtarlarına ve arama dizinine dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Element\\Cache",
+      "%APPDATA%\\Element\\Code Cache",
+      "%APPDATA%\\Element\\GPUCache",
+      "%APPDATA%\\Element\\DawnCache",
+      "%APPDATA%\\Element\\DawnGraphiteCache",
+      "%APPDATA%\\Element\\DawnWebGPUCache",
+      "%APPDATA%\\Element\\GraphiteDawnCache",
+      "%APPDATA%\\Element\\GrShaderCache",
+      "%APPDATA%\\Element\\ShaderCache",
+      "%APPDATA%\\Element\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Element.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/element-hq/element-web/blob/develop/apps/desktop/README.md"
+  },
+  {
+    "id": "mattermost-cache",
+    "group": "apps",
+    "name": "Mattermost cache",
+    "nameTr": "Mattermost önbelleği",
+    "description": "Browser caches of the Mattermost desktop app; server list, sign-in and settings are not touched.",
+    "descriptionTr": "Mattermost masaüstü uygulamasının tarayıcı önbellekleri; sunucu listesine, oturuma ve ayarlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Mattermost\\Cache",
+      "%APPDATA%\\Mattermost\\Code Cache",
+      "%APPDATA%\\Mattermost\\GPUCache",
+      "%APPDATA%\\Mattermost\\DawnCache",
+      "%APPDATA%\\Mattermost\\DawnGraphiteCache",
+      "%APPDATA%\\Mattermost\\DawnWebGPUCache",
+      "%APPDATA%\\Mattermost\\GraphiteDawnCache",
+      "%APPDATA%\\Mattermost\\GrShaderCache",
+      "%APPDATA%\\Mattermost\\ShaderCache",
+      "%APPDATA%\\Mattermost\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Mattermost.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "bitwarden-cache",
+    "group": "apps",
+    "name": "Bitwarden cache",
+    "nameTr": "Bitwarden önbelleği",
+    "description": "Browser caches of the Bitwarden desktop app; the encrypted vault file (data.json) and settings are not touched.",
+    "descriptionTr": "Bitwarden masaüstü uygulamasının tarayıcı önbellekleri; şifreli kasa dosyasına (data.json) ve ayarlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Bitwarden\\Cache",
+      "%APPDATA%\\Bitwarden\\Code Cache",
+      "%APPDATA%\\Bitwarden\\GPUCache",
+      "%APPDATA%\\Bitwarden\\DawnCache",
+      "%APPDATA%\\Bitwarden\\DawnGraphiteCache",
+      "%APPDATA%\\Bitwarden\\DawnWebGPUCache",
+      "%APPDATA%\\Bitwarden\\GraphiteDawnCache",
+      "%APPDATA%\\Bitwarden\\GrShaderCache",
+      "%APPDATA%\\Bitwarden\\ShaderCache",
+      "%APPDATA%\\Bitwarden\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\Cache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\Code Cache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\GPUCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\DawnCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\GrShaderCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\ShaderCache",
+      "%LOCALAPPDATA%\\Packages\\8bitSolutionsLLC.bitwardendesktop_*\\LocalCache\\Roaming\\Bitwarden\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Bitwarden.exe"
+    ],
+    "verified": false,
+    "source": "https://bitwarden.com/help/data-storage/"
+  },
+  {
+    "id": "logitech-ghub-cache",
+    "group": "apps",
+    "name": "Logitech G HUB cache",
+    "nameTr": "Logitech G HUB önbelleği",
+    "description": "Browser caches of the Logitech G HUB window; device profiles, macros and Lua scripts are not touched.",
+    "descriptionTr": "Logitech G HUB penceresinin tarayıcı önbellekleri; cihaz profillerine, makrolara ve Lua betiklerine dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\G HUB\\Cache",
+      "%APPDATA%\\G HUB\\Code Cache",
+      "%APPDATA%\\G HUB\\GPUCache",
+      "%APPDATA%\\G HUB\\DawnCache",
+      "%APPDATA%\\G HUB\\DawnGraphiteCache",
+      "%APPDATA%\\G HUB\\DawnWebGPUCache",
+      "%APPDATA%\\G HUB\\GraphiteDawnCache",
+      "%APPDATA%\\G HUB\\GrShaderCache",
+      "%APPDATA%\\G HUB\\ShaderCache",
+      "%APPDATA%\\G HUB\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "lghub.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "steelseries-gg-cache",
+    "group": "apps",
+    "name": "SteelSeries GG cache",
+    "nameTr": "SteelSeries GG önbelleği",
+    "description": "Browser caches of the SteelSeries GG window; device settings and Sonar configurations are not touched.",
+    "descriptionTr": "SteelSeries GG penceresinin tarayıcı önbellekleri; cihaz ayarlarına ve Sonar yapılandırmalarına dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\steelseries-gg-client\\Cache",
+      "%APPDATA%\\steelseries-gg-client\\Code Cache",
+      "%APPDATA%\\steelseries-gg-client\\GPUCache",
+      "%APPDATA%\\steelseries-gg-client\\DawnCache",
+      "%APPDATA%\\steelseries-gg-client\\DawnGraphiteCache",
+      "%APPDATA%\\steelseries-gg-client\\DawnWebGPUCache",
+      "%APPDATA%\\steelseries-gg-client\\GraphiteDawnCache",
+      "%APPDATA%\\steelseries-gg-client\\GrShaderCache",
+      "%APPDATA%\\steelseries-gg-client\\ShaderCache",
+      "%APPDATA%\\steelseries-gg-client\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "SteelSeriesGG.exe",
+      "SteelSeriesGGClient.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "warp-logs",
+    "group": "dev",
+    "name": "Warp terminal logs",
+    "nameTr": "Warp terminal günlükleri",
+    "description": "Log files of the Warp terminal; command history and settings are not touched.",
+    "descriptionTr": "Warp terminalinin günlük dosyaları; komut geçmişine ve ayarlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\warp\\Warp\\data\\logs",
+      "%LOCALAPPDATA%\\warp\\WarpPreview\\data\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "warp.exe"
+    ],
+    "verified": true,
+    "source": "https://docs.warp.dev/support-and-community/troubleshooting-and-support/sending-us-feedback"
+  },
+  {
+    "id": "ollama-logs",
+    "group": "ai",
+    "name": "Ollama logs",
+    "nameTr": "Ollama günlükleri",
+    "description": "Server, app and upgrade logs of Ollama; models and the chat history database are not touched, and logs in use are skipped.",
+    "descriptionTr": "Ollama'nın sunucu, uygulama ve yükseltme günlükleri; modellere ve sohbet geçmişi veritabanına dokunulmaz, kullanımdaki günlükler atlanır.",
+    "paths": [
+      "%LOCALAPPDATA%\\Ollama"
+    ],
+    "mode": "files",
+    "include": [
+      "*.log"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://docs.ollama.com/windows"
+  },
+  {
+    "id": "comfy-desktop-cache",
+    "group": "ai",
+    "name": "Comfy Desktop cache and logs",
+    "nameTr": "Comfy Desktop önbelleği ve günlükleri",
+    "description": "Browser caches and logs of the Comfy Desktop app and the logs and temp folder of its ComfyUI installs; models, workflows, custom nodes, inputs and outputs are not touched.",
+    "descriptionTr": "Comfy Desktop uygulamasının tarayıcı önbellekleri ve günlükleri ile ComfyUI kurulumlarının günlükleri ve geçici klasörü; modellere, iş akışlarına, özel düğümlere, girdilere ve çıktılara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Comfy Desktop\\Cache",
+      "%APPDATA%\\Comfy Desktop\\Code Cache",
+      "%APPDATA%\\Comfy Desktop\\GPUCache",
+      "%APPDATA%\\Comfy Desktop\\DawnCache",
+      "%APPDATA%\\Comfy Desktop\\DawnGraphiteCache",
+      "%APPDATA%\\Comfy Desktop\\DawnWebGPUCache",
+      "%APPDATA%\\Comfy Desktop\\GraphiteDawnCache",
+      "%APPDATA%\\Comfy Desktop\\GrShaderCache",
+      "%APPDATA%\\Comfy Desktop\\ShaderCache",
+      "%APPDATA%\\Comfy Desktop\\GPUPersistentCache",
+      "%APPDATA%\\Comfy Desktop\\logs",
+      "%APPDATA%\\ComfyUI\\Cache",
+      "%APPDATA%\\ComfyUI\\Code Cache",
+      "%APPDATA%\\ComfyUI\\GPUCache",
+      "%APPDATA%\\ComfyUI\\DawnCache",
+      "%APPDATA%\\ComfyUI\\DawnGraphiteCache",
+      "%APPDATA%\\ComfyUI\\DawnWebGPUCache",
+      "%APPDATA%\\ComfyUI\\GraphiteDawnCache",
+      "%APPDATA%\\ComfyUI\\GrShaderCache",
+      "%APPDATA%\\ComfyUI\\ShaderCache",
+      "%APPDATA%\\ComfyUI\\GPUPersistentCache",
+      "%APPDATA%\\ComfyUI\\logs",
+      "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\*\\logs",
+      "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\*\\ComfyUI\\temp",
+      "%USERPROFILE%\\ComfyUI-Installs\\*\\logs",
+      "%USERPROFILE%\\ComfyUI-Installs\\*\\ComfyUI\\temp"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Comfy Desktop.exe",
+      "ComfyUI.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/Comfy-Org/Comfy-Desktop/blob/main/src/main/lib/paths.ts"
+  },
+  {
+    "id": "comfy-desktop-downloads",
+    "group": "ai",
+    "name": "Comfy Desktop environment downloads",
+    "nameTr": "Comfy Desktop ortam indirmeleri",
+    "description": "Downloaded Python environment archives that Comfy Desktop keeps for new installs and repairs; downloaded again when needed.",
+    "descriptionTr": "Comfy Desktop'ın yeni kurulumlar ve onarımlar için sakladığı indirilmiş Python ortamı arşivleri; gerektiğinde yeniden iner.",
+    "paths": [
+      "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Cache\\download-cache",
+      "%USERPROFILE%\\ComfyUI-Cache\\download-cache",
+      "%APPDATA%\\Comfy Desktop\\download-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "Comfy Desktop.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/Comfy-Org/Comfy-Desktop/blob/main/src/main/lib/cache.ts"
+  },
+  {
+    "id": "stability-matrix-cache",
+    "group": "ai",
+    "name": "Stability Matrix cache and logs",
+    "nameTr": "Stability Matrix önbelleği ve günlükleri",
+    "description": "Logs and the uv package cache of Stability Matrix; packages, models, images and workflows are not touched.",
+    "descriptionTr": "Stability Matrix'in günlükleri ve uv paket önbelleği; paketlere, modellere, görsellere ve iş akışlarına dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\StabilityMatrix\\Logs",
+      "%APPDATA%\\StabilityMatrix\\Assets\\uv\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "StabilityMatrix.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/LykosAI/StabilityMatrix/blob/main/StabilityMatrix.Core/Helper/Compat.cs"
+  },
+  {
+    "id": "jan-logs-cache",
+    "group": "ai",
+    "name": "Jan logs and cache",
+    "nameTr": "Jan günlükleri ve önbelleği",
+    "description": "Logs and window caches of the Jan desktop app; models, threads, assistants and files are not touched.",
+    "descriptionTr": "Jan masaüstü uygulamasının günlükleri ve pencere önbellekleri; modellere, konuşmalara, asistanlara ve dosyalara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Jan\\data\\logs",
+      "%LOCALAPPDATA%\\jan.ai.app\\EBWebView\\Default\\Cache",
+      "%LOCALAPPDATA%\\jan.ai.app\\EBWebView\\Default\\Code Cache",
+      "%LOCALAPPDATA%\\jan.ai.app\\EBWebView\\Default\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Jan.exe",
+      "Jan-Desktop.exe",
+      "llama-server.exe"
+    ],
+    "verified": true,
+    "source": "https://www.jan.ai/docs/desktop/data-folder"
+  },
+  {
+    "id": "anythingllm-logs",
+    "group": "ai",
+    "name": "AnythingLLM logs",
+    "nameTr": "AnythingLLM günlükleri",
+    "description": "Log files of AnythingLLM Desktop; documents, vector databases and chats are not touched.",
+    "descriptionTr": "AnythingLLM Desktop'ın günlük dosyaları; belgelere, vektör veritabanlarına ve sohbetlere dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\anythingllm-desktop\\storage\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "AnythingLLM.exe"
+    ],
+    "verified": true,
+    "source": "https://docs.anythingllm.com/installation-desktop/storage"
+  },
+  {
+    "id": "kagglehub-cache",
+    "group": "ai",
+    "name": "KaggleHub cache",
+    "nameTr": "KaggleHub önbelleği",
+    "description": "Datasets, models and competition files downloaded with kagglehub; downloaded again on the next use. Your Kaggle credentials are not touched.",
+    "descriptionTr": "kagglehub ile indirilen veri kümeleri, modeller ve yarışma dosyaları; bir sonraki kullanımda yeniden iner. Kaggle kimlik bilgilerinize dokunulmaz.",
+    "paths": [
+      "%USERPROFILE%\\.cache\\kagglehub"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/Kaggle/kagglehub/blob/main/src/kagglehub/config.py"
+  },
+  {
+    "id": "ml-library-model-caches",
+    "group": "ai",
+    "name": "Python library model downloads",
+    "nameTr": "Python kitaplığı model indirmeleri",
+    "description": "Pretrained weights and datasets that Keras, EasyOCR, DeepFace, rembg, OpenAI CLIP, ModelScope and PaddleX downloaded on first use; downloaded again when needed.",
+    "descriptionTr": "Keras, EasyOCR, DeepFace, rembg, OpenAI CLIP, ModelScope ve PaddleX'in ilk kullanımda indirdiği önceden eğitilmiş ağırlıklar ve veri kümeleri; gerektiğinde yeniden iner.",
+    "paths": [
+      "%USERPROFILE%\\.keras\\datasets",
+      "%USERPROFILE%\\.EasyOCR\\model",
+      "%USERPROFILE%\\.deepface\\weights",
+      "%USERPROFILE%\\.rembg\\models",
+      "%USERPROFILE%\\.cache\\clip",
+      "%USERPROFILE%\\.cache\\modelscope\\hub",
+      "%USERPROFILE%\\.paddlex\\official_models",
+      "%USERPROFILE%\\.paddlex\\temp"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": true,
+    "source": "https://github.com/danielgatis/rembg/blob/main/rembg/sessions/base.py"
+  },
+  {
+    "id": "gpu-kernel-caches",
+    "group": "ai",
+    "name": "Triton and PyTorch extension caches",
+    "nameTr": "Triton ve PyTorch uzantı önbellekleri",
+    "description": "Compiled GPU kernels of Triton and compiled PyTorch C++/CUDA extensions; rebuilt on next use, which for extensions needs the compiler toolchain.",
+    "descriptionTr": "Triton'un derlenmiş GPU çekirdekleri ve derlenmiş PyTorch C++/CUDA uzantıları; bir sonraki kullanımda yeniden derlenir, uzantılar için derleyici araçları gerekir.",
+    "paths": [
+      "%USERPROFILE%\\.triton\\cache",
+      "%LOCALAPPDATA%\\torch_extensions\\torch_extensions\\Cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "python.exe",
+      "pythonw.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/pytorch/pytorch/blob/main/torch/utils/cpp_extension.py"
+  },
+  {
+    "id": "ea-app-logs",
+    "group": "games",
+    "name": "EA app logs",
+    "nameTr": "EA uygulaması günlükleri",
+    "description": "Log files and crash dumps of the EA app; installed games, cloud saves and sign-in are not touched.",
+    "descriptionTr": "EA uygulamasının günlük dosyaları ve çökme dökümleri; kurulu oyunlara, bulut kayıtlarına ve oturuma dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Electronic Arts\\EA Desktop\\Logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "EADesktop.exe",
+      "EABackgroundService.exe",
+      "EALauncher.exe",
+      "EALocalHostSvc.exe",
+      "EACefSubProcess.exe"
+    ],
+    "verified": true,
+    "source": "https://help.ea.com/en/articles/technical-issues/ea-app-error-reporter/"
+  },
+  {
+    "id": "ea-app-cache",
+    "group": "games",
+    "name": "EA app cache",
+    "nameTr": "EA uygulaması önbelleği",
+    "description": "Browser, interface and overlay caches of the EA app; rebuilt on the next start. Sign-in, cloud-save sync and offline data are not touched. EA's own App Recovery > Clear cache does the same and more.",
+    "descriptionTr": "EA uygulamasının tarayıcı, arayüz ve oyun içi katman önbellekleri; sonraki açılışta yeniden oluşur. Oturuma, bulut kaydı eşitlemesine ve çevrimdışı verilere dokunulmaz. EA'nın kendi Uygulama Kurtarma > Önbelleği temizle seçeneği bunu ve fazlasını yapar.",
+    "paths": [
+      "%LOCALAPPDATA%\\Electronic Arts\\EA Desktop\\CEF\\BrowserCache\\EADesktop\\Cache",
+      "%LOCALAPPDATA%\\Electronic Arts\\EA Desktop\\CEF\\BrowserCache\\EADesktop\\Code Cache",
+      "%LOCALAPPDATA%\\Electronic Arts\\EA Desktop\\CEF\\BrowserCache\\EADesktop\\GPUCache",
+      "%LOCALAPPDATA%\\Electronic Arts\\EA Desktop\\CEF\\BrowserCache\\EADesktop\\DawnCache",
+      "%LOCALAPPDATA%\\Electronic Arts\\EA Desktop\\IGOCache",
+      "%LOCALAPPDATA%\\EADesktop\\cache",
+      "%LOCALAPPDATA%\\EALaunchHelper\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "EADesktop.exe",
+      "EABackgroundService.exe",
+      "EALauncher.exe",
+      "EALocalHostSvc.exe",
+      "EACefSubProcess.exe"
+    ],
+    "verified": false,
+    "source": "https://help.ea.com/en/articles/technical-issues/clear-cache/"
+  },
+  {
+    "id": "origin-cache",
+    "group": "games",
+    "name": "Origin cache",
+    "nameTr": "Origin önbelleği",
+    "description": "Web, image and avatar caches left by the retired Origin client; cloud saves and downloaded game packages are not touched.",
+    "descriptionTr": "Kullanımdan kalkan Origin istemcisinin bıraktığı web, görsel ve avatar önbellekleri; bulut kayıtlarına ve indirilmiş oyun paketlerine dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Origin\\Web Cache",
+      "%LOCALAPPDATA%\\Origin\\ImageCache",
+      "%LOCALAPPDATA%\\Origin\\AvatarsCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Origin.exe",
+      "OriginWebHelperService.exe"
+    ],
+    "verified": false,
+    "source": "https://answers.ea.com/t5/EA-General-Questions/need-help-clearing-origin-cashe-files/m-p/4423497"
+  },
+  {
+    "id": "origin-local-content",
+    "group": "games",
+    "name": "Origin downloaded game packages",
+    "nameTr": "Origin indirilmiş oyun paketleri",
+    "description": "Game and DLC packages downloaded by the retired Origin client; measured only, because some installed games may still use them.",
+    "descriptionTr": "Kullanımdan kalkan Origin istemcisinin indirdiği oyun ve ek içerik paketleri; bazı kurulu oyunlar hâlâ kullanıyor olabileceği için yalnızca ölçülür.",
+    "paths": [
+      "%PROGRAMDATA%\\Origin\\LocalContent"
+    ],
+    "mode": "report",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": "https://www.online-tech-tips.com/how-to-clear-your-origin-cache/"
+  },
+  {
+    "id": "ubisoft-connect-cache",
+    "group": "games",
+    "name": "Ubisoft Connect cache and logs",
+    "nameTr": "Ubisoft Connect önbelleği ve günlükleri",
+    "description": "Web, asset and telemetry caches and logs of Ubisoft Connect; save games, installed games and ownership data are not touched.",
+    "descriptionTr": "Ubisoft Connect'in web, varlık ve telemetri önbellekleri ile günlükleri; oyun kayıtlarına, kurulu oyunlara ve sahiplik verilerine dokunulmaz.",
+    "paths": [
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\cache\\http*",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\cache\\assets",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\cache\\telemetry",
+      "%LOCALAPPDATA%\\Ubisoft Game Launcher\\cache\\http*",
+      "%LOCALAPPDATA%\\Ubisoft Game Launcher\\cache\\assets",
+      "%LOCALAPPDATA%\\Ubisoft Game Launcher\\cache\\telemetry",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "UbisoftConnect.exe",
+      "UbisoftGameLauncher.exe",
+      "UbisoftGameLauncher64.exe",
+      "UplayWebCore.exe",
+      "upc.exe"
+    ],
+    "verified": true,
+    "source": "https://www.ubisoft.com/en-us/help/connectivity-and-performance/article/emptying-the-cache-of-ubisoft-connect-pc/000061966"
+  },
+  {
+    "id": "gog-galaxy-cache",
+    "group": "games",
+    "name": "GOG Galaxy cache and logs",
+    "nameTr": "GOG Galaxy önbelleği ve günlükleri",
+    "description": "Logs, crash dumps and downloaded store artwork of GOG Galaxy; the library database, game support files and settings are not touched.",
+    "descriptionTr": "GOG Galaxy'nin günlükleri, çökme dökümleri ve indirilmiş mağaza görselleri; kitaplık veritabanına, oyun destek dosyalarına ve ayarlara dokunulmaz.",
+    "paths": [
+      "%PROGRAMDATA%\\GOG.com\\Galaxy\\logs",
+      "%PROGRAMDATA%\\GOG.com\\Galaxy\\crashdumps",
+      "%PROGRAMDATA%\\GOG.com\\Galaxy\\webcache\\*\\gog",
+      "%PROGRAMDATA%\\GOG.com\\Galaxy\\webcache\\*\\steam",
+      "%PROGRAMDATA%\\GOG.com\\Galaxy\\webcache\\*\\epic",
+      "%PROGRAMDATA%\\GOG.com\\Galaxy\\webcache\\*\\xboxone"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "GalaxyClient.exe",
+      "GalaxyClientService.exe",
+      "GalaxyCommunication.exe"
+    ],
+    "verified": false,
+    "source": "https://www.gog.com/forum/general_beta_gog_galaxy_2.0/empty_image_cache"
+  },
+  {
+    "id": "xbox-app-cache",
+    "group": "games",
+    "name": "Xbox app cache and logs",
+    "nameTr": "Xbox uygulaması önbelleği ve günlükleri",
+    "description": "Logs, image cache, temp files and web caches of the Xbox app for PC; installed games and captures are not touched.",
+    "descriptionTr": "PC için Xbox uygulamasının günlükleri, görsel önbelleği, geçici dosyaları ve web önbellekleri; kurulu oyunlara ve kayıtlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\Logs",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\DiagOutputDir",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalCache\\ImageCache",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\TempState",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\EBWebView\\Default\\Cache",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\EBWebView\\Default\\Code Cache",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\EBWebView\\Default\\GPUCache",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\EBWebView\\GrShaderCache",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\EBWebView\\ShaderCache",
+      "%LOCALAPPDATA%\\Packages\\Microsoft.GamingApp_8wekyb3d8bbwe\\LocalState\\EBWebView\\GraphiteDawnCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "XboxPcApp.exe",
+      "XboxPcAppCE.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "minecraft-logs",
+    "group": "games",
+    "name": "Minecraft logs and crash reports",
+    "nameTr": "Minecraft günlükleri ve çökme raporları",
+    "description": "Game logs, crash reports and launcher web caches of Minecraft: Java Edition, including CurseForge instances; worlds, mods, resource packs, screenshots and accounts are not touched.",
+    "descriptionTr": "Minecraft: Java Edition'ın oyun günlükleri, çökme raporları ve başlatıcı web önbellekleri, CurseForge örnekleri dahil; dünyalara, modlara, kaynak paketlerine, ekran görüntülerine ve hesaplara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\.minecraft\\logs",
+      "%APPDATA%\\.minecraft\\crash-reports",
+      "%USERPROFILE%\\curseforge\\minecraft\\Instances\\*\\logs",
+      "%USERPROFILE%\\curseforge\\minecraft\\Instances\\*\\crash-reports",
+      "%APPDATA%\\.minecraft\\webcache2\\Default\\Cache",
+      "%APPDATA%\\.minecraft\\webcache2\\Default\\Code Cache",
+      "%APPDATA%\\.minecraft\\webcache2\\Default\\GPUCache",
+      "%USERPROFILE%\\curseforge\\minecraft\\Install\\webcache2\\Default\\Cache",
+      "%USERPROFILE%\\curseforge\\minecraft\\Install\\webcache2\\Default\\Code Cache",
+      "%USERPROFILE%\\curseforge\\minecraft\\Install\\webcache2\\Default\\GPUCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "MinecraftLauncher.exe",
+      "Minecraft.exe",
+      "javaw.exe"
+    ],
+    "verified": true,
+    "source": "https://minecraft.wiki/w/.minecraft"
+  },
+  {
+    "id": "minecraft-launcher-logs",
+    "group": "games",
+    "name": "Minecraft Launcher logs",
+    "nameTr": "Minecraft Launcher günlükleri",
+    "description": "Log files of the official Minecraft Launcher, including the copy CurseForge uses; launcher profiles and accounts are not touched.",
+    "descriptionTr": "Resmî Minecraft Launcher'ın günlük dosyaları, CurseForge'un kullandığı kopya dahil; başlatıcı profillerine ve hesaplara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\.minecraft",
+      "%USERPROFILE%\\curseforge\\minecraft\\Install"
+    ],
+    "mode": "files",
+    "include": [
+      "launcher_log*.txt",
+      "launcher_cef_log*.txt"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "MinecraftLauncher.exe",
+      "Minecraft.exe"
+    ],
+    "verified": false,
+    "source": "https://minecraft.wiki/w/.minecraft"
+  },
+  {
+    "id": "prism-launcher-cache",
+    "group": "games",
+    "name": "Prism Launcher cache and logs",
+    "nameTr": "Prism Launcher önbelleği ve günlükleri",
+    "description": "Download cache and logs of Prism Launcher; instances, worlds, mods and accounts are not touched.",
+    "descriptionTr": "Prism Launcher'ın indirme önbelleği ve günlükleri; örneklere, dünyalara, modlara ve hesaplara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\PrismLauncher\\cache",
+      "%APPDATA%\\PrismLauncher\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "prismlauncher.exe",
+      "javaw.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/PrismLauncher/PrismLauncher/blob/develop/launcher/Application.cpp"
+  },
+  {
+    "id": "modrinth-app-cache",
+    "group": "games",
+    "name": "Modrinth App cache and logs",
+    "nameTr": "Modrinth App önbelleği ve günlükleri",
+    "description": "Download caches and launcher logs of the Modrinth App; profiles, worlds and mods are not touched.",
+    "descriptionTr": "Modrinth App'in indirme önbellekleri ve başlatıcı günlükleri; profillere, dünyalara ve modlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\ModrinthApp\\caches",
+      "%APPDATA%\\ModrinthApp\\launcher_logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Modrinth App.exe",
+      "javaw.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/modrinth/code/blob/main/packages/app-lib/src/state/dirs.rs"
+  },
+  {
+    "id": "curseforge-app-cache",
+    "group": "games",
+    "name": "CurseForge app cache",
+    "nameTr": "CurseForge uygulaması önbelleği",
+    "description": "Browser caches and logs of the CurseForge app; modpacks, instances and sign-in are not touched.",
+    "descriptionTr": "CurseForge uygulamasının tarayıcı önbellekleri ve günlükleri; mod paketlerine, örneklere ve oturuma dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\CurseForge\\Cache",
+      "%APPDATA%\\CurseForge\\Code Cache",
+      "%APPDATA%\\CurseForge\\GPUCache",
+      "%APPDATA%\\CurseForge\\DawnCache",
+      "%APPDATA%\\CurseForge\\DawnGraphiteCache",
+      "%APPDATA%\\CurseForge\\DawnWebGPUCache",
+      "%APPDATA%\\CurseForge\\GraphiteDawnCache",
+      "%APPDATA%\\CurseForge\\GrShaderCache",
+      "%APPDATA%\\CurseForge\\ShaderCache",
+      "%APPDATA%\\CurseForge\\GPUPersistentCache",
+      "%APPDATA%\\CurseForge\\logs",
+      "%APPDATA%\\CurseForge\\agent\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "CurseForge.exe"
+    ],
+    "verified": false,
+    "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "roblox-logs-downloads",
+    "group": "games",
+    "name": "Roblox logs and installer downloads",
+    "nameTr": "Roblox günlükleri ve kurulum indirmeleri",
+    "description": "Log files and downloaded update packages of Roblox Player and Studio; installed versions and settings are not touched.",
+    "descriptionTr": "Roblox Player ve Studio'nun günlük dosyaları ve indirilmiş güncelleme paketleri; kurulu sürümlere ve ayarlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Roblox\\logs",
+      "%LOCALAPPDATA%\\Roblox\\Downloads",
+      "%LOCALAPPDATA%\\Bloxstrap\\Downloads",
+      "%USERPROFILE%\\AppData\\LocalLow\\RbxLogs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "RobloxPlayerBeta.exe",
+      "RobloxStudioBeta.exe",
+      "RobloxPlayerLauncher.exe",
+      "Bloxstrap.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/bloxstraplabs/bloxstrap/blob/main/Bloxstrap/Bootstrapper.cs"
+  },
+  {
+    "id": "steam-download-leftovers",
+    "group": "games",
+    "name": "Steam download leftovers",
+    "nameTr": "Steam indirme artıkları",
+    "description": "Temporary files of Steam game and Workshop downloads in the default Steam folder; installed games and their content are not touched.",
+    "descriptionTr": "Varsayılan Steam klasöründeki oyun ve Atölye indirmelerinin geçici dosyaları; kurulu oyunlara ve içeriklerine dokunulmaz.",
+    "paths": [
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\temp",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\workshop\\downloads",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\workshop\\temp"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "steam.exe",
+      "steamwebhelper.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "steam-partial-downloads",
+    "group": "games",
+    "name": "Steam unfinished downloads",
+    "nameTr": "Steam tamamlanmamış indirmeleri",
+    "description": "Partly downloaded game updates and installs waiting in Steam's queue; Steam downloads them again from the start, and installed game versions keep working.",
+    "descriptionTr": "Steam kuyruğunda bekleyen, yarısı inmiş oyun güncellemeleri ve kurulumları; Steam bunları baştan indirir, kurulu oyun sürümleri çalışmaya devam eder.",
+    "paths": [
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\steamapps\\downloading"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "steam.exe",
+      "steamwebhelper.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "steam-redownloadable-caches",
+    "group": "games",
+    "name": "Steam client packages and artwork",
+    "nameTr": "Steam istemci paketleri ve görselleri",
+    "description": "Steam client update packages, depot manifests and library artwork; Steam downloads them again when needed, so the next start needs an internet connection.",
+    "descriptionTr": "Steam istemci güncelleme paketleri, depo bildirimleri ve kitaplık görselleri; Steam gerektiğinde yeniden indirir, bu yüzden sonraki açılışta internet bağlantısı gerekir.",
+    "paths": [
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\package",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\depotcache",
+      "%SYSTEMDRIVE%\\Program Files (x86)\\Steam\\appcache\\librarycache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "steam.exe",
+      "steamwebhelper.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "nvidia-app-logs",
+    "group": "games",
+    "name": "NVIDIA app logs",
+    "nameTr": "NVIDIA uygulaması günlükleri",
+    "description": "Log files of the NVIDIA app and its overlay; driver settings, game profiles and recordings are not touched.",
+    "descriptionTr": "NVIDIA uygulamasının ve katmanının günlük dosyaları; sürücü ayarlarına, oyun profillerine ve kayıtlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay"
+    ],
+    "mode": "files",
+    "include": [
+      "*.log",
+      "*.log.bak"
+    ],
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "NVIDIA App.exe",
+      "NVIDIA Overlay.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "nvidia-app-web-cache",
+    "group": "games",
+    "name": "NVIDIA app web cache",
+    "nameTr": "NVIDIA uygulaması web önbelleği",
+    "description": "HTTP, code and GPU caches of the NVIDIA app and overlay windows; sign-in and settings are not touched.",
+    "descriptionTr": "NVIDIA uygulaması ve katman pencerelerinin HTTP, kod ve GPU önbellekleri; oturuma ve ayarlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\Default\\Cache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\Default\\Code Cache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\Default\\GPUCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\Default\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\Default\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\GrShaderCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\ShaderCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA App\\CefCache\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\Default\\Cache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\Default\\Code Cache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\Default\\GPUCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\Default\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\Default\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\GrShaderCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\ShaderCache",
+      "%LOCALAPPDATA%\\NVIDIA Corporation\\NVIDIA Overlay\\CefCache\\GraphiteDawnCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "NVIDIA App.exe",
+      "NVIDIA Overlay.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "nvidia-driver-downloads",
+    "group": "games",
+    "name": "NVIDIA driver downloads",
+    "nameTr": "NVIDIA sürücü indirmeleri",
+    "description": "Driver packages the NVIDIA app or GeForce Experience downloaded and unpacked for installation; downloaded again if you reinstall a driver. Do not clean while a driver install is pending.",
+    "descriptionTr": "NVIDIA uygulamasının veya GeForce Experience'ın kurulum için indirip açtığı sürücü paketleri; bir sürücüyü yeniden kurarsanız yeniden iner. Bekleyen bir sürücü kurulumu varken temizlemeyin.",
+    "paths": [
+      "%PROGRAMDATA%\\NVIDIA Corporation\\NVIDIA App\\UpdateFramework\\ota-artifacts",
+      "%PROGRAMDATA%\\NVIDIA Corporation\\Downloader"
+    ],
+    "mode": "contents",
+    "minAgeHours": 72,
+    "risk": "review",
+    "admin": true,
+    "closeApps": [
+      "NVIDIA App.exe",
+      "NVIDIA GeForce Experience.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "nvidia-system-logs",
+    "group": "games",
+    "name": "NVIDIA service logs and crash dumps",
+    "nameTr": "NVIDIA hizmet günlükleri ve çökme dökümleri",
+    "description": "Service logs and crash dumps of the NVIDIA app's background services; logs in use are skipped.",
+    "descriptionTr": "NVIDIA uygulamasının arka plan hizmetlerine ait günlükler ve çökme dökümleri; kullanımdaki günlükler atlanır.",
+    "paths": [
+      "%PROGRAMDATA%\\NVIDIA Corporation\\NVIDIA App\\Logs",
+      "%PROGRAMDATA%\\NVIDIA Corporation\\NVIDIA App\\SessionLogs",
+      "%PROGRAMDATA%\\NVIDIA Corporation\\CrashDumps"
+    ],
+    "mode": "contents",
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": true,
+    "closeApps": [],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "amd-software-cache",
+    "group": "games",
+    "name": "AMD Software interface cache",
+    "nameTr": "AMD Software arayüz önbelleği",
+    "description": "Qt shader and pipeline caches of the AMD Software: Adrenalin Edition window; rebuilt on the next start. Game profiles, the recordings gallery and settings are not touched.",
+    "descriptionTr": "AMD Software: Adrenalin Edition penceresinin Qt gölgelendirici ve işlem hattı önbellekleri; sonraki açılışta yeniden oluşur. Oyun profillerine, kayıt galerisine ve ayarlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\AMD\\Radeonsoftware\\cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "RadeonSoftware.exe",
+      "AMDRSServ.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "amd-software-logs",
+    "group": "games",
+    "name": "AMD Software old logs",
+    "nameTr": "AMD Software eski günlükleri",
+    "description": "Dated log files that AMD Software: Adrenalin Edition writes on each start; its game and gallery databases are not touched.",
+    "descriptionTr": "AMD Software: Adrenalin Edition'ın her açılışta yazdığı tarihli günlük dosyaları; oyun ve galeri veritabanlarına dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\AMD\\CN"
+    ],
+    "mode": "files",
+    "include": [
+      "*.log"
+    ],
+    "minAgeHours": 24,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "overwolf-logs",
+    "group": "games",
+    "name": "Overwolf logs",
+    "nameTr": "Overwolf günlükleri",
+    "description": "Log files of Overwolf and its apps; installed apps, settings and recordings are not touched.",
+    "descriptionTr": "Overwolf'un ve uygulamalarının günlük dosyaları; kurulu uygulamalara, ayarlara ve kayıtlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Overwolf\\Log"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Overwolf.exe",
+      "OverwolfBrowser.exe"
+    ],
+    "verified": true,
+    "source": "https://dev.overwolf.com/ow-native/guides/test-your-app/ow-logs/trace"
+  },
+  {
+    "id": "playnite-cache",
+    "group": "games",
+    "name": "Playnite cache",
+    "nameTr": "Playnite önbelleği",
+    "description": "Image and web caches of the Playnite game library; the library, extensions, themes and backups are not touched.",
+    "descriptionTr": "Playnite oyun kitaplığının görsel ve web önbellekleri; kitaplığa, uzantılara, temalara ve yedeklere dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\Playnite\\cache",
+      "%APPDATA%\\Playnite\\browsercache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Playnite.DesktopApp.exe",
+      "Playnite.FullscreenApp.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/JosefNemec/Playnite/blob/master/source/Playnite/Settings/PlaynitePaths.cs"
+  },
+  {
+    "id": "itch-app-cache",
+    "group": "games",
+    "name": "itch app cache and logs",
+    "nameTr": "itch uygulaması önbelleği ve günlükleri",
+    "description": "Browser caches and logs of the itch.io desktop app; games installed in the apps folder are not touched.",
+    "descriptionTr": "itch.io masaüstü uygulamasının tarayıcı önbellekleri ve günlükleri; apps klasörüne kurulu oyunlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\itch\\Cache",
+      "%APPDATA%\\itch\\Code Cache",
+      "%APPDATA%\\itch\\GPUCache",
+      "%APPDATA%\\itch\\DawnCache",
+      "%APPDATA%\\itch\\DawnGraphiteCache",
+      "%APPDATA%\\itch\\DawnWebGPUCache",
+      "%APPDATA%\\itch\\GraphiteDawnCache",
+      "%APPDATA%\\itch\\GrShaderCache",
+      "%APPDATA%\\itch\\ShaderCache",
+      "%APPDATA%\\itch\\GPUPersistentCache",
+      "%APPDATA%\\itch\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "itch.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/itchio/itch/blob/master/src/main/util/paths.ts"
+  },
+  {
+    "id": "heroic-logs",
+    "group": "games",
+    "name": "Heroic Games Launcher logs",
+    "nameTr": "Heroic Games Launcher günlükleri",
+    "description": "Logs and browser caches of Heroic Games Launcher; game settings, Epic and GOG sign-in and installed games are not touched.",
+    "descriptionTr": "Heroic Games Launcher'ın günlükleri ve tarayıcı önbellekleri; oyun ayarlarına, Epic ve GOG oturumlarına ve kurulu oyunlara dokunulmaz.",
+    "paths": [
+      "%APPDATA%\\heroic\\Cache",
+      "%APPDATA%\\heroic\\Code Cache",
+      "%APPDATA%\\heroic\\GPUCache",
+      "%APPDATA%\\heroic\\DawnCache",
+      "%APPDATA%\\heroic\\DawnGraphiteCache",
+      "%APPDATA%\\heroic\\DawnWebGPUCache",
+      "%APPDATA%\\heroic\\GraphiteDawnCache",
+      "%APPDATA%\\heroic\\GrShaderCache",
+      "%APPDATA%\\heroic\\ShaderCache",
+      "%APPDATA%\\heroic\\GPUPersistentCache",
+      "%APPDATA%\\heroic\\logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Heroic.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/blob/main/src/backend/constants/paths.ts"
+  },
+  {
+    "id": "amazon-games-logs",
+    "group": "games",
+    "name": "Amazon Games logs",
+    "nameTr": "Amazon Games günlükleri",
+    "description": "Log files and crash dumps of the Amazon Games app; the game library and installed games are not touched.",
+    "descriptionTr": "Amazon Games uygulamasının günlük dosyaları ve çökme dökümleri; oyun kitaplığına ve kurulu oyunlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Amazon Games\\Data\\Logs",
+      "%LOCALAPPDATA%\\Amazon Games\\Data\\Dumps"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "Amazon Games.exe",
+      "Amazon Games UI.exe"
+    ],
+    "verified": false,
+    "source": null
+  },
+  {
+    "id": "chrome-channels-cache",
+    "group": "browser",
+    "name": "Chrome Beta, Dev and Canary cache",
+    "nameTr": "Chrome Beta, Dev ve Canary önbelleği",
+    "description": "HTTP, code and GPU caches of Chrome Beta, Dev, Canary and Chrome for Testing; history, passwords, cookies and sessions are not touched.",
+    "descriptionTr": "Chrome Beta, Dev, Canary ve Chrome for Testing'in HTTP, kod ve GPU önbellekleri; geçmişe, parolalara, çerezlere ve oturumlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Beta\\User Data\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome Dev\\User Data\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome SxS\\User Data\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Google\\Chrome for Testing\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "chrome.exe"
+    ],
+    "verified": true,
+    "source": "https://chromium.googlesource.com/chromium/src/+/main/docs/user_data_dir.md"
+  },
+  {
+    "id": "edge-channels-cache",
+    "group": "browser",
+    "name": "Edge Beta, Dev and Canary cache",
+    "nameTr": "Edge Beta, Dev ve Canary önbelleği",
+    "description": "HTTP, code and GPU caches of Microsoft Edge Beta, Dev and Canary; history, passwords, cookies and sessions are not touched.",
+    "descriptionTr": "Microsoft Edge Beta, Dev ve Canary'nin HTTP, kod ve GPU önbellekleri; geçmişe, parolalara, çerezlere ve oturumlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Beta\\User Data\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge Dev\\User Data\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Microsoft\\Edge SxS\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "msedge.exe"
+    ],
+    "verified": false,
+    "source": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/set-preview-channel"
+  },
+  {
+    "id": "brave-channels-cache",
+    "group": "browser",
+    "name": "Brave Beta and Nightly cache",
+    "nameTr": "Brave Beta ve Nightly önbelleği",
+    "description": "HTTP, code and GPU caches of Brave Beta, Dev and Nightly; history, passwords, cookies and sessions are not touched.",
+    "descriptionTr": "Brave Beta, Dev ve Nightly'nin HTTP, kod ve GPU önbellekleri; geçmişe, parolalara, çerezlere ve oturumlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Beta\\User Data\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Dev\\User Data\\GPUPersistentCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser-Nightly\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "brave.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/brave/brave-core/blob/master/chromium_src/chrome/install_static/chromium_install_modes.h"
+  },
+  {
+    "id": "thorium-cache",
+    "group": "browser",
+    "name": "Thorium cache",
+    "nameTr": "Thorium önbelleği",
+    "description": "HTTP, code and GPU caches of the Thorium browser; history, passwords, cookies and sessions are not touched.",
+    "descriptionTr": "Thorium tarayıcısının HTTP, kod ve GPU önbellekleri; geçmişe, parolalara, çerezlere ve oturumlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Thorium\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "thorium.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/Alex313031/thorium/blob/main/src/chrome/install_static/chromium_install_modes.h"
+  },
+  {
+    "id": "yandex-cache",
+    "group": "browser",
+    "name": "Yandex Browser cache",
+    "nameTr": "Yandex Browser önbelleği",
+    "description": "HTTP, code and GPU caches of Yandex Browser; history, passwords, cookies and sessions are not touched.",
+    "descriptionTr": "Yandex Browser'ın HTTP, kod ve GPU önbellekleri; geçmişe, parolalara, çerezlere ve oturumlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Yandex\\YandexBrowser\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "browser.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/moonD4rk/HackBrowserData/blob/main/browser/browser_windows.go"
+  },
+  {
+    "id": "whale-cache",
+    "group": "browser",
+    "name": "Naver Whale cache",
+    "nameTr": "Naver Whale önbelleği",
+    "description": "HTTP, code and GPU caches of the Naver Whale browser; history, passwords, cookies and sessions are not touched.",
+    "descriptionTr": "Naver Whale tarayıcısının HTTP, kod ve GPU önbellekleri; geçmişe, parolalara, çerezlere ve oturumlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\Naver\\Naver Whale\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "whale.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/cookies.py"
+  },
+  {
+    "id": "coccoc-cache",
+    "group": "browser",
+    "name": "Cốc Cốc cache",
+    "nameTr": "Cốc Cốc önbelleği",
+    "description": "HTTP, code and GPU caches of the Cốc Cốc browser; history, passwords, cookies and sessions are not touched.",
+    "descriptionTr": "Cốc Cốc tarayıcısının HTTP, kod ve GPU önbellekleri; geçmişe, parolalara, çerezlere ve oturumlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\Cache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\Code Cache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\GPUCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\DawnCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\DawnGraphiteCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\DawnWebGPUCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\GrShaderCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\*\\ShaderCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\ShaderCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\GrShaderCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\GraphiteDawnCache",
+      "%LOCALAPPDATA%\\CocCoc\\Browser\\User Data\\GPUPersistentCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "browser.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/moonD4rk/HackBrowserData/blob/main/browser/browser_windows.go"
+  },
+  {
+    "id": "waterfox-cache",
+    "group": "browser",
+    "name": "Waterfox cache",
+    "nameTr": "Waterfox önbelleği",
+    "description": "Page, startup and thumbnail caches of Waterfox; bookmarks, history, passwords and cookies live in another folder and are not touched.",
+    "descriptionTr": "Waterfox tarayıcısının sayfa, başlangıç ve küçük resim önbellekleri; yer imleri, geçmiş, parolalar ve çerezler başka klasördedir ve onlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Waterfox\\Profiles\\*\\cache2",
+      "%LOCALAPPDATA%\\Waterfox\\Profiles\\*\\startupCache",
+      "%LOCALAPPDATA%\\Waterfox\\Profiles\\*\\thumbnails",
+      "%LOCALAPPDATA%\\Waterfox\\Profiles\\*\\shader-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "waterfox.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/bleachbit/bleachbit/blob/master/cleaners/waterfox.xml"
+  },
+  {
+    "id": "librewolf-cache",
+    "group": "browser",
+    "name": "LibreWolf cache",
+    "nameTr": "LibreWolf önbelleği",
+    "description": "Page, startup and thumbnail caches of LibreWolf; bookmarks, history, passwords and cookies live in another folder and are not touched.",
+    "descriptionTr": "LibreWolf tarayıcısının sayfa, başlangıç ve küçük resim önbellekleri; yer imleri, geçmiş, parolalar ve çerezler başka klasördedir ve onlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\librewolf\\Profiles\\*\\cache2",
+      "%LOCALAPPDATA%\\librewolf\\Profiles\\*\\startupCache",
+      "%LOCALAPPDATA%\\librewolf\\Profiles\\*\\thumbnails",
+      "%LOCALAPPDATA%\\librewolf\\Profiles\\*\\shader-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "librewolf.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/bleachbit/bleachbit/blob/master/cleaners/librewolf.xml"
+  },
+  {
+    "id": "floorp-cache",
+    "group": "browser",
+    "name": "Floorp cache",
+    "nameTr": "Floorp önbelleği",
+    "description": "Page, startup and thumbnail caches of Floorp; bookmarks, history, passwords and cookies live in another folder and are not touched.",
+    "descriptionTr": "Floorp tarayıcısının sayfa, başlangıç ve küçük resim önbellekleri; yer imleri, geçmiş, parolalar ve çerezler başka klasördedir ve onlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Floorp\\Profiles\\*\\cache2",
+      "%LOCALAPPDATA%\\Floorp\\Profiles\\*\\startupCache",
+      "%LOCALAPPDATA%\\Floorp\\Profiles\\*\\thumbnails",
+      "%LOCALAPPDATA%\\Floorp\\Profiles\\*\\shader-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "floorp.exe"
+    ],
+    "verified": true,
+    "source": "https://github.com/Floorp-Projects/Floorp-runtime/blob/nora-0.2.0/.github/assets/config/moz.configure"
+  },
+  {
+    "id": "zen-cache",
+    "group": "browser",
+    "name": "Zen Browser cache",
+    "nameTr": "Zen Browser önbelleği",
+    "description": "Page, startup and thumbnail caches of Zen Browser; bookmarks, history, passwords and cookies live in another folder and are not touched.",
+    "descriptionTr": "Zen Browser tarayıcısının sayfa, başlangıç ve küçük resim önbellekleri; yer imleri, geçmiş, parolalar ve çerezler başka klasördedir ve onlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Zen\\Profiles\\*\\cache2",
+      "%LOCALAPPDATA%\\Zen\\Profiles\\*\\startupCache",
+      "%LOCALAPPDATA%\\Zen\\Profiles\\*\\thumbnails",
+      "%LOCALAPPDATA%\\Zen\\Profiles\\*\\shader-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "zen.exe",
+      "zen-browser.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/bleachbit/bleachbit/blob/master/cleaners/zen.xml"
+  },
+  {
+    "id": "palemoon-cache",
+    "group": "browser",
+    "name": "Pale Moon cache",
+    "nameTr": "Pale Moon önbelleği",
+    "description": "Page, startup and thumbnail caches of Pale Moon; bookmarks, history, passwords and cookies live in another folder and are not touched.",
+    "descriptionTr": "Pale Moon tarayıcısının sayfa, başlangıç ve küçük resim önbellekleri; yer imleri, geçmiş, parolalar ve çerezler başka klasördedir ve onlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Moonchild Productions\\Pale Moon\\Profiles\\*\\cache2",
+      "%LOCALAPPDATA%\\Moonchild Productions\\Pale Moon\\Profiles\\*\\startupCache",
+      "%LOCALAPPDATA%\\Moonchild Productions\\Pale Moon\\Profiles\\*\\thumbnails",
+      "%LOCALAPPDATA%\\Moonchild Productions\\Pale Moon\\Profiles\\*\\shader-cache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "palemoon.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/bleachbit/bleachbit/blob/master/cleaners/palemoon.xml"
+  },
+  {
+    "id": "thunderbird-cache",
+    "group": "browser",
+    "name": "Thunderbird cache",
+    "nameTr": "Thunderbird önbelleği",
+    "description": "Web content and startup caches of Thunderbird; mail, offline folders, address books and settings live in another folder and are not touched.",
+    "descriptionTr": "Thunderbird'ün web içeriği ve başlangıç önbellekleri; postalar, çevrimdışı klasörler, adres defterleri ve ayarlar başka klasördedir ve onlara dokunulmaz.",
+    "paths": [
+      "%LOCALAPPDATA%\\Thunderbird\\Profiles\\*\\cache2",
+      "%LOCALAPPDATA%\\Thunderbird\\Profiles\\*\\startupCache"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "thunderbird.exe"
+    ],
+    "verified": false,
+    "source": "https://github.com/bleachbit/bleachbit/blob/master/cleaners/thunderbird.xml"
   }
 ]

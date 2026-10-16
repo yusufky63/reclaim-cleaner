@@ -10,10 +10,12 @@ Windows 10 ve 11 için açık kaynak disk temizleyici ve alan analizcisi. Alanı
 
 - **Genel bakış.** Şu anki ve temizlik sonrası boş alan; "Silinmesi güvenli" ve "Gözden geçirilecek" olarak ayrılmış tek bir öneri listesi. Seçtiklerini hemen temizleyebilir ya da PowerShell betiği olarak alabilirsin.
 - **Alan haritası.** Herhangi bir sürücünün ya da klasörün treemap görünümü; projeler, medya, önbellekler, uygulamalar, yapay zeka modelleri ve Windows olarak renklenir. Temizlik görünümü sadece geri kazanılabilir alanı boyar.
-- **Gereksiz dosyalar.** Bilinen 118 konum: Windows geçici dosyaları ve kayıtları, çökme dökümleri, tarayıcı önbellekleri (Chrome, Edge, Brave, Firefox ve diğerleri), uygulama önbellekleri (Discord, Slack, Teams, VS Code, Spotify), oyun başlatıcıları ve geliştirici önbellekleri (npm, pnpm, pip, uv, Cargo, Gradle, NuGet, Go, Playwright).
+- **Gereksiz dosyalar.** Bilinen 233 konum: Windows geçici dosyaları ve kayıtları, çökme dökümleri, tarayıcı önbellekleri (Chrome, Edge, Brave, Firefox ve diğerleri), uygulama önbellekleri (Discord, Slack, Teams, VS Code, Spotify), oyun başlatıcıları ve geliştirici önbellekleri (npm, pnpm, pip, uv, Cargo, Gradle, NuGet, Go, Playwright).
 - **Geliştirici.** Projelerindeki `node_modules`, `target`, `.next`, `__pycache__`, `.venv` ve 40 başka derleme klasörünü bulur; sadece 30 gündür dokunmadığın projeleri önceden seçer.
+- **YZ modelleri ve asistanları.** Hugging Face, LM Studio, Ollama ve ComfyUI'deki tüm modeller tek listede, iki araçta birden saklananlar işaretli; Claude Code, Codex ve Gemini CLI'ın tuttuğu oturumlar, kontrol noktaları ve kayıtlar.
+- **İndirilenler.** İndirilenler klasörün türe ve yaşa göre, küçük resimlerle; `dosya (1).pdf` gibi tekrar indirmeler işaretli.
 - **Büyük dosyalar, kopyalar, boş klasörler.** Tür ve yaşa göre süzülür; kopyalar tam BLAKE3 özetiyle doğrulanır, sabit bağlantılar bir kez sayılır.
-- **Uygulamalar ve başlangıç.** Masaüstü ve Store uygulamalarını kendi kaldırıcılarıyla kaldırır, artık klasör kontrol eder; başlangıç uygulamalarını Görev Yöneticisi'nin yaptığı gibi geri alınabilir şekilde kapatır.
+- **Uygulamalar ve başlangıç.** Gerçek uygulama ikonları; masaüstü ve Store uygulamalarını kendi kaldırıcılarıyla kaldırır, artık klasör kontrol eder; zaten silinmiş uygulamaların kayıtlarını `.reg` yedeğiyle listeden kaldırır; başlangıç uygulamalarını Görev Yöneticisi'nin yaptığı gibi geri alınabilir şekilde kapatır.
 - **Windows araçları.** Geri Dönüşüm Kutusu, hazırda bekleme dosyası, bileşen deposu temizliği (DISM), Teslim İyileştirme ve önceki Windows kurulumu; hepsi Windows'un kendi komutlarıyla.
 - **Türkçe ve İngilizce**, açık ve koyu tema, taşınabilir mod, yerel temizlik geçmişi.
 

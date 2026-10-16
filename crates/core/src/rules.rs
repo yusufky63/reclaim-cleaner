@@ -57,6 +57,10 @@ pub struct TargetRule {
     pub mode: Mode,
     #[serde(default)]
     pub include: Vec<String>,
+    /// File or folder name globs that are kept wherever they appear inside the paths, such as
+    /// autosave files that apps write into %TEMP%.
+    #[serde(default)]
+    pub exclude: Vec<String>,
     #[serde(default)]
     pub min_age_hours: Option<u32>,
     pub risk: Risk,
@@ -176,6 +180,13 @@ pub fn validate_target(rule: &TargetRule) -> Result<()> {
                 "include patterns must be specific file name globs",
             ));
         }
+    }
+    if rule
+        .exclude
+        .iter()
+        .any(|g| g.contains('\\') || g.contains('/') || g.trim_matches('*').is_empty())
+    {
+        return Err(invalid(id, "exclude patterns must be specific names"));
     }
     if rule
         .close_apps

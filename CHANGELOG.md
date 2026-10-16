@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- AI models page: Hugging Face, LM Studio, Ollama and ComfyUI models in one list, with models stored by two tools flagged. Ollama models are removed with `ollama rm`.
+- AI assistants page: sessions, checkpoints, logs and caches of Claude Code, Codex and Gemini CLI. Credentials and settings are never listed.
+- Downloads page: breakdown by type and age, list and thumbnail grid, browser re-downloads such as `file (1).pdf` flagged.
+- Real app icons in Apps and Startup, file icons in Large files and Downloads.
+- Leftover uninstall entries (the app is already gone) are flagged and can be removed after a `.reg` backup.
+- 115 more cleanup rules (233 in total): Office, OneDrive, Dropbox, Google Drive, Signal, Adobe, Blender, OBS, Plex, Jellyfin, EA app, Ubisoft, GOG, Minecraft, NVIDIA and AMD apps, winget, Scoop, Chocolatey, Docker, Vagrant, more browsers and Electron apps.
+- Rules can exclude names. `%TEMP%` cleaning keeps Blender, Krita and Office autosave files.
+- Research round 2 and the resulting plan in `docs/research/`.
+
+### Fixed
+
+- Dropdowns showed light popups in dark mode.
+- Future timestamps on single files no longer make folders look recently modified.
+
 ## [0.1.0] - 2026-10-16
 
 First public version.

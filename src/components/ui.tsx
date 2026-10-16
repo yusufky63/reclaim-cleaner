@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Loader2, Minus, X } from "lucide-react";
-import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cx } from "../lib/cx";
 import type { Risk } from "../lib/types";
@@ -178,28 +178,114 @@ export function Segmented<T extends string>({ value, options, onChange, size = "
   );
 }
 
+/**
+ * Dropdown built from buttons instead of a native <select>: the native popup ignores the app
+ * theme in WebView2 and showed light lists in dark mode.
+ */
 export function Select<T extends string | number>({ value, options, onChange, label, className }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const [placement, setPlacement] = useState<{ up: boolean; right: boolean }>({ up: false, right: false });
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const listId = useId();
+  const current = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const box = rootRef.current?.getBoundingClientRect();
+    if (box) setPlacement({ up: window.innerHeight - box.bottom < 260 && box.top > 260, right: window.innerWidth - box.left < 240 });
+    listRef.current?.querySelector<HTMLElement>("[aria-selected='true']")?.scrollIntoView({ block: "nearest" });
+  }, [open]);
+
+  const openList = () => {
+    setActive(Math.max(0, options.findIndex((o) => o.value === value)));
+    setOpen(true);
+  };
+  const choose = (i: number) => {
+    const o = options[i];
+    if (o) onChange(o.value);
+    setOpen(false);
+  };
+  const onKey = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      openList();
+      return;
+    }
+    if (!open) return;
+    if (e.key === "Escape" || e.key === "Tab") setOpen(false);
+    else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((a) => Math.min(options.length - 1, a + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((a) => Math.max(0, a - 1));
+    } else if (e.key === "Home") setActive(0);
+    else if (e.key === "End") setActive(options.length - 1);
+    else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      choose(active);
+    }
+  };
+
   return (
-    <label className={cx("field relative inline-flex items-center", className)}>
-      <span className="sr-only">{label}</span>
-      <select
+    <div ref={rootRef} className={cx("relative inline-flex", className)}>
+      <button
+        type="button"
+        role="combobox"
         aria-label={label}
-        value={String(value)}
-        onChange={(e) => {
-          const raw = e.target.value;
-          const match = options.find((o) => String(o.value) === raw);
-          if (match) onChange(match.value);
-        }}
-        className="h-full w-full cursor-pointer appearance-none bg-transparent pr-6 text-[14px] text-ink outline-none"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-activedescendant={open ? `${listId}-${active}` : undefined}
+        onClick={() => (open ? setOpen(false) : openList())}
+        onKeyDown={onKey}
+        className={cx("field inline-flex w-full min-w-0 items-center justify-between gap-2 text-left hover:border-ink-secondary", open && "border-primary")}
       >
-        {options.map((o) => (
-          <option key={String(o.value)} value={String(o.value)}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={14} strokeWidth={1.75} className="pointer-events-none absolute right-2.5 text-ink-muted" aria-hidden />
-    </label>
+        <span className="truncate">{current?.label ?? ""}</span>
+        <ChevronDown size={14} strokeWidth={1.75} className={cx("shrink-0 text-ink-muted transition-transform transition-fast", open && "rotate-180")} aria-hidden />
+      </button>
+      {open && (
+        <ul
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          aria-label={label}
+          className={cx(
+            "z-popover anim-fade absolute max-h-[260px] min-w-full overflow-y-auto rounded-md border border-line bg-canvas p-1 shadow-popover",
+            placement.up ? "bottom-full mb-1" : "top-full mt-1",
+            placement.right ? "right-0" : "left-0",
+          )}
+        >
+          {options.map((o, i) => (
+            <li
+              key={String(o.value)}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={o.value === value}
+              onMouseEnter={() => setActive(i)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                choose(i);
+              }}
+              className={cx("flex h-8 cursor-pointer items-center justify-between gap-3 whitespace-nowrap rounded-[6px] px-2.5 text-[14px]", i === active ? "bg-surface-muted text-ink" : "text-ink-secondary")}
+            >
+              {o.label}
+              {o.value === value && <Check size={14} strokeWidth={2} className="text-primary" aria-hidden />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baseName, daysSince, extOf, formatAgo, formatBytes, formatPercent, parentPath, shortPath, splitBytes } from "./format";
+import { baseName, daysSince, exeFromCommand, extOf, formatAgo, formatBytes, formatPercent, parentPath, shortPath, splitBytes } from "./format";
 
 describe("formatBytes", () => {
   it("uses binary units with Explorer labels", () => {
@@ -25,6 +25,12 @@ describe("paths", () => {
     expect(parentPath("C:\\Users\\a\\file.txt")).toBe("C:\\Users\\a");
     expect(extOf("Movie.MKV")).toBe("mkv");
     expect(extOf(".gitignore")).toBe("");
+  });
+
+  it("extracts the program from a command line", () => {
+    expect(exeFromCommand('"C:\\Program Files\\App\\app.exe" --minimized')).toBe("C:\\Program Files\\App\\app.exe");
+    expect(exeFromCommand("C:\\Tools\\run.exe /background")).toBe("C:\\Tools\\run.exe");
+    expect(exeFromCommand("%ProgramFiles%\\x\\y.exe")).toBe("%ProgramFiles%\\x\\y.exe");
   });
 
   it("shortens the profile prefix case-insensitively", () => {

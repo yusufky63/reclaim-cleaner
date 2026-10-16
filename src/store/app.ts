@@ -3,7 +3,7 @@ import i18n, { setLanguage } from "../i18n";
 import { ApiError, api } from "../lib/api";
 import type { AppInfo, Drive, InstallerFile, ProgressEvent, Project, RulesPayload, ScanSummary, Settings, TargetResult } from "../lib/types";
 
-export type PageId = "overview" | "explorer" | "large" | "duplicates" | "empty" | "junk" | "projects" | "apps" | "startup" | "tools" | "history" | "settings";
+export type PageId = "overview" | "explorer" | "large" | "duplicates" | "empty" | "junk" | "projects" | "models" | "assistants" | "downloads" | "apps" | "startup" | "tools" | "history" | "settings";
 
 export interface Toast {
   id: number;

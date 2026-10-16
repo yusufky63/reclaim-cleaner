@@ -1,12 +1,15 @@
 import {
   AppWindow,
+  Bot,
   Boxes,
   Code2,
   Copy,
+  Download,
   FileStack,
   FolderX,
   History,
   LayoutDashboard,
+  MessagesSquare,
   type LucideIcon,
   Map as MapIcon,
   Power,
@@ -45,6 +48,14 @@ const SECTIONS: { label: string | null; items: NavItem[] }[] = [
     items: [
       { id: "junk", icon: Sparkles },
       { id: "projects", icon: Code2 },
+    ],
+  },
+  {
+    label: "nav.organize",
+    items: [
+      { id: "models", icon: Bot },
+      { id: "assistants", icon: MessagesSquare },
+      { id: "downloads", icon: Download },
     ],
   },
   {

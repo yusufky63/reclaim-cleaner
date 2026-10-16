@@ -37,6 +37,7 @@ Both are embedded at build time. `cargo test -p reclaim-core` parses them and ch
 | `paths` | Absolute paths that start with an allowed variable: `%LOCALAPPDATA%`, `%APPDATA%`, `%USERPROFILE%`, `%TEMP%`, `%WINDIR%`, `%PROGRAMDATA%`, `%SYSTEMDRIVE%`. `*` and `?` match inside one segment (`User Data\*\Cache`, `webcache*`). The first segment after the variable must be a fixed name. No `..`, no `**`. |
 | `mode` | `contents`: delete everything inside each path and keep the folder. `folder`: delete each path itself. `files`: delete files directly inside each path that match `include` (not recursive). `report`: measure only; cleaning happens through `command`. |
 | `include` | File name globs for `files` mode, such as `["*.dmp"]`. |
+| `exclude` | File or folder name globs kept wherever they appear inside the paths, such as `["*.blend", "gradio"]` for autosaves and outputs that apps write into `%TEMP%`. |
 | `minAgeHours` | Skip files modified more recently than this. Use it for shared temp folders. |
 | `risk` | `safe` (rebuilds by itself, preselected), `review` (shown, not preselected), `caution` (hidden unless enabled in Settings). |
 | `admin` | `true` when the location needs administrator rights. Those rules are cleaned by the elevated helper. |

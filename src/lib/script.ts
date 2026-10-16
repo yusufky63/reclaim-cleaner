@@ -9,6 +9,7 @@ export interface ScriptItem {
   paths: string[];
   mode: Mode | "path";
   include?: string[];
+  exclude?: string[];
   minAgeHours?: number | null;
   admin?: boolean;
   command?: string | null;
@@ -39,10 +40,11 @@ function itemBlock(item: ScriptItem): string[] {
     return lines;
   }
   const age = item.minAgeHours ? ` -MinAgeHours ${Math.max(0, Math.floor(item.minAgeHours))}` : "";
+  const exclude = item.exclude?.length ? ` -Exclude @(${item.exclude.map(psQuote).join(", ")})` : "";
   for (const p of item.paths) {
     const q = psQuote(p);
     if (item.mode === "contents") {
-      lines.push(`Remove-Contents -Path ${q}${age}`);
+      lines.push(`Remove-Contents -Path ${q}${age}${exclude}`);
     } else if (item.mode === "files") {
       const inc = (item.include ?? []).map(psQuote).join(", ");
       lines.push(`Remove-MatchingFiles -Path ${q} -Include @(${inc})${age}`);
@@ -78,19 +80,25 @@ export function buildScript(items: ScriptItem[], opts: ScriptOptions): string {
     `  } catch { Write-Warning "Skipped (in use or denied): $($Item.FullName)" }`,
     `}`,
     ``,
-    `function Get-FilesSafe([string]$Path) {`,
+    `function Test-Excluded([string]$Name, [string[]]$Exclude) {`,
+    `  foreach ($e in $Exclude) { if ($Name -like $e) { return $true } }`,
+    `  return $false`,
+    `}`,
+    ``,
+    `function Get-FilesSafe([string]$Path, [string[]]$Exclude = @()) {`,
     `  # Manual recursion: Windows PowerShell 5.1 follows junctions with -Recurse.`,
     `  Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | ForEach-Object {`,
     `    if ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) { return }`,
-    `    if ($_.PSIsContainer) { Get-FilesSafe $_.FullName } else { $_ }`,
+    `    if (Test-Excluded $_.Name $Exclude) { return }`,
+    `    if ($_.PSIsContainer) { Get-FilesSafe $_.FullName $Exclude } else { $_ }`,
     `  }`,
     `}`,
     ``,
-    `function Remove-Contents([string]$Path, [int]$MinAgeHours = 0) {`,
+    `function Remove-Contents([string]$Path, [int]$MinAgeHours = 0, [string[]]$Exclude = @()) {`,
     `  if (-not (Test-Path -LiteralPath $Path)) { return }`,
-    `  if ($MinAgeHours -gt 0) {`,
+    `  if ($MinAgeHours -gt 0 -or $Exclude.Count -gt 0) {`,
     `    $cutoff = (Get-Date).AddHours(-$MinAgeHours)`,
-    `    Get-FilesSafe $Path | Where-Object { $_.LastWriteTime -lt $cutoff } | ForEach-Object { Remove-One $_ }`,
+    `    Get-FilesSafe $Path $Exclude | Where-Object { $MinAgeHours -eq 0 -or $_.LastWriteTime -lt $cutoff } | ForEach-Object { Remove-One $_ }`,
     `  } else {`,
     `    Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | ForEach-Object { Remove-One $_ }`,
     `  }`,

@@ -15,6 +15,7 @@ function rule(id: string, risk: TargetRule["risk"], extra: Partial<TargetRule> =
     paths: [],
     mode: "contents",
     include: [],
+    exclude: [],
     minAgeHours: null,
     risk,
     admin: false,

@@ -2,22 +2,31 @@
 
 What is planned after 0.1.0, roughly in order. The research behind each item is in [docs/research.md](docs/research.md). Suggestions are welcome as issues.
 
+The full plan with sizes and reasons is in [docs/research/README.md](docs/research/README.md).
+
 ## Next
 
-- **Code signing** through the SignPath Foundation program, so SmartScreen stops warning.
-- **winget and Scoop** packages after the first published release.
-- **Steam libraries from the registry and `libraryfolders.vdf`**, so shader caches on other drives are found too (today only the default Steam folder is checked).
-- **Leftover scan after uninstall** with confidence levels: AppData and ProgramData folders named after the app or publisher, preselecting only exact matches.
-- **Scan snapshots**: reopen the last space map instantly and compare two scans to see what grew.
+- **Hidden space explainer**: why used space and scanned space differ (shadow copies, reserved storage, pagefile, hiberfil, MFT, unreadable folders, WSL and Docker disks).
+- **"Analyze with ReClaim"** in the Explorer context menu, plus a path argument.
+- **What is locking this file**, through the Restart Manager; graceful close only.
+- **Steam libraries on every drive**, with shader caches named after their games.
+- **Leftover scan after uninstall** with confidence levels.
+- **Export** scan results to CSV and JSON; restore point and shadow storage panel.
+- **Code signing** through the SignPath Foundation program, then **winget and Scoop** packages.
 
 ## Later
 
-- **Fast NTFS scan** by reading the MFT when running as administrator, with the current walker as the fallback.
-- **File age view**: space by last-modified year and month.
-- **Filter syntax** in the space map (`*.iso >1GB older:1y`).
-- **Similar images** in the duplicate finder.
-- **Command-line interface** (`reclaim scan`, `reclaim clean --dry-run`) on top of the same engine crate.
-- **More languages.** UI strings are in `src/i18n`; rule texts carry their own translations.
+- **Fast NTFS scan** by reading the MFT through the elevated helper, a faster non-admin walker, and **instant search** with Everything-style syntax (`ext:`, `size:`, `dm:`, `type:`).
+- **Scan snapshots** and "what grew since last time", kept current by the USN journal while the app is open.
+- **Processes, services and scheduled tasks**, read-only first, with signatures; changes later and only through the helper.
+- **Everything an app owns** (folders, services, tasks, startup entries) and a window hunter.
+- **Project finder** from VS Code and JetBrains recents; **cleanup basket** across pages.
+- **WSL and Docker disk compaction wizard**; **relocation guide** for model and package stores.
+- **Similar images**, **command-line interface**, **more languages**.
+
+## Separate project
+
+- **Deleted-file recovery** as its own app and repository, sharing an NTFS crate with ReClaim. See [docs/research/recovery-tool.md](docs/research/recovery-tool.md).
 
 ## Not planned
 

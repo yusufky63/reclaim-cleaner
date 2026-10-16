@@ -167,7 +167,7 @@ export function scriptItems(recs: Rec[], rules: TargetRule[]): ScriptItem[] {
   return recs.map((r) => {
     const rule = r.ruleId ? byId.get(r.ruleId) : undefined;
     if (rule) {
-      return { title: r.title, paths: rule.mode === "report" ? [] : r.paths, mode: rule.mode, include: rule.include, minAgeHours: rule.minAgeHours, admin: rule.admin, command: rule.command };
+      return { title: r.title, paths: rule.mode === "report" ? [] : r.paths, mode: rule.mode, include: rule.include, exclude: rule.exclude, minAgeHours: rule.minAgeHours, admin: rule.admin, command: rule.command };
     }
     return { title: r.title, paths: r.paths, mode: "path" as const };
   });

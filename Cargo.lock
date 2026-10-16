@@ -2789,9 +2789,11 @@ dependencies = [
 name = "reclaim-core"
 version = "0.1.0"
 dependencies = [
+ "base64 0.23.1",
  "blake3",
  "chrono",
  "parking_lot",
+ "png 0.18.1",
  "rayon",
  "serde",
  "serde_json",

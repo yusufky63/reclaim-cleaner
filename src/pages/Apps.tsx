@@ -1,19 +1,15 @@
-import { AppWindow, FolderOpen, Search, Trash2 } from "lucide-react";
+import { AppWindow, FolderOpen, Search, Trash2, Unlink } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBytes, useLocale } from "../lib/hooks";
-import { Badge, Button, Card, Dialog, EmptyState, PageHeader, Segmented, Select, Skeleton } from "../components/ui";
+import { AppIcon } from "../components/FileIcons";
+import { Badge, Banner, Button, Card, Dialog, EmptyState, PageHeader, Segmented, Select, Skeleton } from "../components/ui";
 import { api } from "../lib/api";
 import { formatBytes } from "../lib/format";
 import type { InstalledApp, UninstallResult } from "../lib/types";
 import { errorText, useApp } from "../store/app";
 
 type Sort = "size" | "name" | "date";
-
-function Avatar({ name }: { name: string }) {
-  const letter = name.trim().charAt(0).toUpperCase() || "?";
-  return <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-surface font-mono text-[13px] text-ink-secondary">{letter}</span>;
-}
 
 export function AppsPage() {
   const { t } = useTranslation();
@@ -28,6 +24,8 @@ export function AppsPage() {
   const [target, setTarget] = useState<InstalledApp | null>(null);
   const [busy, setBusy] = useState(false);
   const [leftover, setLeftover] = useState<{ app: InstalledApp; result: UninstallResult } | null>(null);
+  const [onlyBroken, setOnlyBroken] = useState(false);
+  const [entryTarget, setEntryTarget] = useState<InstalledApp | null>(null);
 
   const loadDesktop = () => void api.apps().then(setDesktop).catch((e) => toast("danger", errorText(e)));
   const loadStore = () => void api.storeApps().then(setStore).catch((e) => toast("danger", errorText(e)));
@@ -45,13 +43,14 @@ export function AppsPage() {
   const source = tab === "desktop" ? desktop : store;
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = (source ?? []).filter((a) => !q || a.name.toLowerCase().includes(q) || a.publisher.toLowerCase().includes(q));
+    const filtered = (source ?? []).filter((a) => (!onlyBroken || a.broken) && (!q || a.name.toLowerCase().includes(q) || a.publisher.toLowerCase().includes(q)));
     return [...filtered].sort((a, b) => {
       if (sort === "size") return (b.bytes ?? -1) - (a.bytes ?? -1);
       if (sort === "date") return (b.installed ?? "").localeCompare(a.installed ?? "");
       return a.name.localeCompare(b.name, locale);
     });
-  }, [source, query, sort, locale]);
+  }, [source, query, sort, locale, onlyBroken]);
+  const brokenCount = (source ?? []).filter((a) => a.broken).length;
   const totalBytes = (source ?? []).reduce((s, a) => s + (a.bytes ?? 0), 0);
 
   const uninstall = async () => {
@@ -72,6 +71,21 @@ export function AppsPage() {
       if (app.source === "store") loadStore();
       else loadDesktop();
       void refreshDrives();
+    } catch (e) {
+      toast("danger", errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeEntry = async () => {
+    if (!entryTarget) return;
+    setBusy(true);
+    try {
+      const backup = await api.appRemoveEntry(entryTarget.id);
+      setEntryTarget(null);
+      toast("positive", t("apps.entryRemoved", { path: backup }));
+      loadDesktop();
     } catch (e) {
       toast("danger", errorText(e));
     } finally {
@@ -126,6 +140,19 @@ export function AppsPage() {
           />
         </div>
       </Card>
+      {tab === "desktop" && brokenCount > 0 && (
+        <Banner
+          tone="warning"
+          icon={<Unlink size={15} strokeWidth={1.75} />}
+          action={
+            <Button size="sm" variant="ghost" onClick={() => setOnlyBroken(!onlyBroken)}>
+              {onlyBroken ? t("models.sources.all") : t("common.show")}
+            </Button>
+          }
+        >
+          {t("apps.brokenFilter", { count: brokenCount })}. {t("apps.brokenHint")}
+        </Banner>
+      )}
       <Card className="overflow-hidden">
         {source === null ? (
           <div className="space-y-2 p-4">
@@ -140,11 +167,16 @@ export function AppsPage() {
           <ul className="divide-y divide-line">
             {list.map((a) => (
               <li key={a.id} className="rail flex items-center gap-3 px-4 py-2.5 hover:bg-surface">
-                <Avatar name={a.name} />
+                <AppIcon path={a.icon} name={a.name} size={32} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-[14px] font-medium text-ink">{a.name}</span>
+                    <span className={a.broken ? "truncate text-[14px] font-medium text-ink-secondary line-through decoration-ink-muted" : "truncate text-[14px] font-medium text-ink"}>{a.name}</span>
                     {a.version && <span className="shrink-0 font-mono text-[11px] text-ink-muted">{a.version}</span>}
+                    {a.broken && (
+                      <Badge tone="warning" title={t("apps.brokenHint")}>
+                        {t("apps.broken")}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-[12px] text-ink-muted">
                     <span className="truncate">{a.publisher}</span>
@@ -159,9 +191,15 @@ export function AppsPage() {
                       <FolderOpen size={15} strokeWidth={1.75} />
                     </Button>
                   )}
-                  <Button size="sm" variant="secondary" icon={<Trash2 size={14} strokeWidth={1.75} />} onClick={() => setTarget(a)}>
-                    {t("apps.uninstall")}
-                  </Button>
+                  {a.broken ? (
+                    <Button size="sm" variant="secondary" icon={<Unlink size={14} strokeWidth={1.75} />} onClick={() => setEntryTarget(a)}>
+                      {t("apps.removeEntry")}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="secondary" icon={<Trash2 size={14} strokeWidth={1.75} />} onClick={() => setTarget(a)}>
+                      {t("apps.uninstall")}
+                    </Button>
+                  )}
                 </div>
               </li>
             ))}
@@ -207,6 +245,24 @@ export function AppsPage() {
             <code className="selectable mt-3 block truncate rounded bg-surface-muted px-2 py-1.5 font-mono text-[11px] text-ink">{leftover.result.leftover.path}</code>
           </>
         )}
+      </Dialog>
+      <Dialog
+        open={!!entryTarget}
+        onClose={() => !busy && setEntryTarget(null)}
+        title={t("apps.removeEntryTitle", { name: entryTarget?.name ?? "" })}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setEntryTarget(null)} disabled={busy}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="primary" onClick={() => void removeEntry()} loading={busy} data-autofocus>
+              {t("apps.removeEntry")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[14px] text-ink-secondary">{t("apps.removeEntryBody")}</p>
+        {entryTarget?.uninstall && <code className="selectable mt-3 block truncate rounded bg-surface-muted px-2 py-1.5 font-mono text-[11px] text-ink">{entryTarget.uninstall}</code>}
       </Dialog>
     </div>
   );

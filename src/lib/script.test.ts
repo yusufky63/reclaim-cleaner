@@ -30,6 +30,8 @@ describe("buildScript", () => {
     );
     expect(s).toContain("-MinAgeHours 24");
     expect(s).toContain("Get-FilesSafe");
+    const ex = buildScript([{ title: "Temp", paths: ["C:\\T"], mode: "contents", exclude: ["*.blend", "it's"] }], opts);
+    expect(ex).toContain("-Exclude @('*.blend', 'it''s')");
     expect(s).toContain("$UseRecycleBin = $false");
     const adminAt = s.indexOf("Needs administrator rights");
     expect(adminAt).toBeGreaterThan(0);

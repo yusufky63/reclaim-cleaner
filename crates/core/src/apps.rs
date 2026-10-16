@@ -35,6 +35,10 @@ pub struct InstalledApp {
     pub quiet_uninstall: Option<String>,
     pub scope: String,
     pub source: String,
+    /// The uninstaller is gone (or Windows Installer no longer knows the product): the entry
+    /// is left over from an app that was already removed.
+    #[serde(default)]
+    pub broken: bool,
 }
 
 fn read_hive(hive: &RegKey, flags: u32, tag: &str, scope: &str, out: &mut Vec<InstalledApp>) {
@@ -72,6 +76,16 @@ fn read_hive(hive: &RegKey, flags: u32, tag: &str, scope: &str, out: &mut Vec<In
         if uninstall.is_none() && s("QuietUninstallString").is_none() {
             continue;
         }
+        let icon = s("DisplayIcon")
+            .and_then(|v| crate::icons::icon_file(&v))
+            .or_else(|| main_exe(s("InstallLocation").as_deref(), &name));
+        let broken = entry_is_broken(
+            &sub,
+            d("WindowsInstaller") == Some(1),
+            uninstall
+                .as_deref()
+                .or(s("QuietUninstallString").as_deref()),
+        );
         let installed = s("InstallDate").and_then(|v| {
             (v.len() == 8 && v.chars().all(|c| c.is_ascii_digit()))
                 .then(|| format!("{}-{}-{}", &v[0..4], &v[4..6], &v[6..8]))
@@ -89,11 +103,12 @@ fn read_hive(hive: &RegKey, flags: u32, tag: &str, scope: &str, out: &mut Vec<In
             location: s("InstallLocation")
                 .map(|l| l.trim_matches('"').to_string())
                 .filter(|l| std::path::Path::new(l).is_dir()),
-            icon: s("DisplayIcon"),
+            icon,
             uninstall,
             quiet_uninstall: s("QuietUninstallString"),
             scope: scope.to_string(),
             source: String::from("desktop"),
+            broken,
         });
     }
 }
@@ -177,6 +192,7 @@ Get-AppxPackage -PackageTypeFilter Main | Where-Object { $_.SignatureKind -eq 'S
                 quiet_uninstall: None,
                 scope: String::from("user"),
                 source: String::from("store"),
+                broken: false,
             }
         })
         .collect();
@@ -269,6 +285,146 @@ pub fn leftover(app: &InstalledApp) -> Option<(String, u64)> {
     }
     let m = crate::walk::measure_dir(p, None, &crate::job::Job::new());
     Some((loc.to_string(), m.bytes))
+}
+
+/// Best guess at an app's main exe when the registry names no icon: the exe in the install
+/// folder whose name shares the most with the app name, ignoring uninstallers and updaters.
+fn main_exe(location: Option<&str>, name: &str) -> Option<String> {
+    let dir = Path::new(location?.trim_matches('"'));
+    let rd = std::fs::read_dir(dir).ok()?;
+    let words: Vec<String> = name
+        .to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.len() > 2)
+        .map(str::to_string)
+        .collect();
+    rd.flatten()
+        .filter_map(|e| {
+            let file = e.file_name().to_string_lossy().to_lowercase();
+            let is_exe = file.ends_with(".exe");
+            let helper = [
+                "unins", "uninst", "update", "setup", "crash", "helper", "elevate",
+            ]
+            .iter()
+            .any(|h| file.contains(h));
+            (is_exe && !helper).then(|| {
+                (
+                    words.iter().filter(|w| file.contains(w.as_str())).count(),
+                    e.path(),
+                )
+            })
+        })
+        .max_by_key(|(score, _)| *score)
+        .map(|(_, p)| p.to_string_lossy().into_owned())
+}
+
+/// True when an uninstall entry points at nothing: a Windows Installer product the installer
+/// service no longer knows, or an uninstaller exe that no longer exists.
+fn entry_is_broken(key: &str, windows_installer: bool, uninstall: Option<&str>) -> bool {
+    let is_guid = key.len() == 38 && key.starts_with('{') && key.ends_with('}');
+    let msi = uninstall.is_some_and(|u| u.to_ascii_lowercase().contains("msiexec"));
+    if is_guid && (windows_installer || msi) {
+        use windows::Win32::System::ApplicationInstallationAndServicing::{
+            INSTALLSTATE_UNKNOWN, MsiQueryProductStateW,
+        };
+        let w = crate::winstr::wide(key);
+        let state = unsafe { MsiQueryProductStateW(windows::core::PCWSTR(w.as_ptr())) };
+        return state == INSTALLSTATE_UNKNOWN;
+    }
+    let Some(cmd) = uninstall else { return false };
+    let (exe, _) = split_command(cmd);
+    let exe = crate::icons::expand_env(exe.trim_matches('"'));
+    // Only absolute paths can be checked; bare names (rundll32, msiexec) resolve via PATH.
+    let p = Path::new(&exe);
+    p.is_absolute() && !p.exists()
+}
+
+fn key_parts(id: &str) -> Result<(RegKey, u32, &str, &'static str)> {
+    let (tag, sub) = id
+        .split_once(':')
+        .ok_or_else(|| Error::Other("unexpected app id".into()))?;
+    if sub.is_empty() || sub.contains('\\') || sub.contains('/') {
+        return Err(Error::Other("unexpected app id".into()));
+    }
+    Ok(match tag {
+        "hkcu" => (RegKey::predef(HKEY_CURRENT_USER), 0, sub, "HKCU"),
+        "hklm64" => (
+            RegKey::predef(HKEY_LOCAL_MACHINE),
+            KEY_WOW64_64KEY,
+            sub,
+            "HKLM",
+        ),
+        "hklm32" => (
+            RegKey::predef(HKEY_LOCAL_MACHINE),
+            KEY_WOW64_32KEY,
+            sub,
+            "HKLM",
+        ),
+        _ => {
+            return Err(Error::Other(
+                "only desktop app entries can be removed".into(),
+            ));
+        }
+    })
+}
+
+/// Removes the Uninstall entry of an app that is already gone, after exporting it to a
+/// `.reg` file in `backup_dir` so it can be restored with a double click. Only entries that
+/// are still detected as broken are removed; a working app's entry is never touched.
+pub fn remove_broken_entry(id: &str, backup_dir: &Path) -> Result<String> {
+    let app = desktop_apps()
+        .into_iter()
+        .find(|a| a.id == id)
+        .ok_or_else(|| Error::Other("entry not found".into()))?;
+    if !app.broken {
+        return Err(Error::Other(
+            "this app still looks installed; use Uninstall instead".into(),
+        ));
+    }
+    let (hive, flags, sub, hive_name) = key_parts(id)?;
+    if hive_name == "HKLM" && !crate::system::is_elevated() {
+        return Err(Error::NeedsAdmin);
+    }
+    std::fs::create_dir_all(backup_dir).map_err(|e| Error::io(backup_dir, e))?;
+    let safe: String = sub
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || "-_{}.".contains(c) {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+    let file = backup_dir.join(format!("uninstall-entry-{safe}-{stamp}.reg"));
+    let view = if flags == KEY_WOW64_32KEY {
+        "/reg:32"
+    } else {
+        "/reg:64"
+    };
+    let status = Command::new("reg.exe")
+        .args([
+            "export",
+            &format!(r"{hive_name}\{UNINSTALL}\{sub}"),
+            &file.to_string_lossy(),
+            "/y",
+            view,
+        ])
+        .creation_flags(CREATE_NO_WINDOW)
+        .status()
+        .map_err(|e| Error::Other(e.to_string()))?;
+    if !status.success() || !file.is_file() {
+        return Err(Error::Other(
+            "could not back up the registry entry, nothing was removed".into(),
+        ));
+    }
+    let root = hive
+        .open_subkey_with_flags(UNINSTALL, winreg::enums::KEY_ALL_ACCESS | flags)
+        .map_err(|e| Error::Other(e.to_string()))?;
+    root.delete_subkey_all(sub)
+        .map_err(|e| Error::Other(e.to_string()))?;
+    Ok(file.to_string_lossy().into_owned())
 }
 
 #[cfg(test)]

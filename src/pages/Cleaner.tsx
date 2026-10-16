@@ -172,6 +172,7 @@ export function CleanerPage() {
       paths: r.rule.mode === "report" ? [] : r.res.found.map((f) => f.path),
       mode: r.rule.mode,
       include: r.rule.include,
+      exclude: r.rule.exclude,
       minAgeHours: r.rule.minAgeHours,
       admin: r.rule.admin,
       command: r.rule.command,

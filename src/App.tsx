@@ -5,7 +5,10 @@ import { Shell } from "./components/Shell";
 import { Banner, EmptyState } from "./components/ui";
 import { isDesktop, onProgress } from "./lib/api";
 import { checkForUpdate } from "./lib/updates";
+import { AiModelsPage } from "./pages/AiModels";
 import { AppsPage } from "./pages/Apps";
+import { AssistantsPage } from "./pages/Assistants";
+import { DownloadsPage } from "./pages/Downloads";
 import { CleanerPage } from "./pages/Cleaner";
 import { DuplicatesPage } from "./pages/Duplicates";
 import { EmptyFoldersPage } from "./pages/EmptyFolders";
@@ -36,6 +39,12 @@ function Page() {
       return <CleanerPage />;
     case "projects":
       return <ProjectsPage />;
+    case "models":
+      return <AiModelsPage />;
+    case "assistants":
+      return <AssistantsPage />;
+    case "downloads":
+      return <DownloadsPage />;
     case "apps":
       return <AppsPage />;
     case "startup":

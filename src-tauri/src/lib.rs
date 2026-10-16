@@ -3,6 +3,7 @@
 pub mod helper;
 mod state;
 
+use std::collections::HashMap;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -17,8 +18,10 @@ use reclaim_core::empty::{self, EmptyFolder};
 use reclaim_core::error::ErrorPayload;
 use reclaim_core::explorer::{ExtStat, FileView, NodeView, ScanSummary, Tree};
 use reclaim_core::history::{self, HistoryEntry};
+use reclaim_core::icons;
 use reclaim_core::installers::{self, InstallerFile};
 use reclaim_core::junk::{self, TargetResult};
+use reclaim_core::organize;
 use reclaim_core::rules::{ArtifactRule, TargetRule, builtin_artifacts, builtin_targets};
 use reclaim_core::settings::{Settings, is_portable};
 use reclaim_core::startup::{self, StartupItem, StartupSource};
@@ -787,6 +790,88 @@ async fn tool_run(app: AppHandle, id: String) -> CmdResult<CommandResult> {
     Ok(res)
 }
 
+// ---------------------------------------------------------------- icons & organize
+
+#[tauri::command]
+async fn shell_images(
+    paths: Vec<String>,
+    size: u32,
+    kind: icons::ImageKind,
+) -> CmdResult<HashMap<String, Option<String>>> {
+    tauri::async_runtime::spawn_blocking(move || icons::images(&paths, size, kind))
+        .await
+        .map_err(|e| err(Error::Other(e.to_string())))
+}
+
+#[tauri::command]
+async fn ai_models(app: AppHandle) -> CmdResult<Vec<organize::AiModel>> {
+    let roots: Vec<PathBuf> = {
+        let state = app.state::<AppState>();
+        let mut r: Vec<PathBuf> = state
+            .settings
+            .read()
+            .project_roots
+            .iter()
+            .map(PathBuf::from)
+            .collect();
+        r.extend(artifacts::suggested_roots().into_iter().map(PathBuf::from));
+        r
+    };
+    run_job(&app, "models", move |job| {
+        Ok(organize::ai_models(&roots, &job))
+    })
+    .await
+}
+
+#[tauri::command]
+async fn ollama_remove(app: AppHandle, id: String) -> CmdResult<()> {
+    tauri::async_runtime::spawn_blocking({
+        let id = id.clone();
+        move || organize::ollama_remove(&id)
+    })
+    .await
+    .map_err(|e| err(Error::Other(e.to_string())))?
+    .map_err(err)?;
+    let state = app.state::<AppState>();
+    record(
+        &state,
+        "models",
+        DeleteMethod::Permanent,
+        &CleanReport {
+            items: vec![id],
+            ..Default::default()
+        },
+    );
+    Ok(())
+}
+
+#[tauri::command]
+async fn assistant_data(app: AppHandle) -> CmdResult<Vec<organize::AssistantData>> {
+    run_job(&app, "assistants", |job| Ok(organize::assistant_data(&job))).await
+}
+
+#[tauri::command]
+async fn downloads_report(app: AppHandle) -> CmdResult<organize::DownloadsReport> {
+    let dir = system::library_folders()
+        .downloads
+        .map(PathBuf::from)
+        .filter(|p| p.is_dir())
+        .ok_or_else(|| err(Error::Other("Downloads folder not found".into())))?;
+    run_job(&app, "downloads", move |job| {
+        Ok(organize::downloads(&dir, &job))
+    })
+    .await
+}
+
+#[tauri::command]
+async fn app_remove_entry(app: AppHandle, id: String) -> CmdResult<String> {
+    let backups = app.state::<AppState>().data_dir.join("backups");
+    tauri::async_runtime::spawn_blocking(move || apps::remove_broken_entry(&id, &backups))
+        .await
+        .map_err(|e| err(Error::Other(e.to_string())))?
+        .map_err(err)
+}
+
 // ---------------------------------------------------------------- history
 
 #[tauri::command]
@@ -847,6 +932,12 @@ pub fn run() {
             tool_run,
             history_list,
             history_clear,
+            shell_images,
+            ai_models,
+            ollama_remove,
+            assistant_data,
+            downloads_report,
+            app_remove_entry,
         ])
         .run(tauri::generate_context!())
         .expect("error while running ReClaim Cleaner");
