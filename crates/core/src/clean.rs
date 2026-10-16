@@ -6,6 +6,7 @@
 
 use std::fs;
 use std::io::ErrorKind;
+use std::os::windows::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -141,6 +142,88 @@ fn io_reason(e: &std::io::Error) -> &'static str {
     }
 }
 
+/// Why a Recycle Bin move failed. The shell runs without UI, so for a locked or protected item
+/// it usually just aborts and `trash` gets no HRESULT back; the file system is asked instead.
+fn recycle_reason(path: &Path, e: &trash::Error) -> &'static str {
+    trash_reason(e).unwrap_or_else(|| probe_reason(path))
+}
+
+/// The reason the error itself carries, or `None` when `trash` only knows the item was aborted
+/// or could not resolve its parent folder.
+fn trash_reason(e: &trash::Error) -> Option<&'static str> {
+    const COPYENGINE_E_REQUIRES_ELEVATION: u32 = 0x8027_0002;
+    const COPYENGINE_E_ACCESS_DENIED_SRC: u32 = 0x8027_0021;
+    const COPYENGINE_E_PATH_NOT_FOUND_SRC: u32 = 0x8027_0023;
+    const COPYENGINE_E_SHARING_VIOLATION_SRC: u32 = 0x8027_0027;
+    const COPYENGINE_E_ACCESSDENIED_READONLY: u32 = 0x8027_003F;
+    match e {
+        trash::Error::Os { code, .. } => Some(match *code as u32 {
+            // HRESULT_FROM_WIN32: the low word is a Win32 error code.
+            hr if hr & 0xFFFF_0000 == 0x8007_0000 => {
+                io_reason(&std::io::Error::from_raw_os_error((hr & 0xFFFF) as i32))
+            }
+            COPYENGINE_E_REQUIRES_ELEVATION => "needs_admin",
+            COPYENGINE_E_ACCESS_DENIED_SRC | COPYENGINE_E_ACCESSDENIED_READONLY => "access_denied",
+            COPYENGINE_E_SHARING_VIOLATION_SRC => "in_use",
+            COPYENGINE_E_PATH_NOT_FOUND_SRC => "not_found",
+            _ => "io",
+        }),
+        trash::Error::CouldNotAccess { .. } => Some("access_denied"),
+        trash::Error::Unknown { .. } | trash::Error::CanonicalizePath { .. } => None,
+        _ => Some("io"),
+    }
+}
+
+const DELETE: u32 = 0x0001_0000;
+const FILE_SHARE_ALL: u32 = 0x7;
+const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+/// Items opened while looking for what blocks a folder, so a huge folder cannot stall a report.
+const PROBE_LIMIT: usize = 10_000;
+
+/// Opens `path`, and for a folder everything inside it, with delete access without deleting
+/// anything, and returns the reason of the first item that refuses. A folder cannot be moved
+/// while any file in it is locked, so the culprit can sit deep inside. `io` when nothing refuses.
+fn probe_reason(path: &Path) -> &'static str {
+    let mut budget = PROBE_LIMIT;
+    probe(path, &mut budget).unwrap_or("io")
+}
+
+fn probe(path: &Path, budget: &mut usize) -> Option<&'static str> {
+    let md = match path.symlink_metadata() {
+        Ok(md) => md,
+        Err(e) => return Some(io_reason(&e)),
+    };
+    if is_cloud_only(&md) {
+        return None;
+    }
+    if let Err(e) = fs::OpenOptions::new()
+        .access_mode(DELETE)
+        .share_mode(FILE_SHARE_ALL)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS)
+        .open(path)
+    {
+        return Some(io_reason(&e));
+    }
+    if !md.is_dir() || is_link(&md.file_type()) {
+        return None;
+    }
+    let rd = match fs::read_dir(path) {
+        Ok(rd) => rd,
+        Err(e) => return Some(io_reason(&e)),
+    };
+    for entry in rd.flatten() {
+        if *budget == 0 {
+            return None;
+        }
+        *budget -= 1;
+        if let Some(reason) = probe(&entry.path(), budget) {
+            return Some(reason);
+        }
+    }
+    None
+}
+
 /// Removes a file, clearing the read-only flag if that is what blocks it (common in caches
 /// that copy files from read-only sources).
 fn remove_file(path: &Path) -> std::io::Result<()> {
@@ -273,8 +356,7 @@ fn recycle(paths: Vec<PathBuf>, acc: &Acc) {
             .map(|p| measure_path(p, None, &Job::new()).bytes)
             .collect();
         let owned: Vec<PathBuf> = chunk.to_vec();
-        let res =
-            std::thread::spawn(move || trash::delete_all(&owned).map_err(|e| e.to_string())).join();
+        let res = std::thread::spawn(move || trash::delete_all(&owned)).join();
         match res {
             Ok(Ok(())) => {
                 for (p, size) in chunk.iter().zip(sizes) {
@@ -283,7 +365,7 @@ fn recycle(paths: Vec<PathBuf>, acc: &Acc) {
                         acc.files.fetch_add(1, Ordering::Relaxed);
                         acc.job.add_files(1, size);
                     } else {
-                        acc.fail(p, "in_use");
+                        acc.fail(p, probe_reason(p));
                     }
                 }
             }
@@ -292,14 +374,13 @@ fn recycle(paths: Vec<PathBuf>, acc: &Acc) {
                 // block the rest.
                 for (p, size) in chunk.iter().zip(sizes) {
                     let one = p.clone();
-                    match std::thread::spawn(move || trash::delete(&one).map_err(|e| e.to_string()))
-                        .join()
-                    {
+                    match std::thread::spawn(move || trash::delete(&one)).join() {
                         Ok(Ok(())) => {
                             acc.recycled.fetch_add(size, Ordering::Relaxed);
                             acc.files.fetch_add(1, Ordering::Relaxed);
                         }
-                        _ => acc.fail(p, "in_use"),
+                        Ok(Err(e)) => acc.fail(p, recycle_reason(p, &e)),
+                        Err(_) => acc.fail(p, "io"),
                     }
                 }
             }
@@ -702,5 +783,54 @@ mod tests {
         let report = clean_targets(&[&r2], DeleteMethod::Permanent, &guard, &Job::new(), false);
         // cargo.exe runs this test, so the rule must be skipped.
         assert_eq!(report.failures[0].reason, "app_running");
+    }
+
+    fn os(hr: u32) -> trash::Error {
+        trash::Error::Os {
+            code: hr as i32,
+            description: String::new(),
+        }
+    }
+
+    #[test]
+    fn trash_errors_map_to_reasons() {
+        assert_eq!(trash_reason(&os(0x8007_0005)), Some("access_denied"));
+        assert_eq!(trash_reason(&os(0x8007_0020)), Some("in_use"));
+        assert_eq!(trash_reason(&os(0x8007_0021)), Some("in_use"));
+        assert_eq!(trash_reason(&os(0x8007_0002)), Some("not_found"));
+        assert_eq!(trash_reason(&os(0x8027_0021)), Some("access_denied"));
+        assert_eq!(trash_reason(&os(0x8027_0027)), Some("in_use"));
+        assert_eq!(trash_reason(&os(0x8027_0002)), Some("needs_admin"));
+        assert_eq!(trash_reason(&os(0x8000_4005)), Some("io"));
+        let denied = trash::Error::CouldNotAccess { target: "x".into() };
+        assert_eq!(trash_reason(&denied), Some("access_denied"));
+        assert_eq!(trash_reason(&trash::Error::TargetedRoot), Some("io"));
+        // What the shell reports under FOF_NO_UI for locked and admin-only items alike.
+        let aborted = trash::Error::Unknown {
+            description: "Some operations were aborted".into(),
+        };
+        assert_eq!(trash_reason(&aborted), None);
+    }
+
+    #[test]
+    fn probe_finds_what_blocks_a_recycle() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("app");
+        fs::create_dir_all(dir.join("logs")).unwrap();
+        let log = dir.join(r"logs\now.log");
+        fs::write(&log, b"x").unwrap();
+        fs::write(dir.join("a.txt"), b"x").unwrap();
+        assert_eq!(probe_reason(&dir), "io");
+        assert_eq!(probe_reason(&tmp.path().join("gone")), "not_found");
+        // Held the way a running program holds its log: without FILE_SHARE_DELETE.
+        let held = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&log)
+            .unwrap();
+        assert_eq!(probe_reason(&log), "in_use");
+        assert_eq!(probe_reason(&dir), "in_use");
+        drop(held);
+        assert!(log.exists());
     }
 }
