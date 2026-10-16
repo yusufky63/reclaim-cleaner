@@ -17,7 +17,7 @@ An open-source disk cleaner and space analyzer for Windows 10 and 11. It shows w
 - **Large files, duplicates, empty folders.** Filters by type and age; duplicates are confirmed with a full BLAKE3 hash and hard links are counted once.
 - **Apps and startup.** Real app icons; uninstall desktop and Store apps with their own uninstaller and check for leftovers; remove entries of apps that are already gone (with a `.reg` backup); turn startup apps off the reversible way Task Manager does.
 - **Windows tools.** Recycle Bin, hibernation file, component store cleanup (DISM), Delivery Optimization and the previous Windows installation, always through Windows' own commands.
-- **English and Turkish**, light and dark theme, portable mode, a local cleanup history.
+- **14 languages**: English, Turkish, German, Spanish, French, Italian, Portuguese (Brazil), Polish, Russian, Ukrainian, Indonesian, Japanese, Korean and Simplified Chinese. Light and dark theme, portable mode, a local cleanup history.
 
 | Space map | Junk and caches |
 |---|---|

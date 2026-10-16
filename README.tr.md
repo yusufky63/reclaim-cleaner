@@ -17,7 +17,7 @@ Windows 10 ve 11 için açık kaynak disk temizleyici ve alan analizcisi. Alanı
 - **Büyük dosyalar, kopyalar, boş klasörler.** Tür ve yaşa göre süzülür; kopyalar tam BLAKE3 özetiyle doğrulanır, sabit bağlantılar bir kez sayılır.
 - **Uygulamalar ve başlangıç.** Gerçek uygulama ikonları; masaüstü ve Store uygulamalarını kendi kaldırıcılarıyla kaldırır, artık klasör kontrol eder; zaten silinmiş uygulamaların kayıtlarını `.reg` yedeğiyle listeden kaldırır; başlangıç uygulamalarını Görev Yöneticisi'nin yaptığı gibi geri alınabilir şekilde kapatır.
 - **Windows araçları.** Geri Dönüşüm Kutusu, hazırda bekleme dosyası, bileşen deposu temizliği (DISM), Teslim İyileştirme ve önceki Windows kurulumu; hepsi Windows'un kendi komutlarıyla.
-- **Türkçe ve İngilizce**, açık ve koyu tema, taşınabilir mod, yerel temizlik geçmişi.
+- **14 dil**: Türkçe, İngilizce, Almanca, İspanyolca, Fransızca, İtalyanca, Portekizce (Brezilya), Lehçe, Rusça, Ukraynaca, Endonezce, Japonca, Korece ve Basitleştirilmiş Çince. Açık ve koyu tema, taşınabilir mod, yerel temizlik geçmişi.
 
 ## İndir
 

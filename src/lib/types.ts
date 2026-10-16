@@ -57,7 +57,8 @@ export interface RecycleBinInfo {
 }
 
 export interface Settings {
-  language: "system" | "en" | "tr";
+  /** `system` or a code from src/i18n/languages.ts. */
+  language: string;
   theme: "system" | "light" | "dark";
   cacheDelete: DeleteMethod;
   filesDelete: DeleteMethod;

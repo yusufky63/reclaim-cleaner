@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { FolderList } from "../components/common";
 import { useBytes } from "../lib/hooks";
 import { Banner, Button, Card, CardHeader, PageHeader, Segmented, Select, Switch } from "../components/ui";
+import { LANGUAGES } from "../i18n/languages";
 import { api, openUrl } from "../lib/api";
 import { REPO_URL, checkForUpdate, type UpdateResult } from "../lib/updates";
 import type { DeleteMethod } from "../lib/types";
@@ -72,14 +73,12 @@ export function SettingsPage() {
         <CardHeader title={t("settings.general")} />
         <div className="divide-y divide-line">
           <Row label={t("settings.language")}>
-            <Segmented
+            <Select
+              label={t("settings.language")}
               value={settings.language}
               onChange={(v) => void saveSettings({ language: v })}
-              options={[
-                { value: "system", label: t("settings.languageSystem") },
-                { value: "en", label: "English" },
-                { value: "tr", label: "Türkçe" },
-              ]}
+              className="min-w-[220px]"
+              options={[{ value: "system", label: t("settings.languageSystem") }, ...LANGUAGES.map((l) => ({ value: l.code as string, label: l.name }))]}
             />
           </Row>
           <Row label={t("settings.theme")}>

@@ -8,6 +8,7 @@ Thanks for helping. ReClaim deletes files on real computers, so the bar for chan
 - **No registry cleaning, tweaks, telemetry, bundled offers or nag screens.** Pull requests that add them will be closed.
 - **No code or rule files from GPL projects** (BleachBit, Winapp2, WinDirStat, QDirStat, Mole). Ideas are fine; write your own code and cite your sources.
 - **English for code, comments, UI strings and commits.** Every UI string also goes into `src/i18n/tr.ts`; the typecheck fails if a key is missing.
+- **Other languages** live in `src/i18n/<code>.ts` and may lag behind: a missing key falls back to English. Translation fixes and new languages are welcome. To add one, copy the structure of `en.ts`, use Microsoft's Windows terminology for that language, add the CLDR plural forms it needs (`_few`, `_many`...), and register it in `src/i18n/languages.ts` and `src/i18n/index.ts`. `pnpm test` checks keys, variables and coverage.
 
 ## Setup
 

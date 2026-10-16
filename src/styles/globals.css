@@ -156,8 +156,8 @@ html[data-theme="dark"] {
   --color-warning-soft: var(--warning-soft);
   --color-scrim: var(--scrim);
 
-  --font-sans: var(--font-body), "DM Sans", system-ui, sans-serif;
-  --font-display: var(--font-display), "Space Grotesk", system-ui, sans-serif;
+  --font-sans: var(--font-body), "DM Sans", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", system-ui, sans-serif;
+  --font-display: var(--font-display), "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", system-ui, sans-serif;
   --font-mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
 
   --radius-sm: 6px;
@@ -181,7 +181,7 @@ body {
 body {
   margin: 0;
   overflow: hidden;
-  font-family: var(--font-body), "DM Sans", system-ui, sans-serif;
+  font-family: var(--font-body), "DM Sans", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -208,12 +208,12 @@ textarea {
   font-feature-settings: "tnum" 1;
 }
 .display {
-  font-family: var(--font-display), "Space Grotesk", system-ui, sans-serif;
+  font-family: var(--font-display), "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", system-ui, sans-serif;
   letter-spacing: -0.03em;
   font-weight: 700;
 }
 .display-medium {
-  font-family: var(--font-display), "Space Grotesk", system-ui, sans-serif;
+  font-family: var(--font-display), "Space Grotesk", "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Yu Gothic UI", "Malgun Gothic", system-ui, sans-serif;
   letter-spacing: -0.02em;
   font-weight: 500;
 }
@@ -500,4 +500,14 @@ select:focus-visible {
 .field:focus {
   border-color: var(--primary);
   outline: none;
+}
+
+/* Wide tracking suits Latin capitals; CJK labels read better without it. */
+:lang(ja) .label,
+:lang(ja) .eyebrow,
+:lang(zh) .label,
+:lang(zh) .eyebrow,
+:lang(ko) .label,
+:lang(ko) .eyebrow {
+  letter-spacing: 0.02em;
 }

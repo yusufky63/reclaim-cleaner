@@ -15,6 +15,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - 115 more cleanup rules (233 in total): Office, OneDrive, Dropbox, Google Drive, Signal, Adobe, Blender, OBS, Plex, Jellyfin, EA app, Ubisoft, GOG, Minecraft, NVIDIA and AMD apps, winget, Scoop, Chocolatey, Docker, Vagrant, more browsers and Electron apps.
 - Rules can exclude names. `%TEMP%` cleaning keeps Blender, Krita and Office autosave files.
 - Research round 2 and the resulting plan in `docs/research/`.
+- 12 more UI languages: German, Spanish, French, Italian, Portuguese (Brazil), Polish, Russian, Ukrainian, Indonesian, Japanese, Korean and Simplified Chinese. Missing strings fall back to English; dates and numbers follow the chosen language.
 
 ### Fixed
 
