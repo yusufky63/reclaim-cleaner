@@ -34,10 +34,10 @@ describe("paths", () => {
   });
 
   it("shortens the profile prefix case-insensitively", () => {
-    expect(shortPath("C:\\Users\\Yusuf\\.npm", "c:\\users\\yusuf")).toBe("~\\.npm");
-    expect(shortPath("D:\\data", "C:\\Users\\Yusuf")).toBe("D:\\data");
-    expect(shortPath("C:\\Users\\Yusuf", "C:\\Users\\Yusuf")).toBe("C:\\Users\\Yusuf");
-    expect(shortPath("C:\\Users\\Yusuf2\\x", "C:\\Users\\Yusuf")).toBe("C:\\Users\\Yusuf2\\x");
+    expect(shortPath("C:\\Users\\Alex\\.npm", "c:\\users\\alex")).toBe("~\\.npm");
+    expect(shortPath("D:\\data", "C:\\Users\\Alex")).toBe("D:\\data");
+    expect(shortPath("C:\\Users\\Alex", "C:\\Users\\Alex")).toBe("C:\\Users\\Alex");
+    expect(shortPath("C:\\Users\\Alex2\\x", "C:\\Users\\Alex")).toBe("C:\\Users\\Alex2\\x");
   });
 });
 

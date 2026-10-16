@@ -7,8 +7,8 @@ The batch was also merged with the shipped catalog in a scratch copy of `crates/
 ## How sure each rule is
 
 - `verified: true`: a vendor page or the project's own source code names the location. Every source URL was fetched and returned 200, except bot-protected pages (helpx.adobe.com, help.evernote.com, answers.ea.com and minecraft.wiki return 403 to scripts but exist).
-- `verified: false`: the path comes from the app's standard layout (Chromium or Electron cache folders inside a known app data folder), from read-only inspection of this PC, or from community sources. 60 of the 115 rules are unverified. Unverified rules that touch anything other than plain caches or logs are `review` or stricter.
-- Rules citing `github.com/MoscaDotTo/Winapp2` (11 rules: Xbox app, Steam extras, NVIDIA app, AMD Software, Amazon Games) are based on read-only inspection of this PC; Winapp2 is cited only as a second opinion. Winapp2 is CC-BY-SA-4.0. Only the fact that a folder exists was used; no entries were copied. If you prefer not to link it, swap the source for a vendor page when one exists.
+- `verified: false`: the path comes from the app's standard layout (Chromium or Electron cache folders inside a known app data folder), from read-only inspection of a local install, or from community sources. 60 of the 115 rules are unverified. Unverified rules that touch anything other than plain caches or logs are `review` or stricter.
+- Rules citing `github.com/MoscaDotTo/Winapp2` (11 rules: Xbox app, Steam extras, NVIDIA app, AMD Software, Amazon Games) are based on read-only inspection of local installs; Winapp2 is cited only as a second opinion. Winapp2 is CC-BY-SA-4.0. Only the fact that a folder exists was used; no entries were copied. If you prefer not to link it, swap the source for a vendor page when one exists.
 - The web-search budget ran out during the research. Items that could not be checked afterwards were left out rather than guessed (listed under each platform).
 
 ## Counts
@@ -116,12 +116,11 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
 **Added**
 - `adobe-peak-files` (review): `%APPDATA%\Adobe\Common\Peak Files`, the `.pek` waveforms.
 - `camera-raw-cache` (safe, unverified): `%LOCALAPPDATA%\Adobe\CameraRaw\Cache2` and the legacy `Cache` folder.
-  - The folder exists on this PC.
   - Adobe documents the Purge Cache button but not the path.
 - `adobe-crash-reports` (safe): the `CRLogs\crashlogs` and `dumps` folders in Roaming and LocalLow. An Adobe staff reply says they are safe to remove.
-- `blender-cache` (safe, verified): Blender's manual names `%USERPROFILE%\AppData\Local\Blender Foundation\Blender\Cache`. On this PC it also holds GL and Vulkan shader caches.
+- `blender-cache` (safe, verified): Blender's manual names `%USERPROFILE%\AppData\Local\Blender Foundation\Blender\Cache`. It can also hold GL and Vulkan shader caches.
 - `capcut-cache` (review): only hash-named asset and thumbnail caches (`effect`, `artistEffect`, `image`, `fontImage`, `frameThumbnail`, `audioWave`, `VENetworkPlayer`), the CEF caches, `Log` and `Crash\reports`.
-  - Based on inspecting CapCut 8.5 on this PC and its `globalSetting` file. There is no vendor documentation.
+  - Based on inspecting a CapCut 8.5 install and its `globalSetting` file. There is no vendor documentation.
 - `obs-logs` (safe): `logs`, `crashes` and `profiler_data` are in OBS source.
 - `obs-browser-cache` (review): Chromium caches under `plugin_config\obs-browser`, both the root folder (Alloy runtime) and `Default` (Chrome runtime). `obs_profile_cookies` is never touched.
 - `gimp-temp` (safe): `%APPDATA%\GIMP\*\tmp`.
@@ -133,7 +132,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
 - Media Encoder logs: they are in Documents, which is protected.
 - Photoshop:
   - `CT Font Cache`: a troubleshooting step that frees no meaningful space.
-  - `Logs`: only seen on this PC.
+  - `Logs`: seen in a local install, not documented.
   - Settings, AutoRecover, and the Save-for-Web presets in `%LOCALAPPDATA%\Adobe\Adobe Photoshop *`.
 - Lightroom Classic:
   - Previews are in Pictures, which is protected. A glob cannot tell `Previews.lrdata` apart from `Smart Previews.lrdata`, and Smart Previews may be the only editable copy.
@@ -174,7 +173,6 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
 - `vscode-extension-temp` (safe, folder mode):
   - Matches `.<uuid>` extraction folders and `*.vsctmp` folders in `.vscode\extensions` and `.vscode-insiders\extensions`.
   - VS Code's `extractUserExtension` extracts to `.${generateUuid()}` and deletes it only on handled errors.
-  - 3 orphans exist on this PC.
   - Folder mode ignores `minAgeHours`, so the rule relies on `closeApps`.
 - `jetbrains-toolbox-cache` (review): Toolbox `logs` (from the vendor FAQ) and `download` (path inferred from the Linux layout).
 - `android-sdk-temp` (safe): `.temp` and `.downloadIntermediates`, from AOSP source.
@@ -195,7 +193,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
 - `windows-search-index` (report, admin). Rebuild it through Indexing Options.
 - `packaged-app-npm-cache` and `packaged-app-pip-cache` (safe):
   - These are npm and pip caches that MSIX redirected into `%LOCALAPPDATA%\Packages\*\LocalCache\Local\`.
-  - On this PC: 3.5 GB of npm cache inside the Claude package, and 3.2 GB of pip cache inside the Store Python package.
+  - These can reach several gigabytes, for example an npm cache inside an Electron app package or a pip cache inside the Store Python package.
   - `local-packages`, which holds installed Store Python packages, is never touched.
 
 **Excluded**
@@ -256,8 +254,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
 - `electron-updater-cache` (safe, 24 h): the update downloads of Electron apps. Each app has its own folder:
   - The folder is `%LOCALAPPDATA%\<name>-updater`, holding `installer.exe`, `current.blockmap` and `pending\`.
   - electron-builder's `getAppCacheDir()` returns `%LOCALAPPDATA%`.
-  - The names come from this PC: Cursor, LM Studio, Unity Hub, Antigravity, Comfy Desktop, CurseForge, Redis Insight and Spline, plus the two legacy ComfyUI names.
-  - About 3.8 GB here.
+  - Covered apps: Cursor, LM Studio, Unity Hub, Antigravity, Comfy Desktop, CurseForge, Redis Insight and Spline, plus the two legacy ComfyUI names.
 - `electron-crash-reports` (review): `*.dmp` in `<userData>\Crashpad\reports` for 19 common apps. Electron stores crash dumps under `app.getPath('crashDumps')`.
 - Cache rules, all limited to the standard Chromium cache folders plus `logs` where present:
   - `claude-desktop-cache`, `codex-desktop-cache` (MSIX path), `windsurf-cache`, `antigravity-cache` (Antigravity and Antigravity IDE)
@@ -270,7 +267,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
 
 **Excluded**
 - Claude desktop:
-  - `vm_bundles` (9.1 GB here, the Cowork VM image), `claude-code` and `claude-code-vm`: no documentation on what happens if they are removed.
+  - `vm_bundles` (the Cowork VM image, several gigabytes), `claude-code` and `claude-code-vm`: no documentation on what happens if they are removed.
   - Sessions, worktrees, `IndexedDB` and `Local Storage`.
 - `claude.exe` is also the name of the Claude Code CLI, so `claude-desktop-cache` is blocked while either runs. That is acceptable, but worth knowing.
 - VS Code forks: `Backups`, `User`, and the `.codeium`, `.windsurf` and `.antigravity` home folders.
@@ -285,7 +282,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
   - Comfy Desktop's Electron caches and logs.
   - The legacy `%APPDATA%\ComfyUI` folder.
   - `logs` and `ComfyUI\temp` of the installs, under both the current and the legacy home layout. ComfyUI wipes `temp` on startup.
-- `comfy-desktop-downloads` (review): the environment `download-cache` (2.3 GB here). The app manages it as an LRU cache.
+- `comfy-desktop-downloads` (review): the environment `download-cache`. The app manages it as an LRU cache.
 - `stability-matrix-cache` (safe): `Logs` and `Assets\uv\cache`. `UV_CACHE_DIR` is set in `Settings.cs`.
 - `jan-logs-cache` (safe): `data\logs` and the WebView caches.
 - `anythingllm-logs` (safe): `storage\logs` only.
@@ -326,7 +323,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
   - `ea-app-cache` (safe): CEF `BrowserCache\EADesktop\{Cache,Code Cache,GPUCache,DawnCache}`, `IGOCache`, and the `qmlcache` folders.
   - `%PROGRAMDATA%\EA Desktop\Logs` was left out: it is read-only for Users, and the folder is small.
 - Origin:
-  - `origin-cache` (safe): only `Web Cache`, `ImageCache` and `AvatarsCache`. EA's old advice to delete `%LOCALAPPDATA%\Origin` would also delete `Cloud Saves`, which exists on this PC.
+  - `origin-cache` (safe): only `Web Cache`, `ImageCache` and `AvatarsCache`. EA's old advice to delete `%LOCALAPPDATA%\Origin` would also delete `Cloud Saves`, which many installs have.
   - `origin-local-content` (report).
 - `ubisoft-connect-cache` (safe):
   - Only `cache\http*`, `cache\assets` and `cache\telemetry`, plus `logs`.
@@ -355,7 +352,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
 - NVIDIA:
   - `nvidia-app-logs` (files `*.log` and `*.log.bak`).
   - `nvidia-app-web-cache` (CefCache).
-  - `nvidia-driver-downloads` (review, admin, 72 h): `UpdateFramework\ota-artifacts`, 4.6 GB here, and the GFE `Downloader`.
+  - `nvidia-driver-downloads` (review, admin, 72 h): `UpdateFramework\ota-artifacts`, often several gigabytes, and the GFE `Downloader`.
   - `nvidia-system-logs` (admin, 24 h).
 - AMD: `amd-software-cache` (Qt shader caches in `Radeonsoftware\cache`) and `amd-software-logs` (`RSX_Common.log_*.log` in `AMD\CN`).
 - `overwolf-logs` (verified): `%LOCALAPPDATA%\Overwolf\Log`.
@@ -381,7 +378,7 @@ Admin rules: `jellyfin-server-cache`, `chocolatey-leftovers`, `chocolatey-logs`,
   - `RGStats.db`, and `PPC` (purpose unclear).
   - The `NewsFeed`, `gameicon_cache` and `Temp` folders: guesses only.
 - Rockstar Launcher: its logs are in Documents, which is protected, and there is no vendor cache article.
-- TLauncher: an unofficial launcher. It keeps world backups in `.minecraft\backup` (9.6 GB of worlds on this PC).
+- TLauncher: an unofficial launcher. It keeps world backups in `.minecraft\backup` (these can reach many gigabytes).
 - Minecraft Bedrock (GDK): no log path verified. The only official cleanup is in-game: Settings > Storage > Clear Marketplace Cache.
 - Shader caches of individual games (Battlefield, CoD): not vendor-documented, and some are in Documents.
 

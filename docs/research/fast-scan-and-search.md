@@ -34,8 +34,8 @@ Licensing note: WinDirStat is GPL-3.0 and UltraFastFileSearch is MPL-2.0. They a
 | Size / free | 930.5 GiB / 140.0 GiB | 953.9 GiB / 68.1 GiB |
 | Cluster / file record | 4096 B / 1024 B | not measured |
 | `$MFT` valid data | 9,655,812,096 B (8.99 GiB) = 9,429,504 record slots | not measured |
-| USN journal | ID 0x01d861d3d3352ef2, max 32 MB, allocation delta 8 MB, record versions 2 to 4 | not measured |
-| Journal coverage at measurement | 381,643 records spanning 0.8 h (22:38Z to 23:24Z), read in 79 ms | not measured |
+| USN journal | max 32 MB, allocation delta 8 MB, record versions 2 to 4 | not measured |
+| Journal coverage at measurement | 381,643 records spanning 0.8 h, read in 79 ms | not measured |
 | Files (from the current walker) | about 5.8M files, 108 s debug build | not measured |
 
 Cluster, record size and `$MFT` length came from `FSCTL_GET_NTFS_VOLUME_DATA` on a `C:\` directory handle. The journal values came from `fsutil usn queryjournal c:` and an unprivileged read. Probe scripts are in this scratchpad folder: `usnprobe.ps1`, `usnspan.ps1`, `ntfsvol.ps1`. They print counts and timestamps only, never file names.
