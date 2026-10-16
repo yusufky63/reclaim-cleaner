@@ -54,6 +54,10 @@ Browsers keep their cache files open. Cleaning while the browser runs would fail
 
 Nothing on its own. After the app's own uninstaller has finished, ReClaim lists folders in AppData, ProgramData and Program Files that carry the app's or the publisher's name. The install folder, folders named exactly like the app and `Publisher\App` folders are high confidence and preselected. A publisher folder on its own or a similar name is low confidence and stays unchecked, because it can hold settings, game saves or files of other apps. Folders another installed app may still use are not listed. Removal goes to the Recycle Bin by default; folders in Program Files and ProgramData need administrator rights.
 
+### Which folders does the Developer page search?
+
+The folders you add under "Folders to search". Until you add any, ReClaim looks for common code folders in your user folder and at the root of every fixed drive: `source\repos`, `repos`, `dev`, `code`, `git`, `GitHub`, `workspace` and "Projects" in every UI language (`Projekte`, `Proyectos`, `Projeler` and so on). Only folders that exist are used, and they show up as suggestions you can add or leave out. Nothing about your machine is built in.
+
 ### Does it clean the registry?
 
 No. Microsoft does not support registry cleaners and the space gain is negligible.
@@ -123,6 +127,10 @@ Büyük dosyalar'da, Alan haritasında ya da bir temizlikten sonra "Kullanımda"
 ### Steam oyunlarım başka bir sürücüde. ReClaim onları buluyor mu?
 
 Evet. Oyunlar sayfası ve Steam temizlik kuralları Steam'in kendi kütüphane listesini (`libraryfolders.vdf`) okur; Steam > Ayarlar > Depolama'dan eklediğin her kütüphane, hangi sürücüde olursa olsun, Steam klasörünün kendisiyle birlikte dahil edilir. Elle taşınıp junction ile geri bağlanan bir klasör izlenmez, çünkü ReClaim bağlantıları asla izlemez; onun yerine klasörü Steam'e kütüphane olarak ekle.
+
+### Geliştirici sayfası hangi klasörleri tarar?
+
+"Aranacak klasörler" altına eklediklerini. Sen bir şey eklemeden önce ReClaim, kullanıcı klasöründe ve her sabit sürücünün kökünde yaygın kod klasörlerini arar: `source\repos`, `repos`, `dev`, `code`, `git`, `GitHub`, `workspace` ve arayüz dillerinin hepsinde "Projeler" karşılığı (`Projects`, `Projekte`, `Proyectos` gibi). Yalnızca var olan klasörler kullanılır ve ekleyip çıkarabileceğin öneriler olarak görünür. Bilgisayarına özel hiçbir şey programın içine yazılı değildir.
 
 ### Kayıt defterini temizliyor mu?
 

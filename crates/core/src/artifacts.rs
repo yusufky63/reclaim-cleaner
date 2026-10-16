@@ -216,16 +216,34 @@ pub fn scan_projects(roots: &[PathBuf], rules: &[ArtifactRule], job: &Job) -> Ve
     projects
 }
 
+/// "Projects" in every UI language, so a folder named in the user's own language is found too.
+const PROJECT_FOLDER_NAMES: &[&str] = &[
+    "Projects",
+    "Projeler",
+    "Projelerim",
+    "Projekte",
+    "Proyectos",
+    "Projets",
+    "Progetti",
+    "Projetos",
+    "Projekty",
+    "Проекты",
+    "Проєкти",
+    "Proyek",
+    "プロジェクト",
+    "프로젝트",
+    "项目",
+];
+
 /// Folders where code usually lives. Only existing ones are returned.
 pub fn suggested_roots() -> Vec<String> {
     let mut out: Vec<PathBuf> = Vec::new();
     if let Some(home) = env_path("USERPROFILE") {
+        out.extend(PROJECT_FOLDER_NAMES.iter().map(|n| home.join(n)));
         for sub in [
             r"source\repos",
             "source",
             "repos",
-            "Projects",
-            "projects",
             "dev",
             "Dev",
             "code",
@@ -241,19 +259,10 @@ pub fn suggested_roots() -> Vec<String> {
         }
     }
     for d in crate::system::drives().iter().filter(|d| !d.removable) {
-        for sub in [
-            "Projects",
-            "Projeler",
-            "Projelerim",
-            "dev",
-            "src",
-            "code",
-            "repos",
-            "git",
-            "workspace",
-            "Work",
-        ] {
-            out.push(PathBuf::from(&d.root).join(sub));
+        let root = PathBuf::from(&d.root);
+        out.extend(PROJECT_FOLDER_NAMES.iter().map(|n| root.join(n)));
+        for sub in ["dev", "src", "code", "repos", "git", "workspace", "Work"] {
+            out.push(root.join(sub));
         }
     }
     let mut seen = HashSet::new();
@@ -268,6 +277,15 @@ pub fn suggested_roots() -> Vec<String> {
 mod tests {
     use super::*;
     use crate::rules::builtin_artifacts;
+
+    #[test]
+    fn project_folder_names_are_unique_plain_names() {
+        let mut seen = HashSet::new();
+        for name in PROJECT_FOLDER_NAMES {
+            assert!(!name.is_empty() && !name.contains(['\\', '/']), "{name}");
+            assert!(seen.insert(name.to_lowercase()), "duplicate {name}");
+        }
+    }
 
     #[test]
     fn finds_artifacts_by_marker() {

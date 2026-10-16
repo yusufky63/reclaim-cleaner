@@ -10,7 +10,7 @@ import { useBytes, useLocale } from "../lib/hooks";
 import type { AssistantData, CleanReport, DeleteMethod } from "../lib/types";
 import { errorText, useApp } from "../store/app";
 
-/** `C--Projeler-app` (Claude Code's project folder name) -> `C:\Projeler-app`, a readable hint. */
+/** `C--code-shop` (Claude Code's project folder name) -> `C:\code-shop`, a readable hint. */
 function projectLabel(name: string): string {
   const m = /^([A-Za-z])--(.*)$/.exec(name);
   return m ? `${m[1]}:\\${m[2]}` : name;
