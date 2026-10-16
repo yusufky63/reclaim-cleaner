@@ -60,7 +60,9 @@ No. There is no telemetry or account. The optional update check sends one reques
 
 ### Where are settings and history stored?
 
-`%APPDATA%\ReClaim`. In the portable build, in the `data` folder next to the exe.
+`%APPDATA%\ReClaim`, together with your own rules (`rules`) and the `.reg` backups of removed uninstall entries (`backups`). In the portable build, in the `data` folder next to the exe.
+
+Uninstalling the setup (`.exe`) version deletes this folder only when you tick "Delete the application data". A new setup that offers to uninstall the old version first shows the same box; leave it unticked to keep your settings. The MSI never deletes it.
 
 ### How do I add a location ReClaim does not know?
 
@@ -124,4 +126,6 @@ Hayır. Telemetri ve hesap yok. İsteğe bağlı güncelleme denetimi GitHub API
 
 ### Ayarlar ve geçmiş nerede duruyor?
 
-`%APPDATA%\ReClaim`. Taşınabilir sürümde exe'nin yanındaki `data` klasöründe.
+`%APPDATA%\ReClaim`; kendi kuralların (`rules`) ve silinen kaldırma girdilerinin `.reg` yedekleri (`backups`) de orada. Taşınabilir sürümde exe'nin yanındaki `data` klasöründe.
+
+Kurulum (`.exe`) sürümünü kaldırırken bu klasör yalnızca "Uygulama verilerini sil" kutusunu işaretlersen silinir. Yeni bir kurulum önce eski sürümü kaldırmayı önerirse aynı kutu çıkar; ayarlarını korumak için işaretleme. MSI bu klasörü hiç silmez.

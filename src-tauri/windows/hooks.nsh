@@ -13,4 +13,16 @@
     DeleteRegKey HKCU "Software\Classes\Directory\Background\shell\ReClaim.Analyze"
     DeleteRegKey HKCU "Software\Classes\Drive\shell\ReClaim.Analyze"
   ${EndIf}
+
+  ; Tauri's "Delete app data" only removes `$APPDATA\${BUNDLEID}` and `$LOCALAPPDATA\${BUNDLEID}`,
+  ; while settings, history, user rules and `.reg` backups live in `$APPDATA\ReClaim`
+  ; (`settings::data_dir`). Same condition as Tauri's own removal: the box is unticked by default
+  ; and never shown in silent and passive runs, so replacing the installed copy keeps the data
+  ; unless the user ticks it. The portable build keeps its data beside the exe and has no
+  ; uninstaller.
+  ${If} $DeleteAppDataCheckboxState = 1
+  ${AndIf} $UpdateMode <> 1
+    SetShellVarContext current
+    RmDir /r "$APPDATA\ReClaim"
+  ${EndIf}
 !macroend

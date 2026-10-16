@@ -28,6 +28,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - Dropdowns showed light popups in dark mode.
+- "Delete the application data" in the setup's uninstaller left settings, history, user rules and `.reg` backups in `%APPDATA%\ReClaim`. It now removes that folder too; with the box unticked, the folder stays.
 - Future timestamps on single files no longer make folders look recently modified.
 
 ## [0.1.0] - 2026-10-16

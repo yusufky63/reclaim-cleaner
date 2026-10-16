@@ -118,6 +118,8 @@ The "Cleanup" view switches tiles to neutral and paints only reclaimable space, 
 
 If a file named `portable` sits next to the exe, settings and history live in `.\data` beside it instead of `%APPDATA%\ReClaim`. The portable zip ships with that file.
 
+The NSIS uninstaller's "Delete the application data" box removes `%APPDATA%\ReClaim` (from `windows/hooks.nsh`) along with Tauri's own `%APPDATA%` and `%LOCALAPPDATA%` folders named after the bundle identifier. It is unticked by default, never shown in silent or passive runs and ignored with `/UPDATE`, so replacing the installed copy keeps the data. The MSI and the portable build never delete it.
+
 ## Packaging
 
 - `pnpm tauri build` produces an NSIS setup (`currentUser`, English and Turkish, WebView2 bootstrapper embedded) and MSI packages (en-US, tr-TR).
