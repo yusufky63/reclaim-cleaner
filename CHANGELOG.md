@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added
 
 - AI models page: Hugging Face, LM Studio, Ollama and ComfyUI models in one list, with models stored by two tools flagged. Ollama models are removed with `ollama rm`.
@@ -53,5 +55,6 @@ First public version.
 - English and Turkish UI, light and dark theme, portable mode.
 - NSIS installer (English and Turkish), MSI packages (en-US, tr-TR) and a portable zip.
 
-[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yusufky63/reclaim-cleaner/releases/tag/v0.1.0

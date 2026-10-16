@@ -1,7 +1,7 @@
 {
   "name": "reclaim-cleaner",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Open-source disk cleaner and space analyzer for Windows. See where your space went and reclaim it safely.",
   "license": "MIT",
   "author": "yusufky63",

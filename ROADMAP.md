@@ -1,16 +1,17 @@
 # Roadmap
 
-What is planned after 0.1.0, roughly in order. The research behind each item is in [docs/research.md](docs/research.md). Suggestions are welcome as issues.
+What is planned after 0.2.0, roughly in order. The research behind each item is in [docs/research.md](docs/research.md). Suggestions are welcome as issues.
 
 The full plan with sizes and reasons is in [docs/research/README.md](docs/research/README.md).
 
-## Done for the next release
+## Shipped in 0.2.0
 
 - **Hidden space explainer**: why used space and scanned space differ (shadow copies, reserved storage, pagefile, hiberfil, MFT, unreadable folders, WSL and Docker disks, online-only files).
 - **"Analyze with ReClaim"** in the Explorer context menu (classic per-user entry), plus a path argument.
 - **What is using this file**, through the Restart Manager; graceful close only.
 - **Steam libraries on every drive**, with shader caches named after their games.
 - **Leftover scan after uninstall** with confidence levels.
+- **AI models, AI assistants and Downloads** pages, real app icons, quick clean and 12 more UI languages.
 
 ## Next
 
