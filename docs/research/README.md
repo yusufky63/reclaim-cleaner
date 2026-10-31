@@ -9,6 +9,7 @@ Round 1 ([../research.md](../research.md)) shaped 0.1.0. This round asked: what 
 | [fast-scan-and-search.md](fast-scan-and-search.md) | MFT reading, USN journal, a faster non-admin walker, an instant search index, helper-to-UI transport, phased plan |
 | [cache-locations.md](cache-locations.md) | The second batch of 115 cleanup rules (now in `rules/targets.json`), exclusions and sources |
 | [recovery-tool.md](recovery-tool.md) | Deleted-file recovery: landscape, techniques, honest limits, architecture and plan for a separate app |
+| [linux.md](linux.md) | The Linux port: protected paths, what a scan may enter, safe deletes, user cache locations, system areas as report rules, hidden space, elevation |
 
 Claims the reports could not verify are marked in place. Reddit could not be read directly (blocked for automated tools); its threads appear only as search-result titles.
 
