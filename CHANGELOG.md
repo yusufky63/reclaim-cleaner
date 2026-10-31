@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
 ### Added
 
 - Quick clean from outside the app. Right-click ReClaim on the taskbar (or its pinned Start entry) and choose "Quick clean", open "ReClaim Quick Clean" in the Start menu (added by the setup), or put the same shortcut on the desktop from Settings > Quick clean shortcuts. Each opens the app on the Overview with a fresh scan and the usual quick clean confirmation listing every item; nothing is deleted until you confirm. Behind them is the `--quick-clean` flag, which only opens that confirmation. The setup removes both shortcuts on uninstall.
@@ -66,6 +68,7 @@ First public version.
 - English and Turkish UI, light and dark theme, portable mode.
 - NSIS installer (English and Turkish), MSI packages (en-US, tr-TR) and a portable zip.
 
-[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yusufky63/reclaim-cleaner/releases/tag/v0.1.0

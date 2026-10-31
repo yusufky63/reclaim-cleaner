@@ -2770,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "reclaim-cleaner"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "parking_lot",
  "reclaim-core",
@@ -2787,7 +2787,7 @@ dependencies = [
 
 [[package]]
 name = "reclaim-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "blake3",
