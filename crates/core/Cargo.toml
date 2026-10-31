@@ -17,10 +17,13 @@ parking_lot = "=0.12.5"
 blake3 = "=1.8.7"
 xxhash-rust = { version = "=0.8.19", features = ["xxh3"] }
 chrono = { version = "=0.4.45", default-features = false, features = ["clock", "std"] }
-winreg = "=0.56.0"
 trash = "=5.2.9"
 png = "=0.18.1"
 base64 = "=0.23.1"
+
+# Win32 bindings are only built for Windows; other platforms use std and /proc.
+[target.'cfg(windows)'.dependencies]
+winreg = "=0.56.0"
 windows = { version = "=0.62.2", features = [
   "Wdk_Storage_FileSystem",
   "Win32_Foundation",

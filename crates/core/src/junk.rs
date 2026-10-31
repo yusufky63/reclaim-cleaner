@@ -170,7 +170,8 @@ pub fn scan_targets(rules: &[TargetRule], job: &Job) -> Vec<TargetResult> {
         .collect()
 }
 
-#[cfg(test)]
+// Rule expansion and the guard only know Windows paths so far.
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
     use crate::rules::{Group, Risk};

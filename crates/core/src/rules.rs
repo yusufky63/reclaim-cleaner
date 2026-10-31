@@ -261,8 +261,10 @@ pub fn load_user_targets(dir: &Path) -> (Vec<TargetRule>, Vec<String>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
     use crate::paths::{Guard, Origin, expand_vars};
     use std::collections::HashSet;
+    #[cfg(windows)]
     use std::path::PathBuf;
 
     #[test]
@@ -286,6 +288,7 @@ mod tests {
 
     /// Every rule path, with wildcards replaced by a sample name, must pass the same guard the
     /// cleaner uses. This keeps a rule edit from ever pointing at a protected folder.
+    #[cfg(windows)]
     #[test]
     fn builtin_rule_paths_pass_the_guard() {
         let guard = Guard::new(&[], None);

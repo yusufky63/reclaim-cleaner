@@ -17,43 +17,59 @@
 //!
 //! The only action offered is a graceful close: the same request as clicking the window's close
 //! button. Nothing here kills a process or closes another process's handles.
+//!
+//! Only Windows has an implementation; elsewhere the check reports that it is not available.
 
-use std::collections::{HashMap, VecDeque};
+#[cfg(windows)]
+use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::fs;
 use std::path::{Path, PathBuf};
+#[cfg(windows)]
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
 use rayon::prelude::*;
 use serde::Serialize;
+#[cfg(windows)]
 use windows::Wdk::Storage::FileSystem::{
     FileProcessIdsUsingFileInformation, NtQueryInformationFile,
 };
+#[cfg(windows)]
 use windows::Win32::Foundation::{
     CloseHandle, E_ACCESSDENIED, ERROR_MORE_DATA, ERROR_SUCCESS, FILETIME, HWND, LPARAM,
     WAIT_OBJECT_0, WPARAM,
 };
+#[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE,
     FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
+#[cfg(windows)]
 use windows::Win32::System::IO::IO_STATUS_BLOCK;
+#[cfg(windows)]
 use windows::Win32::System::RestartManager::{
     CCH_RM_SESSION_KEY, RM_APP_TYPE, RM_PROCESS_INFO, RM_UNIQUE_PROCESS, RmConsole, RmCritical,
     RmEndSession, RmExplorer, RmGetList, RmMainWindow, RmOtherWindow, RmRegisterResources,
     RmService, RmStartSession,
 };
+#[cfg(windows)]
 use windows::Win32::System::Threading::{
     GetProcessTimes, OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
     PROCESS_SYNCHRONIZE, QueryFullProcessImageNameW, WaitForSingleObject,
 };
+#[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GW_OWNER, GetWindow, GetWindowThreadProcessId, IsWindowVisible, PostMessageW,
     WM_CLOSE,
 };
+#[cfg(windows)]
 use windows::core::{BOOL, PCWSTR, PWSTR};
 
 use crate::fsmeta::{is_link, mtime};
+#[cfg(windows)]
 use crate::paths::{is_within, key};
+#[cfg(windows)]
 use crate::winstr::{from_wide, wide};
 use crate::{Error, Result};
 
@@ -64,8 +80,10 @@ pub const MAX_DIRS: usize = 400;
 /// Entries looked at while choosing them, so a huge folder stays quick.
 const MAX_VISITED: usize = 40_000;
 /// Time after which no new path is checked; the report then says the check was partial.
+#[cfg(windows)]
 const BUDGET: Duration = Duration::from_secs(8);
 /// Each query mostly waits on the kernel, so more threads than cores still pay off.
+#[cfg(windows)]
 const THREADS: usize = 16;
 /// Program files are what a running app keeps open, so they are checked first.
 const FIRST_EXTS: &[&str] = &["exe", "dll", "sys", "node", "pyd", "ocx", "jar", "db"];
@@ -120,10 +138,12 @@ pub struct LockReport {
     pub lockers: Vec<Locker>,
 }
 
+#[cfg(windows)]
 fn filetime(t: FILETIME) -> u64 {
     (u64::from(t.dwHighDateTime) << 32) | u64::from(t.dwLowDateTime)
 }
 
+#[cfg(windows)]
 fn to_filetime(v: u64) -> FILETIME {
     FILETIME {
         dwLowDateTime: v as u32,
@@ -134,6 +154,7 @@ fn to_filetime(v: u64) -> FILETIME {
 /// Ids of the processes that have `path` (a file or folder) open, including programs that
 /// have it loaded and, for folders, use it as their working folder. `None` when the path
 /// cannot be opened even for its attributes.
+#[cfg(windows)]
 pub fn pids_using(path: &Path) -> Option<Vec<u32>> {
     let w = wide(path);
     let handle = unsafe {
@@ -179,6 +200,7 @@ pub fn pids_using(path: &Path) -> Option<Vec<u32>> {
 }
 
 /// One Restart Manager session over `files` and/or `processes`. Errors carry the Win32 code.
+#[cfg(windows)]
 fn rm_list(
     files: &[PathBuf],
     processes: &[RM_UNIQUE_PROCESS],
@@ -267,11 +289,13 @@ pub fn folder_items(dir: &Path) -> (Vec<PathBuf>, Vec<PathBuf>, bool) {
     (files.into_iter().map(|f| f.2).collect(), dirs, truncated)
 }
 
+#[cfg(windows)]
 struct ProcFacts {
     exe: Option<PathBuf>,
     started: Option<u64>,
 }
 
+#[cfg(windows)]
 fn proc_facts(pid: u32) -> ProcFacts {
     let mut facts = ProcFacts {
         exe: None,
@@ -301,6 +325,7 @@ fn proc_facts(pid: u32) -> ProcFacts {
 
 /// Visible top-level windows that no other window owns, by process id: the windows a user
 /// would close by hand.
+#[cfg(windows)]
 fn main_windows() -> HashMap<u32, Vec<isize>> {
     unsafe extern "system" fn each(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let map = unsafe { &mut *(lparam.0 as *mut HashMap<u32, Vec<isize>>) };
@@ -320,6 +345,7 @@ fn main_windows() -> HashMap<u32, Vec<isize>> {
     map
 }
 
+#[cfg(windows)]
 fn kind_of(app_type: RM_APP_TYPE, has_window: bool) -> LockerKind {
     match app_type {
         t if t == RmMainWindow || t == RmOtherWindow => LockerKind::App,
@@ -332,6 +358,7 @@ fn kind_of(app_type: RM_APP_TYPE, has_window: bool) -> LockerKind {
     }
 }
 
+#[cfg(windows)]
 fn file_name(p: &Path) -> String {
     p.file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -340,6 +367,7 @@ fn file_name(p: &Path) -> String {
 
 /// Builds the report entries for `pids` (id, has files open, runs from the folder), described
 /// by `infos` where the Restart Manager knows them.
+#[cfg(windows)]
 fn describe(
     pids: &[(u32, bool, bool)],
     infos: &[RM_PROCESS_INFO],
@@ -385,6 +413,7 @@ fn describe(
     out
 }
 
+#[cfg(windows)]
 fn check_file(path: &Path) -> LockReport {
     let (infos, unchecked) = match rm_list(&[path.to_path_buf()], &[]) {
         Ok(list) => (list, 0),
@@ -407,6 +436,7 @@ fn check_file(path: &Path) -> LockReport {
     }
 }
 
+#[cfg(windows)]
 fn check_folder(dir: &Path) -> LockReport {
     let deadline = Instant::now() + BUDGET;
     let (files, dirs, mut truncated) = folder_items(dir);
@@ -491,6 +521,7 @@ fn check_folder(dir: &Path) -> LockReport {
 }
 
 /// Every process using `path` (a file or a folder).
+#[cfg(windows)]
 pub fn find_lockers(path: &Path) -> Result<LockReport> {
     let md = path.symlink_metadata().map_err(|e| Error::io(path, e))?;
     if is_link(&md.file_type()) {
@@ -520,6 +551,7 @@ pub enum CloseOutcome {
 
 /// Asks the app to close its windows, exactly like clicking their close buttons, and waits up
 /// to `wait_ms` for it to exit. Unsaved work prompts still appear; nothing is forced.
+#[cfg(windows)]
 pub fn close_gracefully(pid: u32, started: u64, wait_ms: u32) -> CloseOutcome {
     if pid == std::process::id() || pid == 0 {
         return CloseOutcome::NotAllowed;
@@ -564,7 +596,17 @@ pub fn close_gracefully(pid: u32, started: u64, wait_ms: u32) -> CloseOutcome {
     }
 }
 
-#[cfg(test)]
+#[cfg(not(windows))]
+pub fn find_lockers(_path: &Path) -> Result<LockReport> {
+    Err(Error::Unsupported("finding what uses a file"))
+}
+
+#[cfg(not(windows))]
+pub fn close_gracefully(_pid: u32, _started: u64, _wait_ms: u32) -> CloseOutcome {
+    CloseOutcome::NotAllowed
+}
+
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

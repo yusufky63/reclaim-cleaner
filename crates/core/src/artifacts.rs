@@ -291,25 +291,25 @@ mod tests {
     fn finds_artifacts_by_marker() {
         let tmp = tempfile::tempdir().unwrap();
         let web = tmp.path().join("web");
-        fs::create_dir_all(web.join(r"node_modules\pkg")).unwrap();
+        fs::create_dir_all(web.join("node_modules/pkg")).unwrap();
         fs::create_dir_all(web.join(".next")).unwrap();
         fs::write(web.join("package.json"), b"{}").unwrap();
-        fs::write(web.join(r"node_modules\pkg\index.js"), [0u8; 100]).unwrap();
-        fs::write(web.join(r".next\build.js"), [0u8; 50]).unwrap();
+        fs::write(web.join("node_modules/pkg/index.js"), [0u8; 100]).unwrap();
+        fs::write(web.join(".next/build.js"), [0u8; 50]).unwrap();
         // A "target" folder without Cargo.toml is not an artifact.
         let docs = tmp.path().join("docs");
         fs::create_dir_all(docs.join("target")).unwrap();
-        fs::write(docs.join(r"target\plan.txt"), [0u8; 10]).unwrap();
+        fs::write(docs.join("target/plan.txt"), [0u8; 10]).unwrap();
         let rust = tmp.path().join("tool");
-        fs::create_dir_all(rust.join(r"target\debug")).unwrap();
+        fs::create_dir_all(rust.join("target/debug")).unwrap();
         fs::write(rust.join("Cargo.toml"), b"[package]").unwrap();
-        fs::write(rust.join(r"target\debug\tool.exe"), [0u8; 30]).unwrap();
+        fs::write(rust.join("target/debug/tool.exe"), [0u8; 30]).unwrap();
         // A Gradle "build" is owned by the Gradle rule, not the JS one.
         let app = tmp.path().join("android");
         fs::create_dir_all(app.join("build")).unwrap();
         fs::write(app.join("build.gradle"), b"").unwrap();
         fs::write(app.join("package.json"), b"{}").unwrap();
-        fs::write(app.join(r"build\out.apk"), [0u8; 7]).unwrap();
+        fs::write(app.join("build/out.apk"), [0u8; 7]).unwrap();
 
         let job = Job::new();
         let projects = scan_projects(&[tmp.path().to_path_buf()], builtin_artifacts(), &job);

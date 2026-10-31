@@ -1,22 +1,32 @@
 //! Installed programs from the registry Uninstall keys (the same source as Settings > Apps)
-//! plus Store apps through PowerShell.
+//! plus Store apps through PowerShell. Other systems list nothing until they are ported.
 
+#[cfg(windows)]
 use std::collections::HashSet;
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::path::Path;
+#[cfg(windows)]
 use std::process::Command;
 
+#[cfg(windows)]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+#[cfg(windows)]
 use winreg::RegKey;
+#[cfg(windows)]
 use winreg::enums::{
     HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, KEY_WOW64_32KEY, KEY_WOW64_64KEY,
 };
 
-use crate::system::{LaunchOutcome, run_and_wait};
+use crate::system::LaunchOutcome;
+#[cfg(windows)]
+use crate::system::run_and_wait;
 use crate::{Error, Result};
 
+#[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(windows)]
 const UNINSTALL: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +52,7 @@ pub struct InstalledApp {
     pub broken: bool,
 }
 
+#[cfg(windows)]
 fn read_hive(hive: &RegKey, flags: u32, tag: &str, scope: &str, out: &mut Vec<InstalledApp>) {
     let Ok(root) = hive.open_subkey_with_flags(UNINSTALL, KEY_READ | flags) else {
         return;
@@ -115,6 +126,7 @@ fn read_hive(hive: &RegKey, flags: u32, tag: &str, scope: &str, out: &mut Vec<In
 }
 
 /// Desktop programs, deduplicated by name and version (some installers register twice).
+#[cfg(windows)]
 pub fn desktop_apps() -> Vec<InstalledApp> {
     let mut out = Vec::new();
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
@@ -128,6 +140,7 @@ pub fn desktop_apps() -> Vec<InstalledApp> {
     out
 }
 
+#[cfg(windows)]
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct AppxRow {
@@ -141,6 +154,7 @@ struct AppxRow {
 }
 
 /// Store apps installed for the current user, excluding frameworks and system apps.
+#[cfg(windows)]
 pub fn store_apps() -> Result<Vec<InstalledApp>> {
     let script = r#"$ErrorActionPreference='SilentlyContinue'; [Console]::OutputEncoding=[Text.Encoding]::UTF8;
 Get-AppxPackage -PackageTypeFilter Main | Where-Object { $_.SignatureKind -eq 'Store' -and -not $_.IsFramework -and -not $_.NonRemovable } | ForEach-Object {
@@ -222,6 +236,7 @@ Get-AppxPackage -PackageTypeFilter Main | Where-Object { $_.SignatureKind -eq 'S
 /// Resolves a manifest logo such as `Assets\Square44x44Logo.png` to the file Windows would
 /// show. Packages ship scaled variants (`.targetsize-48_altform-unplated.png`); the unplated
 /// ones look right on any background, so they win.
+#[cfg(windows)]
 pub fn store_logo(location: &str, rel: &str) -> Option<String> {
     let rel = rel.replace('/', "\\");
     if rel.split('\\').any(|s| s == ".." || s.is_empty()) {
@@ -309,6 +324,7 @@ pub fn split_command(cmd: &str) -> (String, String) {
 
 /// Starts the vendor uninstaller and waits for it. The uninstaller shows its own UI and asks
 /// for elevation itself when it needs it.
+#[cfg(windows)]
 pub fn uninstall(app: &InstalledApp) -> Result<LaunchOutcome> {
     if let Some(full) = app.id.strip_prefix("store:") {
         if !full
@@ -347,6 +363,7 @@ pub fn uninstall(app: &InstalledApp) -> Result<LaunchOutcome> {
 
 /// Best guess at an app's main exe when the registry names no icon: the exe in the install
 /// folder whose name shares the most with the app name, ignoring uninstallers and updaters.
+#[cfg(windows)]
 fn main_exe(location: Option<&str>, name: &str) -> Option<String> {
     let dir = Path::new(location?.trim_matches('"'));
     let rd = std::fs::read_dir(dir).ok()?;
@@ -378,6 +395,7 @@ fn main_exe(location: Option<&str>, name: &str) -> Option<String> {
 
 /// True when an uninstall entry points at nothing: a Windows Installer product the installer
 /// service no longer knows, or an uninstaller exe that no longer exists.
+#[cfg(windows)]
 fn entry_is_broken(key: &str, windows_installer: bool, uninstall: Option<&str>) -> bool {
     let is_guid = key.len() == 38 && key.starts_with('{') && key.ends_with('}');
     let msi = uninstall.is_some_and(|u| u.to_ascii_lowercase().contains("msiexec"));
@@ -397,6 +415,7 @@ fn entry_is_broken(key: &str, windows_installer: bool, uninstall: Option<&str>) 
     p.is_absolute() && !p.exists()
 }
 
+#[cfg(windows)]
 fn key_parts(id: &str) -> Result<(RegKey, u32, &str, &'static str)> {
     let (tag, sub) = id
         .split_once(':')
@@ -429,6 +448,7 @@ fn key_parts(id: &str) -> Result<(RegKey, u32, &str, &'static str)> {
 /// Removes the Uninstall entry of an app that is already gone, after exporting it to a
 /// `.reg` file in `backup_dir` so it can be restored with a double click. Only entries that
 /// are still detected as broken are removed; a working app's entry is never touched.
+#[cfg(windows)]
 pub fn remove_broken_entry(id: &str, backup_dir: &Path) -> Result<String> {
     let app = desktop_apps()
         .into_iter()
@@ -485,6 +505,26 @@ pub fn remove_broken_entry(id: &str, backup_dir: &Path) -> Result<String> {
     Ok(file.to_string_lossy().into_owned())
 }
 
+#[cfg(not(windows))]
+pub fn desktop_apps() -> Vec<InstalledApp> {
+    Vec::new()
+}
+
+#[cfg(not(windows))]
+pub fn store_apps() -> Result<Vec<InstalledApp>> {
+    Ok(Vec::new())
+}
+
+#[cfg(not(windows))]
+pub fn uninstall(_app: &InstalledApp) -> Result<LaunchOutcome> {
+    Err(Error::Unsupported("uninstalling apps"))
+}
+
+#[cfg(not(windows))]
+pub fn remove_broken_entry(_id: &str, _backup_dir: &Path) -> Result<String> {
+    Err(Error::Unsupported("removing uninstall entries"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -517,6 +557,7 @@ mod tests {
         );
     }
 
+    #[cfg(windows)]
     #[test]
     fn picks_the_unplated_store_logo() {
         let tmp = tempfile::tempdir().unwrap();

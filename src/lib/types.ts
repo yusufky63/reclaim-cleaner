@@ -24,6 +24,8 @@ export interface LibraryFolders {
 
 export interface AppInfo {
   version: string;
+  /** Rust's `std::env::consts::OS`: `windows`, `linux`, `macos`. */
+  platform: string;
   elevated: boolean;
   portable: boolean;
   dataDir: string;

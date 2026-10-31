@@ -6,6 +6,7 @@
 
 use std::fs;
 use std::io::ErrorKind;
+#[cfg(windows)]
 use std::os::windows::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -135,6 +136,8 @@ impl<'a> Acc<'a> {
 
 fn io_reason(e: &std::io::Error) -> &'static str {
     match (e.kind(), e.raw_os_error()) {
+        // ERROR_SHARING_VIOLATION and ERROR_LOCK_VIOLATION.
+        #[cfg(windows)]
         (_, Some(32)) | (_, Some(33)) => "in_use",
         (ErrorKind::PermissionDenied, _) => "access_denied",
         (ErrorKind::NotFound, _) => "not_found",
@@ -174,9 +177,13 @@ fn trash_reason(e: &trash::Error) -> Option<&'static str> {
     }
 }
 
+#[cfg(windows)]
 const DELETE: u32 = 0x0001_0000;
+#[cfg(windows)]
 const FILE_SHARE_ALL: u32 = 0x7;
+#[cfg(windows)]
 const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+#[cfg(windows)]
 const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
 /// Items opened while looking for what blocks a folder, so a huge folder cannot stall a report.
 const PROBE_LIMIT: usize = 10_000;
@@ -197,6 +204,8 @@ fn probe(path: &Path, budget: &mut usize) -> Option<&'static str> {
     if is_cloud_only(&md) {
         return None;
     }
+    // Linux has no delete-access open; whether an entry can go depends on its folder.
+    #[cfg(windows)]
     if let Err(e) = fs::OpenOptions::new()
         .access_mode(DELETE)
         .share_mode(FILE_SHARE_ALL)
@@ -639,7 +648,8 @@ pub fn resolve_rules<'a>(ids: &[String], pool: &'a [TargetRule]) -> Result<Vec<&
         .collect()
 }
 
-#[cfg(test)]
+// The fixtures use Windows paths, junctions and share modes.
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
     use crate::rules::{Group, Risk};

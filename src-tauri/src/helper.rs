@@ -19,7 +19,9 @@ use reclaim_core::system::{LaunchOutcome, is_elevated, run_and_wait};
 use reclaim_core::{Error, Job, Result};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+#[cfg(windows)]
 use windows::Win32::Foundation::CloseHandle;
+#[cfg(windows)]
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -144,6 +146,7 @@ pub fn measure_elevated() -> Result<Option<Vec<ShadowStorage>>> {
     run_elevated("--elevated-measure", &serde_json::json!({}))
 }
 
+#[cfg(windows)]
 pub fn wait_for_process(pid: u32) {
     unsafe {
         if let Ok(h) = OpenProcess(PROCESS_SYNCHRONIZE, false, pid) {
@@ -152,3 +155,7 @@ pub fn wait_for_process(pid: u32) {
         }
     }
 }
+
+/// Only the Windows build relaunches itself, so there is no parent to wait for elsewhere.
+#[cfg(not(windows))]
+pub fn wait_for_process(_pid: u32) {}

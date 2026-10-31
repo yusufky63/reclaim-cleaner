@@ -96,7 +96,8 @@ pub fn find_empty(roots: &[PathBuf], guard: &Guard, job: &Job) -> Vec<EmptyFolde
     out
 }
 
-#[cfg(test)]
+// Rule expansion and the guard only know Windows paths so far.
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

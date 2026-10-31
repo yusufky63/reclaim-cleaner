@@ -417,6 +417,7 @@ impl Guard {
 
     /// May `path` itself be removed?
     pub fn check(&self, path: &Path, origin: Origin) -> Result<()> {
+        refuse_without_platform_list()?;
         let k = key(path);
         let deny = |why: &str| Err(Error::Protected(format!("{} ({why})", path.display())));
         if !path.is_absolute() || k.split('\\').any(|s| s == ".." || s == ".") {
@@ -471,7 +472,7 @@ impl Guard {
 
     /// Treats `root` like Program Files, so tests can exercise [`Origin::Leftover`] in a temp
     /// folder.
-    #[cfg(test)]
+    #[cfg(all(test, windows))]
     pub(crate) fn with_app_root(mut self, root: &Path) -> Guard {
         let k = key(root);
         self.no_wipe.push(k.clone());
@@ -483,6 +484,7 @@ impl Guard {
 
     /// May the contents of `dir` be removed as a whole (rule `contents` mode)?
     pub fn check_wipe(&self, dir: &Path) -> Result<()> {
+        refuse_without_platform_list()?;
         let k = key(dir);
         let deny = |why: &str| Err(Error::Protected(format!("{} ({why})", dir.display())));
         if !dir.is_absolute() || is_drive_root(&k) {
@@ -522,6 +524,16 @@ impl Guard {
     }
 }
 
+/// The protected lists above describe Windows. On other systems they would protect nothing, so
+/// every delete is refused there until that system has lists of its own.
+fn refuse_without_platform_list() -> Result<()> {
+    if cfg!(windows) {
+        Ok(())
+    } else {
+        Err(Error::Unsupported("deleting files"))
+    }
+}
+
 fn dedup_keys(paths: Vec<PathBuf>) -> Vec<String> {
     let mut keys: Vec<String> = paths.iter().map(|p| key(p)).collect();
     keys.sort();
@@ -557,6 +569,7 @@ mod tests {
         assert!(is_drive_root(r"d:\"));
     }
 
+    #[cfg(windows)]
     #[test]
     fn expand_vars_rejects_unknown() {
         assert!(expand_vars("%PATH%\\x").is_err());
@@ -572,6 +585,19 @@ mod tests {
         assert!(split_absolute(r"C:\a\b").is_ok());
     }
 
+    #[cfg(not(windows))]
+    #[test]
+    fn guard_refuses_every_delete_without_a_platform_list() {
+        let g = Guard::new(&[], None);
+        let tmp = std::env::temp_dir().join("reclaim-guard-test");
+        assert!(matches!(
+            g.check(&tmp, Origin::Rule),
+            Err(Error::Unsupported(_))
+        ));
+        assert!(matches!(g.check_wipe(&tmp), Err(Error::Unsupported(_))));
+    }
+
+    #[cfg(windows)]
     #[test]
     fn guard_blocks_system_and_user_roots() {
         let g = Guard::new(&[r"D:\Keep".to_string()], None);
@@ -609,6 +635,7 @@ mod tests {
         assert!(g.check(&env_path("TEMP").unwrap(), Origin::Rule).is_err());
     }
 
+    #[cfg(windows)]
     #[test]
     fn leftover_origin_opens_only_app_folders() {
         let pf = env_path("PROGRAMFILES").unwrap();

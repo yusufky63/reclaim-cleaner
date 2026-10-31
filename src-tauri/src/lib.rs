@@ -4,6 +4,7 @@ pub mod helper;
 mod state;
 
 use std::collections::HashMap;
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -48,6 +49,7 @@ fn err(e: Error) -> ErrorPayload {
     ErrorPayload::from(&e)
 }
 
+#[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Clone, Serialize)]
@@ -132,6 +134,8 @@ fn existing_dirs(roots: &[String]) -> Result<Vec<PathBuf>, Error> {
 #[serde(rename_all = "camelCase")]
 struct AppInfo {
     version: String,
+    /// `windows`, `linux` or `macos`, so the UI can leave out what this system lacks.
+    platform: &'static str,
     elevated: bool,
     portable: bool,
     data_dir: String,
@@ -167,6 +171,7 @@ async fn app_info(app: AppHandle) -> AppInfo {
     });
     AppInfo {
         version: app.package_info().version.to_string(),
+        platform: std::env::consts::OS,
         elevated: system::is_elevated(),
         portable: is_portable(),
         data_dir: state.data_dir.to_string_lossy().into_owned(),
@@ -175,7 +180,8 @@ async fn app_info(app: AppHandle) -> AppInfo {
         suggested_roots,
         settings_error: state.settings_error.read().clone(),
         rule_problems: state.rule_problems.clone(),
-        user_profile: std::env::var("USERPROFILE").unwrap_or_default(),
+        user_profile: std::env::var(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+            .unwrap_or_default(),
     }
 }
 
@@ -235,11 +241,22 @@ fn reveal_path(path: String) -> CmdResult<()> {
     if !p.is_absolute() || p.symlink_metadata().is_err() {
         return Err(err(Error::io(p, std::io::ErrorKind::NotFound.into())));
     }
+    reveal(p).map_err(err)
+}
+
+#[cfg(windows)]
+fn reveal(p: &Path) -> Result<(), Error> {
     std::process::Command::new("explorer.exe")
         .raw_arg(format!("/select,\"{}\"", p.display()))
         .spawn()
         .map(|_| ())
-        .map_err(|e| err(Error::io(p, e)))
+        .map_err(|e| Error::io(p, e))
+}
+
+/// The file manager's own "show item" call over D-Bus, through the opener plugin.
+#[cfg(not(windows))]
+fn reveal(p: &Path) -> Result<(), Error> {
+    tauri_plugin_opener::reveal_item_in_dir(p).map_err(|e| Error::Other(e.to_string()))
 }
 
 #[tauri::command]
@@ -491,11 +508,7 @@ async fn rule_command(app: AppHandle, id: String) -> CmdResult<CommandResult> {
                 }),
             };
         }
-        let out = std::process::Command::new("cmd.exe")
-            .raw_arg(format!("/D /C {command}"))
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .map_err(|e| Error::io("cmd.exe", e))?;
+        let out = run_hidden(&command)?;
         let mut text = String::from_utf8_lossy(&out.stdout).into_owned();
         text.push_str(&String::from_utf8_lossy(&out.stderr));
         let text: String = text
@@ -524,6 +537,22 @@ async fn rule_command(app: AppHandle, id: String) -> CmdResult<CommandResult> {
         record(&state, "tool", DeleteMethod::Permanent, &report);
     }
     Ok(result)
+}
+
+/// Runs a rule command line without a console window and collects its output.
+#[cfg(windows)]
+fn run_hidden(command: &str) -> Result<std::process::Output, Error> {
+    std::process::Command::new("cmd.exe")
+        .raw_arg(format!("/D /C {command}"))
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| Error::io("cmd.exe", e))
+}
+
+/// Rule commands are Windows command lines; other systems get their own rules first.
+#[cfg(not(windows))]
+fn run_hidden(_command: &str) -> Result<std::process::Output, Error> {
+    Err(Error::Unsupported("running rule commands"))
 }
 
 // ---------------------------------------------------------------- user-picked items
@@ -1154,6 +1183,7 @@ fn queue_analyze(app: &AppHandle, args: &[String]) {
 /// messages from lower to higher integrity, so without this the forwarded path would be lost
 /// while the second copy exits. The window is the single-instance plugin's own; its names are
 /// that plugin's convention and need checking when it is upgraded.
+#[cfg(windows)]
 fn allow_forwarding_when_elevated(app: &tauri::App) {
     use windows::Win32::UI::WindowsAndMessaging::{
         ChangeWindowMessageFilterEx, FindWindowW, GetWindowThreadProcessId, MSGFLT_ALLOW,
@@ -1204,6 +1234,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::load())
         .setup(|app| {
+            #[cfg(windows)]
             allow_forwarding_when_elevated(app);
             let args: Vec<String> = std::env::args().collect();
             queue_analyze(app.handle(), &args);

@@ -624,10 +624,10 @@ mod tests {
     #[test]
     fn builds_sorted_tree_with_big_and_small_files() {
         let tmp = tempfile::tempdir().unwrap();
-        write(&tmp.path().join(r"proj\package.json"), 10);
-        write(&tmp.path().join(r"proj\node_modules\a.js"), 100);
-        write(&tmp.path().join(r"media\movie.mkv"), BIG_FILE as usize + 5);
-        write(&tmp.path().join(r"media\note.txt"), 3);
+        write(&tmp.path().join("proj/package.json"), 10);
+        write(&tmp.path().join("proj/node_modules/a.js"), 100);
+        write(&tmp.path().join("media/movie.mkv"), BIG_FILE as usize + 5);
+        write(&tmp.path().join("media/note.txt"), 3);
         let job = Job::new();
         let mut tree = Tree::scan(tmp.path(), &job);
         assert_eq!(tree.summary.files, 4);
@@ -636,11 +636,11 @@ mod tests {
         assert_eq!(root.children[0].children[0].kind, NodeKind::File);
         let proj = tree.find(&tmp.path().join("proj")).unwrap();
         assert_eq!(tree.nodes[proj as usize].category, Category::Projects);
-        let movie = tree.find(&tmp.path().join(r"media\movie.mkv")).unwrap();
+        let movie = tree.find(&tmp.path().join("media/movie.mkv")).unwrap();
         assert_eq!(tree.nodes[movie as usize].category, Category::Media);
         assert_eq!(tree.large_files(BIG_FILE, 10).len(), 1);
 
-        let nm = tmp.path().join(r"proj\node_modules");
+        let nm = tmp.path().join("proj/node_modules");
         tree.mark(&[(nm.clone(), Risk::Safe, 100)]);
         assert_eq!(tree.nodes[0].reclaim_safe, 100);
         assert!(tree.remove(&nm));
@@ -652,9 +652,9 @@ mod tests {
     #[test]
     fn scans_a_selection_rooted_at_the_parent() {
         let tmp = tempfile::tempdir().unwrap();
-        write(&tmp.path().join(r"a\one.bin"), 10);
-        write(&tmp.path().join(r"b\two.bin"), 20);
-        write(&tmp.path().join(r"c\three.bin"), 40);
+        write(&tmp.path().join("a/one.bin"), 10);
+        write(&tmp.path().join("b/two.bin"), 20);
+        write(&tmp.path().join("c/three.bin"), 40);
         write(&tmp.path().join("loose.bin"), 80);
         let tree = Tree::scan_selection(tmp.path(), &["a".into(), "c".into()], &Job::new());
         assert_eq!(tree.summary.bytes, 50);

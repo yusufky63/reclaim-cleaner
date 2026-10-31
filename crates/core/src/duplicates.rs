@@ -5,12 +5,15 @@
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom};
+#[cfg(windows)]
 use std::os::windows::io::AsRawHandle;
 use std::path::{Path, PathBuf};
 
 use rayon::prelude::*;
 use serde::Serialize;
+#[cfg(windows)]
 use windows::Win32::Foundation::HANDLE;
+#[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{BY_HANDLE_FILE_INFORMATION, GetFileInformationByHandle};
 use xxhash_rust::xxh3::Xxh3;
 
@@ -134,14 +137,23 @@ fn full_hash(path: &Path, job: &Job) -> Option<String> {
 
 /// Volume serial plus file index: two paths with the same id are hard links to one file, and
 /// deleting one frees nothing.
-fn file_id(path: &Path) -> Option<(u32, u64)> {
+#[cfg(windows)]
+fn file_id(path: &Path) -> Option<(u64, u64)> {
     let f = File::open(path).ok()?;
     let mut info = BY_HANDLE_FILE_INFORMATION::default();
     unsafe { GetFileInformationByHandle(HANDLE(f.as_raw_handle()), &mut info) }.ok()?;
     Some((
-        info.dwVolumeSerialNumber,
+        u64::from(info.dwVolumeSerialNumber),
         (u64::from(info.nFileIndexHigh) << 32) | u64::from(info.nFileIndexLow),
     ))
+}
+
+/// Device plus inode, the Unix form of the same identity.
+#[cfg(unix)]
+fn file_id(path: &Path) -> Option<(u64, u64)> {
+    use std::os::unix::fs::MetadataExt;
+    let md = fs::metadata(path).ok()?;
+    Some((md.dev(), md.ino()))
 }
 
 /// Finds duplicate files of at least `min_bytes` below `roots`.
@@ -250,7 +262,8 @@ pub fn find_duplicates(
     groups
 }
 
-#[cfg(test)]
+// Rule expansion and the guard only know Windows paths so far.
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

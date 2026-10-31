@@ -51,6 +51,17 @@ docs/               architecture, rules format, research, FAQ
 
 The engine is a separate crate so `cargo test` runs without a WebView, and so a future CLI can reuse it.
 
+## Platforms
+
+Windows is the only supported system. The workspace also builds on Linux, the first step toward a Linux version:
+
+- `windows` and `winreg` are Windows-only dependencies. Every Win32, registry or `std::os::windows` call sits behind `#[cfg(windows)]`, with a non-Windows version beside it.
+- The non-Windows versions report nothing (no drives, apps, startup items, Steam folder) and refuse actions with `Error::Unsupported`, which reaches the UI as the `unsupported` code. They never guess.
+- The guard refuses every delete off Windows (`Error::Unsupported`), because its protected lists only name Windows folders. A Linux build can scan and measure but cannot delete until it has lists of its own.
+- `app_info` reports `platform` (`windows`, `linux`, `macos`) so the UI can leave out pages a system lacks.
+- Duplicate detection identifies hard links by volume serial and file index on Windows and by device and inode on Unix. "Show in folder" uses Explorer on Windows and the file manager's D-Bus call (through the opener plugin) elsewhere.
+- Tests that need Windows paths, junctions, the registry, Windows processes, rule expansion or the guard are marked `cfg(windows)`; the walker's link test has a symlink twin on Unix. CI runs clippy and the tests on Ubuntu and on Windows.
+
 ## Data flow
 
 ```
@@ -138,4 +149,4 @@ UI strings live in `src/i18n/en.ts` and `src/i18n/tr.ts`; the Turkish file is ty
 - `crates/core`: unit tests for path expansion, protected paths, wildcard matching, rule validation (every shipped rule must parse and pass the guards), walker behavior on junctions, duplicate grouping, empty folder detection, artifact detection, leftover matching, scoring and link skipping, and clean plan validation, using temp folders.
 - Windows-facing parts are tested against the real system where it is safe: the Restart Manager finds the test process holding a temp file, registry verbs are written under a throwaway `HKCU\Software\ReClaimTest-*` key and removed, and Steam libraries, manifests and shader caches are built in temp folders.
 - UI: Vitest for the treemap layout, byte formatting, script generation, selection helpers, hidden space arithmetic and the grouping of processes.
-- CI on `windows-latest`: typecheck, ESLint (`--max-warnings=0`), Vitest, build, `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`.
+- CI on `ubuntu-latest`: typecheck, ESLint (`--max-warnings=0`), Vitest, build, `cargo fmt --check`, and `cargo clippy -D warnings` and `cargo test` for the Linux build. On `windows-latest`: build, `cargo clippy -D warnings` and `cargo test`.

@@ -1,13 +1,19 @@
-//! Small helpers over Windows file metadata.
+//! Small helpers over file metadata.
 
 use std::fs::{FileType, Metadata};
+#[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(windows)]
 const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2;
+#[cfg(windows)]
 const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
+#[cfg(windows)]
 const FILE_ATTRIBUTE_OFFLINE: u32 = 0x1000;
+#[cfg(windows)]
 const FILE_ATTRIBUTE_RECALL_ON_OPEN: u32 = 0x4_0000;
+#[cfg(windows)]
 const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x40_0000;
 
 /// True for symlinks and junctions (name-surrogate reparse points). These are never followed:
@@ -19,6 +25,7 @@ pub fn is_link(ft: &FileType) -> bool {
 
 /// Online-only cloud files (OneDrive and other sync providers). Reading them triggers a
 /// download, and they take no local space, so they are neither hashed nor counted.
+#[cfg(windows)]
 pub fn is_cloud_only(md: &Metadata) -> bool {
     md.file_attributes()
         & (FILE_ATTRIBUTE_OFFLINE
@@ -27,9 +34,22 @@ pub fn is_cloud_only(md: &Metadata) -> bool {
         != 0
 }
 
+/// Linux has no placeholder attribute. Cloud drives there are FUSE mounts, which need a mount
+/// check rather than a file check.
+#[cfg(not(windows))]
+pub fn is_cloud_only(_md: &Metadata) -> bool {
+    false
+}
+
+#[cfg(windows)]
 pub fn is_hidden_system(md: &Metadata) -> bool {
     let a = md.file_attributes();
     a & FILE_ATTRIBUTE_HIDDEN != 0 && a & FILE_ATTRIBUTE_SYSTEM != 0
+}
+
+#[cfg(not(windows))]
+pub fn is_hidden_system(_md: &Metadata) -> bool {
+    false
 }
 
 /// Last write time as Unix seconds; 0 when unknown. Timestamps more than a day in the future

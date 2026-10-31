@@ -2,27 +2,35 @@
 //!
 //! `IShellItemImageFactory` gives the same images Explorer shows: the real icon of an exe or
 //! shortcut, and cached thumbnails for photos and videos. Results are cached per path and size
-//! for the life of the process.
+//! for the life of the process. Other systems only get small image files back as they are.
 
 use std::collections::HashMap;
+#[cfg(windows)]
 use std::ffi::c_void;
 use std::sync::OnceLock;
 
 use base64::Engine;
 use parking_lot::Mutex;
+#[cfg(windows)]
 use windows::Win32::Foundation::SIZE;
+#[cfg(windows)]
 use windows::Win32::Graphics::Gdi::{
     BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, DIB_RGB_COLORS, DeleteDC,
     DeleteObject, GetDIBits, GetObjectW, HGDIOBJ,
 };
+#[cfg(windows)]
 use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize};
+#[cfg(windows)]
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
+#[cfg(windows)]
 use windows::Win32::UI::Shell::{
     IShellItemImageFactory, SHCreateItemFromParsingName, SIIGBF, SIIGBF_BIGGERSIZEOK,
     SIIGBF_ICONONLY, SIIGBF_THUMBNAILONLY,
 };
+#[cfg(windows)]
 use windows::core::PCWSTR;
 
+#[cfg(windows)]
 use crate::winstr::{from_wide, wide};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize)]
@@ -42,6 +50,7 @@ fn cache() -> &'static Mutex<HashMap<CacheKey, Option<String>>> {
 }
 
 /// Expands `%SystemRoot%`-style variables the way Explorer does.
+#[cfg(windows)]
 pub fn expand_env(s: &str) -> String {
     if !s.contains('%') {
         return s.to_string();
@@ -53,6 +62,11 @@ pub fn expand_env(s: &str) -> String {
         return s.to_string();
     }
     from_wide(&buf)
+}
+
+#[cfg(not(windows))]
+pub fn expand_env(s: &str) -> String {
+    s.to_string()
 }
 
 /// Turns a registry icon reference such as `"C:\App\app.exe",0` into an existing file path.
@@ -76,6 +90,7 @@ pub fn icon_file(reference: &str) -> Option<String> {
 }
 
 /// Reads a shell image as straight-alpha RGBA.
+#[cfg(windows)]
 fn shell_rgba(path: &str, size: u32, flags: SIIGBF) -> Option<(u32, u32, Vec<u8>)> {
     unsafe {
         let w = wide(path);
@@ -130,6 +145,7 @@ fn shell_rgba(path: &str, size: u32, flags: SIIGBF) -> Option<(u32, u32, Vec<u8>
 /// Converts GDI's BGRA to RGBA. Icons usually arrive with premultiplied alpha; when every
 /// colour channel is at most its alpha we treat the data as premultiplied and undo it, and
 /// images without any alpha become opaque.
+#[cfg(windows)]
 fn bgra_to_rgba(mut px: Vec<u8>) -> Vec<u8> {
     let has_alpha = px.chunks(4).any(|p| p[3] != 0);
     let premultiplied = has_alpha
@@ -151,6 +167,7 @@ fn bgra_to_rgba(mut px: Vec<u8>) -> Vec<u8> {
     px
 }
 
+#[cfg(windows)]
 fn png_data_url(width: u32, height: u32, rgba: &[u8]) -> Option<String> {
     let mut out = Vec::new();
     {
@@ -194,12 +211,22 @@ fn render(path: &str, size: u32, kind: ImageKind) -> Option<String> {
     {
         return Some(url);
     }
+    shell_image(path, size, kind)
+}
+
+#[cfg(windows)]
+fn shell_image(path: &str, size: u32, kind: ImageKind) -> Option<String> {
     let flags = match kind {
         ImageKind::Icon => SIIGBF_ICONONLY | SIIGBF_BIGGERSIZEOK,
         ImageKind::Thumb => SIIGBF_THUMBNAILONLY | SIIGBF_BIGGERSIZEOK,
     };
     let (w, h, rgba) = shell_rgba(path, size, flags)?;
     png_data_url(w, h, &rgba)
+}
+
+#[cfg(not(windows))]
+fn shell_image(_path: &str, _size: u32, _kind: ImageKind) -> Option<String> {
+    None
 }
 
 /// Images for many paths at once. Work is spread over a few single-threaded COM apartments,
@@ -231,6 +258,7 @@ pub fn images(paths: &[String], size: u32, kind: ImageKind) -> HashMap<String, O
         .map(|part| {
             let part = part.to_vec();
             std::thread::spawn(move || {
+                #[cfg(windows)]
                 let inited = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) }.is_ok();
                 let res: Vec<(String, Option<String>)> = part
                     .into_iter()
@@ -244,6 +272,7 @@ pub fn images(paths: &[String], size: u32, kind: ImageKind) -> HashMap<String, O
                         (p, img)
                     })
                     .collect();
+                #[cfg(windows)]
                 if inited {
                     unsafe { CoUninitialize() };
                 }
@@ -263,7 +292,7 @@ pub fn images(paths: &[String], size: u32, kind: ImageKind) -> HashMap<String, O
     out
 }
 
-#[cfg(test)]
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

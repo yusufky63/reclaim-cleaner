@@ -30,6 +30,7 @@ pub mod startup;
 pub mod steam;
 pub mod system;
 pub mod walk;
+#[cfg(windows)]
 mod winstr;
 
 pub use error::{Error, Result};

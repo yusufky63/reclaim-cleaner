@@ -462,16 +462,21 @@ pub fn ai_models(extra_roots: &[PathBuf], job: &Job) -> Vec<AiModel> {
 /// Removes an Ollama model with `ollama rm`, which keeps layers other models still use. The id
 /// must match a model listed right now, so no arbitrary argument reaches the command.
 pub fn ollama_remove(id: &str) -> crate::Result<()> {
-    use std::os::windows::process::CommandExt;
     let model = ollama()
         .into_iter()
         .find(|m| m.id == id)
         .ok_or_else(|| crate::Error::Other("model not found".into()))?;
     let exe = crate::system::which("ollama")
         .ok_or_else(|| crate::Error::Other("ollama is not installed or not on PATH".into()))?;
-    let out = std::process::Command::new(exe)
-        .args(["rm", &model.name])
-        .creation_flags(0x0800_0000)
+    let mut cmd = std::process::Command::new(exe);
+    cmd.args(["rm", &model.name]);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW: no console flashes up.
+        cmd.creation_flags(0x0800_0000);
+    }
+    let out = cmd
         .output()
         .map_err(|e| crate::Error::Other(e.to_string()))?;
     if out.status.success() {
@@ -850,7 +855,7 @@ mod tests {
         fs::write(tmp.path().join("a (1).pdf"), [1u8; 10]).unwrap();
         fs::write(tmp.path().join("b (1).pdf"), [1u8; 10]).unwrap();
         fs::create_dir_all(tmp.path().join("sub")).unwrap();
-        fs::write(tmp.path().join(r"sub\c.zip"), [1u8; 5]).unwrap();
+        fs::write(tmp.path().join("sub/c.zip"), [1u8; 5]).unwrap();
         let r = downloads(tmp.path(), &Job::new());
         assert_eq!(r.files.len(), 4);
         assert!(r.files.iter().find(|f| f.name == "a (1).pdf").unwrap().copy);
@@ -865,8 +870,8 @@ mod tests {
     fn links_identical_weights_across_tools() {
         let tmp = tempfile::tempdir().unwrap();
         let data: Vec<u8> = (0..70 * 1024 * 1024u32).map(|i| (i % 253) as u8).collect();
-        let a = tmp.path().join(r"hf\snap");
-        let b = tmp.path().join(r"lms\repo");
+        let a = tmp.path().join("hf/snap");
+        let b = tmp.path().join("lms/repo");
         fs::create_dir_all(&a).unwrap();
         fs::create_dir_all(&b).unwrap();
         fs::write(a.join("Model-Q4.gguf"), &data).unwrap();

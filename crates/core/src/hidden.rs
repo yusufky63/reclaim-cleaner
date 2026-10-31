@@ -3,34 +3,45 @@
 //! The gap is split into parts Windows keeps outside ordinary folders (shadow copies, reserved
 //! storage, NTFS metadata), large system files, virtual disks that keep their peak size, and
 //! folders the scan was not allowed to read. Everything here only reads; the UI links to
-//! Windows' own screens for changes.
+//! Windows' own screens for changes. Other systems report that the page is not available yet.
 
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+#[cfg(windows)]
 use windows::Win32::Foundation::{ERROR_SUCCESS, GetLastError};
+#[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     DISK_SPACE_INFORMATION, GetCompressedFileSizeW, GetDiskSpaceInformationW, GetFileAttributesExW,
     GetFileExInfoStandard, GetVolumeInformationW, GetVolumeNameForVolumeMountPointW,
     WIN32_FILE_ATTRIBUTE_DATA,
 };
+#[cfg(windows)]
 use windows::Win32::System::Com::{
     CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx,
     CoSetProxyBlanket, CoUninitialize, EOAC_NONE, RPC_C_AUTHN_LEVEL_CALL,
     RPC_C_IMP_LEVEL_IMPERSONATE,
 };
+#[cfg(windows)]
 use windows::Win32::System::Variant::{VARIANT, VariantClear, VariantToString};
+#[cfg(windows)]
 use windows::Win32::System::Wmi::{
     IWbemLocator, IWbemServices, WBEM_FLAG_FORWARD_ONLY, WBEM_FLAG_RETURN_IMMEDIATELY,
     WBEM_INFINITE, WbemLocator,
 };
+#[cfg(windows)]
 use windows::core::{BSTR, HSTRING, PCWSTR};
+#[cfg(windows)]
 use winreg::RegKey;
+#[cfg(windows)]
 use winreg::enums::HKEY_CURRENT_USER;
 
 use crate::explorer::Tree;
+#[cfg(windows)]
 use crate::paths::{env_path, is_within, key};
+#[cfg(windows)]
 use crate::system::{current_user_sid, recycle_bin_info_on, system_files_on};
+#[cfg(windows)]
 use crate::winstr::{from_wide, wide};
 use crate::{Error, Result};
 
@@ -74,6 +85,7 @@ pub struct HiddenPart {
     pub needs_admin: bool,
 }
 
+#[cfg(windows)]
 impl HiddenPart {
     fn new(kind: PartKind, bytes: Option<u64>) -> Self {
         HiddenPart {
@@ -127,6 +139,7 @@ pub struct DiskSpace {
     pub reserved: u64,
 }
 
+#[cfg(windows)]
 pub fn disk_space(root: &Path) -> Option<DiskSpace> {
     let w = wide(root);
     let mut info = DISK_SPACE_INFORMATION::default();
@@ -141,6 +154,7 @@ pub fn disk_space(root: &Path) -> Option<DiskSpace> {
 
 /// File size from the directory entry, which works for NTFS metadata files such as `$MFT`
 /// that cannot be opened.
+#[cfg(windows)]
 fn size_by_attributes(path: &Path) -> Option<u64> {
     let w = wide(path);
     let mut data = WIN32_FILE_ATTRIBUTE_DATA::default();
@@ -157,6 +171,7 @@ fn size_by_attributes(path: &Path) -> Option<u64> {
 
 /// Space a file really takes: less than its length for sparse and compressed files, which is
 /// how WSL keeps its disks.
+#[cfg(windows)]
 fn allocated_size(path: &Path) -> Option<u64> {
     let w = wide(path);
     let mut high = 0u32;
@@ -167,6 +182,7 @@ fn allocated_size(path: &Path) -> Option<u64> {
     Some((u64::from(high) << 32) | u64::from(low))
 }
 
+#[cfg(windows)]
 fn file_system(root: &Path) -> String {
     let w = wide(root);
     let mut fs = vec![0u16; 64];
@@ -183,6 +199,7 @@ pub fn volume_guid(s: &str) -> Option<String> {
     Some(lower[start..=end].to_string())
 }
 
+#[cfg(windows)]
 fn volume_of(root: &Path) -> Option<String> {
     let w = wide(root);
     let mut buf = [0u16; 64];
@@ -191,6 +208,7 @@ fn volume_of(root: &Path) -> Option<String> {
 }
 
 /// WSL distro disks (from `HKCU\...\Lxss`) and Docker Desktop's data disk.
+#[cfg(windows)]
 pub fn virtual_disks() -> Vec<(PathBuf, String)> {
     let mut out: Vec<(PathBuf, String)> = Vec::new();
     if let Ok(lxss) = RegKey::predef(HKEY_CURRENT_USER)
@@ -233,12 +251,14 @@ pub fn virtual_disks() -> Vec<(PathBuf, String)> {
 
 /// Measures shadow storage through WMI. Needs administrator rights: a standard user gets an
 /// access error, and the app then offers to measure through the elevated helper.
+#[cfg(windows)]
 pub fn shadow_storage() -> Result<Vec<ShadowStorage>> {
     std::thread::spawn(wmi_shadow_storage)
         .join()
         .map_err(|_| Error::Other(String::from("the WMI query failed")))?
 }
 
+#[cfg(windows)]
 fn wmi_query(services: &IWbemServices, wql: &str, props: &[&str]) -> Result<Vec<Vec<String>>> {
     let rows = unsafe {
         services.ExecQuery(
@@ -275,6 +295,7 @@ fn wmi_query(services: &IWbemServices, wql: &str, props: &[&str]) -> Result<Vec<
     Ok(out)
 }
 
+#[cfg(windows)]
 fn wmi_shadow_storage() -> Result<Vec<ShadowStorage>> {
     unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.ok()?;
     let res = (|| -> Result<Vec<ShadowStorage>> {
@@ -337,6 +358,7 @@ fn wmi_shadow_storage() -> Result<Vec<ShadowStorage>> {
 }
 
 /// Whether the scan counted `path`: the file itself is a node, or its folder was read.
+#[cfg(windows)]
 fn counted(tree: &Tree, path: &Path) -> bool {
     if tree.find(path).is_some() {
         return true;
@@ -347,6 +369,7 @@ fn counted(tree: &Tree, path: &Path) -> bool {
 }
 
 /// The tree when it is a full scan of the drive at `root`.
+#[cfg(windows)]
 fn drive_scan<'a>(tree: Option<&'a Tree>, root: &Path) -> Option<&'a Tree> {
     tree.filter(|t| key(&t.root_path) == key(root) && t.summary.selection.is_empty())
 }
@@ -354,6 +377,7 @@ fn drive_scan<'a>(tree: Option<&'a Tree>, root: &Path) -> Option<&'a Tree> {
 /// Explains the used space of the drive at `root` (`C:\`). `tree` is the latest space map;
 /// it is used only when it covers the whole drive. `shadow` is a shadow storage measurement,
 /// if one was made.
+#[cfg(windows)]
 pub fn hidden_space(
     root: &Path,
     tree: Option<&Tree>,
@@ -471,10 +495,33 @@ pub fn hidden_space(
     })
 }
 
+#[cfg(not(windows))]
+pub fn disk_space(_root: &Path) -> Option<DiskSpace> {
+    None
+}
+
+#[cfg(not(windows))]
+pub fn virtual_disks() -> Vec<(PathBuf, String)> {
+    Vec::new()
+}
+
+#[cfg(not(windows))]
+pub fn shadow_storage() -> Result<Vec<ShadowStorage>> {
+    Err(Error::Unsupported("shadow storage"))
+}
+
+#[cfg(not(windows))]
+pub fn hidden_space(
+    _root: &Path,
+    _tree: Option<&Tree>,
+    _shadow: Option<&[ShadowStorage]>,
+) -> Result<HiddenSpace> {
+    Err(Error::Unsupported("explaining hidden space"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::job::Job;
 
     #[test]
     fn finds_volume_guids() {
@@ -489,6 +536,7 @@ mod tests {
         assert!(volume_guid("C:").is_none());
     }
 
+    #[cfg(windows)]
     #[test]
     fn explains_the_system_drive_without_admin() {
         let sys = PathBuf::from(format!(
@@ -511,8 +559,10 @@ mod tests {
         );
     }
 
+    #[cfg(windows)]
     #[test]
     fn reconciles_a_scan_with_parts_outside_it() {
+        use crate::job::Job;
         // A scan of a temp folder stands in for a drive scan: only the arithmetic is checked.
         let tmp = tempfile::tempdir().unwrap();
         std::fs::write(tmp.path().join("a.bin"), [0u8; 100]).unwrap();

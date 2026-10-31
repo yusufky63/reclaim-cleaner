@@ -11,7 +11,9 @@ use std::path::{Path, PathBuf};
 
 use rayon::prelude::*;
 use serde::Serialize;
+#[cfg(windows)]
 use winreg::RegKey;
+#[cfg(windows)]
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 
 use crate::fsmeta::is_link;
@@ -217,6 +219,7 @@ fn clean_registry_path(raw: &str) -> Option<PathBuf> {
 }
 
 /// The Steam install folder of the current user, if Steam is installed and the folder is real.
+#[cfg(windows)]
 pub fn steam_root() -> Option<PathBuf> {
     let from_user = RegKey::predef(HKEY_CURRENT_USER)
         .open_subkey(r"Software\Valve\Steam")
@@ -239,6 +242,12 @@ pub fn steam_root() -> Option<PathBuf> {
                 .and_then(clean_registry_path)
                 .filter(|p| is_library(p))
         })
+}
+
+/// Steam on other systems is found through its own folders, which are not ported yet.
+#[cfg(not(windows))]
+pub fn steam_root() -> Option<PathBuf> {
+    None
 }
 
 /// The Steam folder itself plus every library it lists, each once, in Steam's order. Folders
@@ -500,11 +509,13 @@ mod tests {
         assert!(parse_app_manifest("\"AppState\" { \"appid\" \"../x\" }").is_none());
     }
 
+    #[cfg(windows)]
     fn write(path: &Path, text: &str) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, text).unwrap();
     }
 
+    #[cfg(windows)]
     #[test]
     fn finds_libraries_games_and_caches_with_names() {
         let tmp = tempfile::tempdir().unwrap();

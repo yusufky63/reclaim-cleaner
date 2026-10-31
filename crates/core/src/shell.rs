@@ -7,6 +7,8 @@
 //! top-level menu only takes handlers from signed packages with an identity, which this project
 //! does not ship yet.
 //!
+//! Only Windows has a menu to register in so far; elsewhere the entry reports as missing.
+//!
 //! Paths from the command line are untrusted. They can come from Explorer, from another
 //! program that starts the exe, or (forwarded by the running copy) from any process on the
 //! desktop. They only ever choose what to scan; nothing is deleted from a command line.
@@ -14,12 +16,17 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+#[cfg(windows)]
 use windows::Win32::UI::Shell::{SHCNE_ASSOCCHANGED, SHCNF_IDLIST, SHChangeNotify};
+#[cfg(windows)]
 use winreg::RegKey;
+#[cfg(windows)]
 use winreg::enums::{HKEY_CURRENT_USER, KEY_READ};
 
+#[cfg(windows)]
+use crate::Error;
+use crate::Result;
 use crate::paths::key;
-use crate::{Error, Result};
 
 /// Registry key name of the verb under each class.
 pub const VERB: &str = "ReClaim.Analyze";
@@ -30,12 +37,14 @@ pub const MAX_PATHS: usize = 100;
 
 /// Class keys and whether `%V` is quoted. Drive roots get it unquoted: `"C:\"` reaches the app
 /// as `C:"`, because `\"` is an escaped quote, and drive roots never contain spaces.
+#[cfg(windows)]
 const CLASSES: &[(&str, bool)] = &[
     (r"Directory\shell", true),
     (r"Directory\Background\shell", true),
     (r"Drive\shell", false),
 ];
 
+#[cfg(windows)]
 fn label(lang: &str) -> &'static str {
     if lang.eq_ignore_ascii_case("tr") {
         "ReClaim ile analiz et"
@@ -44,6 +53,7 @@ fn label(lang: &str) -> &'static str {
     }
 }
 
+#[cfg(windows)]
 fn command_line(exe: &Path, quoted: bool) -> String {
     if quoted {
         format!("\"{}\" {ANALYZE_FLAG} \"%V\"", exe.display())
@@ -53,6 +63,7 @@ fn command_line(exe: &Path, quoted: bool) -> String {
 }
 
 /// Program path inside a verb command (`"C:\...\reclaim-cleaner.exe" --analyze "%V"`).
+#[cfg(windows)]
 fn exe_in_command(cmd: &str) -> Option<String> {
     let rest = cmd.trim().strip_prefix('"')?;
     Some(rest[..rest.find('"')?].to_string())
@@ -72,6 +83,7 @@ pub struct MenuStatus {
 }
 
 /// Writes the entries below `classes` (normally `HKCU\Software\Classes`).
+#[cfg(windows)]
 pub fn register_in(classes: &RegKey, exe: &Path, lang: &str) -> Result<()> {
     let werr = |e: std::io::Error| Error::io(r"HKCU\Software\Classes", e);
     for (class, quoted) in CLASSES {
@@ -92,6 +104,7 @@ pub fn register_in(classes: &RegKey, exe: &Path, lang: &str) -> Result<()> {
 }
 
 /// Removes the entries below `classes`. Missing entries are fine.
+#[cfg(windows)]
 pub fn unregister_in(classes: &RegKey) -> Result<()> {
     for (class, _) in CLASSES {
         match classes.delete_subkey_all(format!(r"{class}\{VERB}")) {
@@ -103,6 +116,7 @@ pub fn unregister_in(classes: &RegKey) -> Result<()> {
     Ok(())
 }
 
+#[cfg(windows)]
 pub fn status_in(classes: &RegKey, exe: &Path) -> MenuStatus {
     let commands: Vec<Option<String>> = CLASSES
         .iter()
@@ -127,6 +141,7 @@ pub fn status_in(classes: &RegKey, exe: &Path) -> MenuStatus {
     }
 }
 
+#[cfg(windows)]
 fn user_classes() -> Result<RegKey> {
     RegKey::predef(HKEY_CURRENT_USER)
         .create_subkey(r"Software\Classes")
@@ -135,16 +150,19 @@ fn user_classes() -> Result<RegKey> {
 }
 
 /// Tells Explorer that verbs changed, so open windows pick it up.
+#[cfg(windows)]
 fn notify_shell() {
     unsafe { SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, None, None) };
 }
 
+#[cfg(windows)]
 pub fn register(exe: &Path, lang: &str) -> Result<()> {
     register_in(&user_classes()?, exe, lang)?;
     notify_shell();
     Ok(())
 }
 
+#[cfg(windows)]
 pub fn unregister() -> Result<()> {
     unregister_in(&user_classes()?)?;
     notify_shell();
@@ -154,6 +172,7 @@ pub fn unregister() -> Result<()> {
 /// Points existing entries at `exe` when the program they start is gone (a portable copy that
 /// moved, a reinstall into another folder). Entries of another copy that still exists are left
 /// alone. Returns whether anything changed.
+#[cfg(windows)]
 pub fn repair_in(classes: &RegKey, exe: &Path) -> Result<bool> {
     let s = status_in(classes, exe);
     if !s.enabled || s.current || s.exe_exists {
@@ -176,6 +195,7 @@ pub fn repair_in(classes: &RegKey, exe: &Path) -> Result<bool> {
     Ok(true)
 }
 
+#[cfg(windows)]
 pub fn repair(exe: &Path) -> Result<bool> {
     let changed = repair_in(&user_classes()?, exe)?;
     if changed {
@@ -184,6 +204,7 @@ pub fn repair(exe: &Path) -> Result<bool> {
     Ok(changed)
 }
 
+#[cfg(windows)]
 pub fn status(exe: &Path) -> MenuStatus {
     match RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(r"Software\Classes", KEY_READ) {
         Ok(classes) => status_in(&classes, exe),
@@ -282,7 +303,33 @@ pub fn plan_analyze(paths: &[PathBuf]) -> Option<AnalyzeRequest> {
     })
 }
 
-#[cfg(test)]
+#[cfg(not(windows))]
+pub fn register(_exe: &Path, _lang: &str) -> Result<()> {
+    Err(crate::Error::Unsupported("the file manager menu"))
+}
+
+#[cfg(not(windows))]
+pub fn unregister() -> Result<()> {
+    Ok(())
+}
+
+#[cfg(not(windows))]
+pub fn repair(_exe: &Path) -> Result<bool> {
+    Ok(false)
+}
+
+#[cfg(not(windows))]
+pub fn status(_exe: &Path) -> MenuStatus {
+    MenuStatus {
+        enabled: false,
+        exe: None,
+        current: false,
+        exe_exists: false,
+    }
+}
+
+// Explorer hands over drive-letter paths, which only mean something on Windows.
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

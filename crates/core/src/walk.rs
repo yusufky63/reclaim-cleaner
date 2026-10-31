@@ -139,8 +139,8 @@ mod tests {
     fn measures_nested_folders() {
         let tmp = tempfile::tempdir().unwrap();
         write(&tmp.path().join("a.bin"), 100);
-        write(&tmp.path().join(r"x\b.bin"), 50);
-        write(&tmp.path().join(r"x\y\c.bin"), 25);
+        write(&tmp.path().join("x/b.bin"), 50);
+        write(&tmp.path().join("x/y/c.bin"), 25);
         let job = Job::new();
         let m = measure_dir(tmp.path(), None, &job);
         assert_eq!(m.bytes, 175);
@@ -159,6 +159,7 @@ mod tests {
         assert!(m.newest > 0);
     }
 
+    #[cfg(windows)]
     #[test]
     fn does_not_follow_junctions() {
         let tmp = tempfile::tempdir().unwrap();
@@ -174,6 +175,20 @@ mod tests {
             .output()
             .unwrap();
         assert!(status.status.success(), "mklink failed");
+        let job = Job::new();
+        let m = measure_dir(&inside, None, &job);
+        assert_eq!(m.bytes, 0);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn does_not_follow_symlinks() {
+        let tmp = tempfile::tempdir().unwrap();
+        let outside = tmp.path().join("outside");
+        write(&outside.join("secret.bin"), 1000);
+        let inside = tmp.path().join("inside");
+        fs::create_dir_all(&inside).unwrap();
+        std::os::unix::fs::symlink(&outside, inside.join("link")).unwrap();
         let job = Job::new();
         let m = measure_dir(&inside, None, &job);
         assert_eq!(m.bytes, 0);

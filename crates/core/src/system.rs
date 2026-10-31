@@ -1,37 +1,52 @@
-//! Windows facts: drives, elevation, running processes, the Recycle Bin, known folders and the
-//! OS version. Thin wrappers over Win32 so the rest of the engine stays platform-neutral.
+//! System facts: drives, elevation, running processes, the Recycle Bin, known folders and the
+//! OS version. Thin wrappers over Win32 so the rest of the engine stays platform-neutral; on
+//! other systems the `fallback` versions report nothing until they are ported.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+#[cfg(windows)]
 use windows::Win32::Foundation::{CloseHandle, HANDLE, WAIT_OBJECT_0};
+#[cfg(windows)]
 use windows::Win32::Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation};
+#[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     GetDiskFreeSpaceExW, GetDriveTypeW, GetLogicalDriveStringsW, GetVolumeInformationW,
 };
+#[cfg(windows)]
 use windows::Win32::System::Com::CoTaskMemFree;
+#[cfg(windows)]
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
+#[cfg(windows)]
 use windows::Win32::System::Threading::{
     GetCurrentProcess, GetExitCodeProcess, INFINITE, OpenProcessToken, WaitForSingleObject,
 };
+#[cfg(windows)]
 use windows::Win32::UI::Shell::{
     FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music, FOLDERID_Pictures,
     FOLDERID_Videos, KNOWN_FOLDER_FLAG, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
     SHERB_NOCONFIRMATION, SHERB_NOPROGRESSUI, SHERB_NOSOUND, SHEmptyRecycleBinW,
     SHGetKnownFolderPath, SHQUERYRBINFO, SHQueryRecycleBinW, ShellExecuteExW,
 };
+#[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{SW_HIDE, SW_SHOWNORMAL};
+#[cfg(windows)]
 use windows::core::{GUID, PCWSTR, w};
+#[cfg(windows)]
 use winreg::RegKey;
+#[cfg(windows)]
 use winreg::enums::HKEY_LOCAL_MACHINE;
 
+#[cfg(windows)]
 use crate::winstr::{from_wide, wide};
 use crate::{Error, Result};
 
+#[cfg(windows)]
 const DRIVE_REMOVABLE: u32 = 2;
+#[cfg(windows)]
 const DRIVE_FIXED: u32 = 3;
 
 #[derive(Debug, Clone, Serialize)]
@@ -47,6 +62,7 @@ pub struct Drive {
     pub system: bool,
 }
 
+#[cfg(windows)]
 pub fn drives() -> Vec<Drive> {
     let mut buf = vec![0u16; 512];
     let len = unsafe { GetLogicalDriveStringsW(Some(&mut buf)) } as usize;
@@ -103,6 +119,7 @@ pub fn drives() -> Vec<Drive> {
 }
 
 /// Free bytes on the volume holding `path`.
+#[cfg(windows)]
 pub fn free_space(path: &Path) -> Option<u64> {
     let w_path = wide(path);
     let mut free = 0u64;
@@ -110,6 +127,7 @@ pub fn free_space(path: &Path) -> Option<u64> {
     Some(free)
 }
 
+#[cfg(windows)]
 pub fn is_elevated() -> bool {
     unsafe {
         let mut token = HANDLE::default();
@@ -132,6 +150,7 @@ pub fn is_elevated() -> bool {
 
 /// The current user's SID as a string (`S-1-5-21-...`), which names their folder in each
 /// drive's `$Recycle.Bin`.
+#[cfg(windows)]
 pub fn current_user_sid() -> Option<String> {
     use windows::Win32::Foundation::{HLOCAL, LocalFree};
     use windows::Win32::Security::Authorization::ConvertSidToStringSidW;
@@ -162,6 +181,7 @@ pub fn current_user_sid() -> Option<String> {
 }
 
 /// Lowercase executable names of every running process.
+#[cfg(windows)]
 pub fn running_processes() -> HashSet<String> {
     let mut out = HashSet::new();
     unsafe {
@@ -186,6 +206,7 @@ pub fn running_processes() -> HashSet<String> {
 }
 
 /// Ids of every running process.
+#[cfg(windows)]
 pub fn process_ids() -> Vec<u32> {
     let mut out = Vec::new();
     unsafe {
@@ -219,16 +240,19 @@ pub struct RecycleBinInfo {
 }
 
 /// Size of the Recycle Bin on all drives.
+#[cfg(windows)]
 pub fn recycle_bin_info() -> RecycleBinInfo {
     query_recycle_bin(PCWSTR::null())
 }
 
 /// Size of the Recycle Bin on the drive at `root`.
+#[cfg(windows)]
 pub fn recycle_bin_info_on(root: &Path) -> RecycleBinInfo {
     let w = wide(root);
     query_recycle_bin(PCWSTR(w.as_ptr()))
 }
 
+#[cfg(windows)]
 fn query_recycle_bin(root: PCWSTR) -> RecycleBinInfo {
     let mut info = SHQUERYRBINFO {
         cbSize: std::mem::size_of::<SHQUERYRBINFO>() as u32,
@@ -245,6 +269,7 @@ fn query_recycle_bin(root: PCWSTR) -> RecycleBinInfo {
 
 /// Empties the Recycle Bin on all drives without the shell's own confirmation; the app asks
 /// first.
+#[cfg(windows)]
 pub fn empty_recycle_bin() -> Result<()> {
     let flags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND;
     match unsafe { SHEmptyRecycleBinW(None, PCWSTR::null(), flags) } {
@@ -255,6 +280,7 @@ pub fn empty_recycle_bin() -> Result<()> {
     }
 }
 
+#[cfg(windows)]
 fn known_folder(id: &GUID) -> Option<PathBuf> {
     unsafe {
         let p = SHGetKnownFolderPath(id, KNOWN_FOLDER_FLAG(0), None).ok()?;
@@ -265,6 +291,7 @@ fn known_folder(id: &GUID) -> Option<PathBuf> {
 }
 
 /// The user's library folders, following redirection (for example to OneDrive).
+#[cfg(windows)]
 pub fn known_folders() -> Vec<PathBuf> {
     [
         FOLDERID_Desktop,
@@ -290,6 +317,7 @@ pub struct LibraryFolders {
     pub videos: Option<String>,
 }
 
+#[cfg(windows)]
 pub fn library_folders() -> LibraryFolders {
     let s = |id: &GUID| known_folder(id).map(|p| p.to_string_lossy().into_owned());
     LibraryFolders {
@@ -310,6 +338,7 @@ pub struct OsInfo {
     pub build: String,
 }
 
+#[cfg(windows)]
 pub fn os_info() -> OsInfo {
     let key = RegKey::predef(HKEY_LOCAL_MACHINE)
         .open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
@@ -348,6 +377,7 @@ pub struct SystemFile {
 }
 
 /// `hiberfil.sys`, `pagefile.sys` and `swapfile.sys` on the system drive.
+#[cfg(windows)]
 pub fn system_files() -> Vec<SystemFile> {
     let root = format!(
         "{}\\",
@@ -380,6 +410,7 @@ pub fn system_files_on(root: &Path) -> Vec<SystemFile> {
 }
 
 /// Opens a file, folder or URL with its default handler.
+#[cfg(windows)]
 pub fn shell_open(target: &str) -> Result<()> {
     let file = wide(target);
     let mut info = SHELLEXECUTEINFOW {
@@ -404,6 +435,7 @@ pub enum LaunchOutcome {
 /// Runs `exe` with `params`, optionally elevated (`runas`), and waits for it to finish.
 /// `visible` controls whether a console window is shown, which we want for long system tools
 /// like DISM so the user sees their progress.
+#[cfg(windows)]
 pub fn run_and_wait(
     exe: &str,
     params: &str,
@@ -444,6 +476,7 @@ pub fn run_and_wait(
 }
 
 /// Starts a process without waiting (used to relaunch the app elevated).
+#[cfg(windows)]
 pub fn launch(exe: &str, params: &str, elevated: bool) -> Result<LaunchOutcome> {
     let file = wide(exe);
     let args = wide(params);
@@ -465,7 +498,8 @@ pub fn launch(exe: &str, params: &str, elevated: bool) -> Result<LaunchOutcome> 
 /// True if an executable with this name can be found on `PATH`.
 pub fn which(exe: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
-    let exts: Vec<String> = if Path::new(exe).extension().is_some() {
+    // Only Windows finds programs by appending PATHEXT extensions.
+    let exts: Vec<String> = if !cfg!(windows) || Path::new(exe).extension().is_some() {
         vec![String::new()]
     } else {
         std::env::var("PATHEXT")
@@ -485,7 +519,111 @@ pub fn which(exe: &str) -> Option<PathBuf> {
     None
 }
 
-#[cfg(test)]
+/// Stand-ins for systems without a port yet. They report nothing rather than guess, and every
+/// action fails with [`Error::Unsupported`].
+#[cfg(not(windows))]
+mod fallback {
+    use super::*;
+
+    pub fn drives() -> Vec<Drive> {
+        Vec::new()
+    }
+
+    pub fn free_space(_path: &Path) -> Option<u64> {
+        None
+    }
+
+    pub fn is_elevated() -> bool {
+        false
+    }
+
+    pub fn current_user_sid() -> Option<String> {
+        None
+    }
+
+    pub fn running_processes() -> HashSet<String> {
+        HashSet::new()
+    }
+
+    pub fn process_ids() -> Vec<u32> {
+        Vec::new()
+    }
+
+    pub fn recycle_bin_info() -> RecycleBinInfo {
+        RecycleBinInfo::default()
+    }
+
+    pub fn recycle_bin_info_on(_root: &Path) -> RecycleBinInfo {
+        RecycleBinInfo::default()
+    }
+
+    pub fn empty_recycle_bin() -> Result<()> {
+        Err(Error::Unsupported("emptying the trash"))
+    }
+
+    pub fn known_folders() -> Vec<PathBuf> {
+        Vec::new()
+    }
+
+    pub fn library_folders() -> LibraryFolders {
+        LibraryFolders {
+            desktop: None,
+            documents: None,
+            downloads: None,
+            pictures: None,
+            music: None,
+            videos: None,
+        }
+    }
+
+    /// `PRETTY_NAME` and `VERSION_ID` from `/etc/os-release`, the file every current
+    /// distribution ships.
+    pub fn os_info() -> OsInfo {
+        let text = std::fs::read_to_string("/etc/os-release").unwrap_or_default();
+        let get = |name: &str| {
+            text.lines()
+                .find_map(|l| l.strip_prefix(name)?.strip_prefix('='))
+                .map(|v| v.trim().trim_matches('"').to_string())
+                .unwrap_or_default()
+        };
+        let name = get("PRETTY_NAME");
+        OsInfo {
+            name: if name.is_empty() {
+                std::env::consts::OS.to_string()
+            } else {
+                name
+            },
+            display_version: get("VERSION_ID"),
+            build: String::new(),
+        }
+    }
+
+    pub fn system_files() -> Vec<SystemFile> {
+        Vec::new()
+    }
+
+    pub fn shell_open(_target: &str) -> Result<()> {
+        Err(Error::Unsupported("opening with the default app"))
+    }
+
+    pub fn run_and_wait(
+        _exe: &str,
+        _params: &str,
+        _elevated: bool,
+        _visible: bool,
+    ) -> Result<LaunchOutcome> {
+        Err(Error::Unsupported("running system tools"))
+    }
+
+    pub fn launch(_exe: &str, _params: &str, _elevated: bool) -> Result<LaunchOutcome> {
+        Err(Error::Unsupported("starting programs"))
+    }
+}
+
+#[cfg(not(windows))]
+pub use fallback::*;
+
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

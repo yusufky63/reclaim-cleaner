@@ -478,7 +478,8 @@ pub fn find_in(
     out
 }
 
-#[cfg(test)]
+// Rule expansion and the guard only know Windows paths so far.
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

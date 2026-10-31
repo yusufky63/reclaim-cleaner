@@ -24,6 +24,9 @@ pub enum Error {
     NeedsAdmin,
     #[error("{0}")]
     Windows(String),
+    /// The feature has no implementation on this operating system yet.
+    #[error("not available on this platform yet: {0}")]
+    Unsupported(&'static str),
     #[error("{0}")]
     Other(String),
 }
@@ -53,11 +56,13 @@ impl Error {
             Error::Cancelled => "cancelled",
             Error::NeedsAdmin => "needs_admin",
             Error::Windows(_) => "windows",
+            Error::Unsupported(_) => "unsupported",
             Error::Other(_) => "other",
         }
     }
 }
 
+#[cfg(windows)]
 impl From<windows::core::Error> for Error {
     fn from(e: windows::core::Error) -> Self {
         Error::Windows(e.message())

@@ -36,6 +36,7 @@ cargo test --workspace
 - UI changes: check light and dark theme and the minimum window width (980 px). Attach screenshots.
 - Screenshots committed to the repository come from the demo profile (`node scripts/demo-profile.mjs`, then `node scripts/screenshots.mjs --demo`). Never commit screenshots, paths or measurements from your own machine: they show your user name, folders, files and installed apps.
 - Engine changes: add a test that uses a temporary folder. Anything that deletes needs a test proving it does not follow junctions and respects exclusions.
+- Windows-only code (Win32, the registry, `std::os::windows`) goes behind `#[cfg(windows)]` with a non-Windows version next to it, because CI also builds and tests on Linux. To check that from Windows, add the target once with `rustup target add x86_64-unknown-linux-gnu`, then run `cargo clippy -p reclaim-core --target x86_64-unknown-linux-gnu --all-targets -- -D warnings`.
 - User-visible changes: add a line to `CHANGELOG.md` under "Unreleased".
 
 ## Adding or changing a cleanup rule

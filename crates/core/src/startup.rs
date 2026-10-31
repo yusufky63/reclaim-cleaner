@@ -1,21 +1,28 @@
 //! Startup apps from the Run keys and Startup folders. Enabling and disabling writes the
 //! `StartupApproved` values, exactly what Task Manager does, so it is reversible and never
-//! deletes the entry.
+//! deletes the entry. Other systems list nothing until they are ported.
 
+#[cfg(windows)]
 use std::path::PathBuf;
 
 use serde::Serialize;
+#[cfg(windows)]
 use winreg::RegKey;
+#[cfg(windows)]
 use winreg::enums::{
     HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, KEY_SET_VALUE, KEY_WOW64_32KEY,
     KEY_WOW64_64KEY, REG_BINARY,
 };
+#[cfg(windows)]
 use winreg::{RegValue, enums::RegType};
 
+#[cfg(windows)]
 use crate::paths::env_path;
 use crate::{Error, Result};
 
+#[cfg(windows)]
 const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+#[cfg(windows)]
 const APPROVED: &str = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved";
 
 #[derive(Debug, Clone, Copy, Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -54,6 +61,7 @@ pub struct StartupItem {
     pub needs_admin: bool,
 }
 
+#[cfg(windows)]
 fn approved_enabled(source: StartupSource, name: &str) -> bool {
     let (sub, machine) = source.approved_key();
     let hive = RegKey::predef(if machine {
@@ -71,6 +79,7 @@ fn approved_enabled(source: StartupSource, name: &str) -> bool {
     }
 }
 
+#[cfg(windows)]
 fn read_run(hive: &RegKey, flags: u32, source: StartupSource, out: &mut Vec<StartupItem>) {
     let Ok(k) = hive.open_subkey_with_flags(RUN, KEY_READ | flags) else {
         return;
@@ -97,6 +106,7 @@ fn read_run(hive: &RegKey, flags: u32, source: StartupSource, out: &mut Vec<Star
     }
 }
 
+#[cfg(windows)]
 fn read_folder(dir: Option<PathBuf>, source: StartupSource, out: &mut Vec<StartupItem>) {
     let Some(dir) = dir else { return };
     let Ok(rd) = std::fs::read_dir(&dir) else {
@@ -119,6 +129,7 @@ fn read_folder(dir: Option<PathBuf>, source: StartupSource, out: &mut Vec<Startu
     }
 }
 
+#[cfg(windows)]
 pub fn list() -> Vec<StartupItem> {
     let mut out = Vec::new();
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
@@ -146,6 +157,7 @@ pub fn list() -> Vec<StartupItem> {
 }
 
 /// Enables or disables an item through `StartupApproved`.
+#[cfg(windows)]
 pub fn set_enabled(source: StartupSource, name: &str, enabled: bool) -> Result<()> {
     let (sub, machine) = source.approved_key();
     if machine && !crate::system::is_elevated() {
@@ -176,6 +188,16 @@ pub fn set_enabled(source: StartupSource, name: &str, enabled: bool) -> Result<(
         },
     )
     .map_err(|e| Error::Other(e.to_string()))
+}
+
+#[cfg(not(windows))]
+pub fn list() -> Vec<StartupItem> {
+    Vec::new()
+}
+
+#[cfg(not(windows))]
+pub fn set_enabled(_source: StartupSource, _name: &str, _enabled: bool) -> Result<()> {
+    Err(Error::Unsupported("changing startup apps"))
 }
 
 #[cfg(test)]
