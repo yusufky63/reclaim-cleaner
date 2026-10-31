@@ -1,8 +1,16 @@
 name: Release
 
+# Normally called by the Release PR workflow once a release PR is merged; a pushed tag still
+# works for a release made by hand.
 on:
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to build, such as v0.3.0.
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -10,8 +18,22 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # A tag pushed without bumping the version would ship installers that call themselves
+      # the previous version.
+      - name: Check the tag matches the app version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne $env:TAG) { throw "Tag $env:TAG does not match package.json version $version. Merge the release PR instead of tagging by hand." }
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -36,7 +58,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = $env:TAG
           $version = $tag.TrimStart('v')
           # Release notes are the CHANGELOG section for this version.
           $log = Get-Content CHANGELOG.md -Raw

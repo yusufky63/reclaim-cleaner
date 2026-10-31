@@ -51,4 +51,4 @@ Read [docs/rules.md](docs/rules.md). In short:
 
 ## Commits and releases
 
-Conventional Commits (`feat(engine): …`, `fix(ui): …`, `rules: …`). Releases are tagged `vX.Y.Z` from `main`; the release workflow builds the installers. See [docs/releasing.md](docs/releasing.md).
+Conventional Commits (`feat(engine): …`, `fix(ui): …`, `rules: …`). Releases come from the release PR the Release PR workflow keeps open; merging it tags `vX.Y.Z` and builds the installers. See [docs/releasing.md](docs/releasing.md).

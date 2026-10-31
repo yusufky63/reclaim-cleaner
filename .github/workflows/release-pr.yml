@@ -1,0 +1,110 @@
+name: Release PR
+
+# After every push to main, one of two things happens:
+# - package.json names a version without a tag: a release PR was just merged, so the version is
+#   tagged and the Release workflow builds the draft release;
+# - otherwise, while CHANGELOG.md has "Unreleased" notes, the PR `chore(release): x.y.z` on the
+#   `release/next` branch is opened or brought up to date. Merging it is the release.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.state.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: state
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          fi
+
+  tag:
+    needs: check
+    if: needs.check.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          git tag "${{ needs.check.outputs.tag }}"
+          git push origin "${{ needs.check.outputs.tag }}"
+
+  # A tag pushed with the workflow token starts no workflow, so the build is called directly.
+  build:
+    needs: [check, tag]
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.check.outputs.tag }}
+    permissions:
+      contents: write
+
+  pull-request:
+    needs: check
+    if: needs.check.outputs.tag == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - id: plan
+        run: echo "version=$(node scripts/release.ts plan)" >> "$GITHUB_OUTPUT"
+
+      - name: Close the release PR when nothing is left to release
+        if: steps.plan.outputs.version == ''
+        run: |
+          for pr in $(gh pr list --head release/next --state open --json number -q '.[].number'); do
+            gh pr close "$pr" --delete-branch --comment "Nothing left to release: CHANGELOG.md has no Unreleased notes."
+          done
+
+      - name: Open or update the release PR
+        if: steps.plan.outputs.version != ''
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          node scripts/release.ts apply "$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c release/next
+          git commit -am "chore(release): $VERSION"
+          git push --force origin release/next
+          {
+            node scripts/release.ts notes "$VERSION"
+            echo
+            echo "---"
+            echo "Merging this PR tags v$VERSION and builds the installers into a draft release. Test the setup on a clean Windows install, then publish the draft."
+            echo "Edit the notes in CHANGELOG.md under Unreleased on main; this PR follows every push."
+          } > "$RUNNER_TEMP/body.md"
+          pr=$(gh pr list --head release/next --state open --json number -q '.[0].number')
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --title "chore(release): $VERSION" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --base main --head release/next --title "chore(release): $VERSION" --body-file "$RUNNER_TEMP/body.md"
+          fi
