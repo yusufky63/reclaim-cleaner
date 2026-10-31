@@ -34,6 +34,8 @@ pub struct AppState {
     pub pending: Mutex<Vec<PathBuf>>,
     /// A burst of Explorer launches is being collected.
     pub pending_armed: AtomicBool,
+    /// A shortcut or jump list task asked for the quick clean review.
+    pub quick_clean: AtomicBool,
 }
 
 impl AppState {
@@ -58,6 +60,7 @@ impl AppState {
             shadow: RwLock::new(None),
             pending: Mutex::new(Vec::new()),
             pending_armed: AtomicBool::new(false),
+            quick_clean: AtomicBool::new(false),
         }
     }
 

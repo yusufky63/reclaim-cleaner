@@ -32,11 +32,23 @@ Windows keeps space that no folder scan can open or see: restore points and shad
 
 Recent WSL versions can keep a disk sparse so that it shrinks on its own: `wsl --manage <distro> --set-sparse true`.
 
-### How do I add ReClaim to Explorer's right-click menu?
+### Where is ReClaim in Explorer's right-click menu?
 
-Settings > Explorer integration > "Add Analyze with ReClaim to the right-click menu". The entry appears on folders, folder backgrounds and drives for your Windows user only, and needs no administrator rights. On Windows 11 it is under "Show more options" (or Shift+F10): the new top-level menu only accepts handlers from signed app packages, which ReClaim does not ship yet. Selecting several folders and choosing the entry maps them together.
+Installed copies add "Analyze with ReClaim" the first time they start, and say so once. On Windows 11 it is under "Show more options" (or Shift+F10), not in the short menu that opens first. The portable build does not touch the registry until you turn it on in Settings > Explorer integration > "Add Analyze with ReClaim to the right-click menu", and the same switch turns it off for good. The entry appears on folders, folder backgrounds and drives for your Windows user only, and needs no administrator rights. On Windows 11 it is under "Show more options" (or Shift+F10): the new top-level menu only accepts handlers from signed app packages, which ReClaim does not ship yet. Selecting several folders and choosing the entry maps them together.
 
 To remove it, turn the switch off. The setup (`.exe`) removes it when you uninstall, but keeps it during updates. The MSI does not remove per-user entries (it installs for all users, the entry belongs to one), so turn the switch off before uninstalling an MSI install; a leftover entry only fails to start the missing program. For the portable build, turn it off before deleting the folder. The keys are `HKCU\Software\Classes\Directory\shell\ReClaim.Analyze`, `...\Directory\Background\shell\ReClaim.Analyze` and `...\Drive\shell\ReClaim.Analyze`.
+
+### Can I start a quick clean without opening ReClaim first?
+
+Yes, from three places:
+
+- **Taskbar jump list.** Right-click ReClaim on the taskbar, or its pinned Start entry, and choose "Quick clean". The list appears once ReClaim has run at least once.
+- **Start menu.** The setup (`.exe`) adds "ReClaim Quick Clean"; search for "quick clean".
+- **Desktop.** Settings > Quick clean shortcuts > "Create shortcut" puts "ReClaim Quick Clean" on your desktop. This works in the portable build and MSI installs too.
+
+Each opens ReClaim on the Overview, scans again so the sizes are current, and shows the same confirmation as the Quick clean button: every safe cache, temp file and log that will be removed, and how. Nothing is deleted until you confirm. Items that need administrator rights are left out unless ReClaim already runs as administrator. ReClaim never cleans on a schedule or in the background.
+
+The shortcuts start `reclaim-cleaner.exe --quick-clean`. Any program can start ReClaim with that flag, which is why it only opens the confirmation.
 
 ### A file cannot be deleted because it is in use. What is using it?
 

@@ -132,6 +132,11 @@ export function buildRecommendations(args: {
 }
 
 /** Items preselected by default: safe, not blocked by a running app, no UAC prompt needed. */
+/** What a quick clean removes: safe rules nothing blocks, without admin rules unless elevated. */
+export function quickCleanItems(recs: Rec[], elevated: boolean): Rec[] {
+  return recs.filter((r) => r.kind === "rule" && r.risk === "safe" && r.blockedBy.length === 0 && (!r.admin || elevated));
+}
+
 export function defaultSelection(recs: Rec[]): Set<string> {
   return new Set(recs.filter((r) => r.risk === "safe" && r.blockedBy.length === 0 && !r.admin).map((r) => r.key));
 }

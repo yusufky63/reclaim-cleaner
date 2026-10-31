@@ -73,6 +73,8 @@ export interface Settings {
   installerAgeDays: number;
   checkUpdates: boolean;
   onboarded: boolean;
+  /** Set by the app once the Explorer entry's default has been applied. */
+  explorerMenuDefaultApplied: boolean;
 }
 
 export interface TargetRule {

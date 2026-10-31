@@ -39,6 +39,7 @@ crates/core/        reclaim-core: the engine. Pure Rust, no Tauri dependency, un
   src/hidden.rs       hidden space: shadow storage (WMI), reserve, MFT, system files, virtual disks
   src/locks.rs        what is using a file or folder (Restart Manager), graceful close
   src/shell.rs        Explorer context menu verbs and command-line paths
+  src/launch.rs       quick clean from outside the app: jump list task, shortcuts, --quick-clean
   src/steam.rs        Steam folder, libraries, manifests and shader caches
   src/settings.rs     settings + exclusions, portable mode data folder
   src/history.rs      JSON Lines cleanup log
@@ -89,7 +90,7 @@ These rules are enforced in the engine, not only in the UI.
 9. **Least privilege.** The app runs as the current user. Rules that need admin rights are cleaned by the same exe started elevated in helper mode (`--elevated-clean`). The helper receives only rule ids and options, never paths, and expands the paths itself, so a tampered plan file cannot point it anywhere else.
 10. **Everything is logged** to `history.jsonl`: time, kind, rule ids, item count, bytes freed, method, errors.
 11. **Leftovers after an uninstall.** The scan looks one level into `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%` and the Program Files folders (two levels inside a publisher folder) and never descends into links. The install folder, an exact name match and `Publisher\App` are high confidence and preselected; a publisher folder alone or a similar name is low confidence. Folders another installed app may still use (a matching name or publisher, or its install folder inside) are not offered. Hand-picked deletes may never touch Program Files or ProgramData, so leftovers use their own guard origin: it opens only `<root>\App` and `<root>\Publisher\App` below those roots, never shared folders such as `Common Files`, `WindowsApps` or `ProgramData\Microsoft`, and only for paths the last scan reported, once.
-12. **Command-line paths are untrusted.** `--analyze <folder>` may come from Explorer, another program, or (forwarded by the running copy) any process on the desktop. Paths must be existing folders on a drive letter, and they only choose what to map; nothing is ever deleted from a command line.
+12. **Command-line input is untrusted.** `--analyze <folder>` and `--quick-clean` may come from Explorer, a shortcut, another program, or (forwarded by the running copy) any process on the desktop. Paths must be existing folders on a drive letter, and they only choose what to map. `--quick-clean` only opens the quick clean confirmation after a fresh scan; the user still sees every item and confirms. Nothing is ever deleted from a command line.
 13. **Processes are asked, never forced.** "What is using this?" only offers the request a window's close button sends, re-checks that the process id still belongs to the same process, and never ends processes or closes their handles.
 
 ## Rules

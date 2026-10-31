@@ -4,7 +4,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Quick clean from outside the app. Right-click ReClaim on the taskbar (or its pinned Start entry) and choose "Quick clean", open "ReClaim Quick Clean" in the Start menu (added by the setup), or put the same shortcut on the desktop from Settings > Quick clean shortcuts. Each opens the app on the Overview with a fresh scan and the usual quick clean confirmation listing every item; nothing is deleted until you confirm. Behind them is the `--quick-clean` flag, which only opens that confirmation. The setup removes both shortcuts on uninstall.
+
 ### Changed
+
+- "Analyze with ReClaim" in Explorer's right-click menu is now on by default for installed copies: it is added the first time the app starts, once, and stays off if you turn it off in Settings. Portable copies still leave the registry alone until you turn it on. On Windows 11 the entry is under "Show more options" (Shift+F10), like other classic entries such as WizTree's.
 
 - Developer page: every project is listed and all of its rebuildable folders are selected by default ("Idle for" starts at "Any project"). "Select idle" narrows the selection to projects untouched for the number of days set in Settings. Folders marked "Review first", such as virtual environments, are still not preselected.
 - Project folders are also found when they are named "Projects" in another UI language (Projekte, Proyectos, Projets, Progetti, Projetos, Projekty, Проекты, Проєкти, Proyek, プロジェクト, 프로젝트, 项目), in the user folder and at the root of every fixed drive.

@@ -8,10 +8,18 @@ import { Badge, Button, Card, CardHeader, Checkbox, EmptyState, RiskDot, Section
 import { cx } from "../lib/cx";
 import { api } from "../lib/api";
 import { formatAgo, formatBytes, splitBytes } from "../lib/format";
-import { buildRecommendations, cleanRecommendations, defaultSelection, scriptItems, type Rec } from "../lib/recommend";
+import { buildRecommendations, cleanRecommendations, defaultSelection, quickCleanItems, scriptItems, type Rec } from "../lib/recommend";
 import { buildScript } from "../lib/script";
 import type { CleanReport, NodeView } from "../lib/types";
 import { useApp, errorText, type PageId } from "../store/app";
+
+type Store = ReturnType<typeof useApp.getState>;
+
+/** Everything the Overview recommends, from the scans in the store. */
+function recommendationsFor(s: Pick<Store, "settings" | "rules" | "junk" | "projects" | "installers" | "info">, lang: string, t: Parameters<typeof buildRecommendations>[0]["t"]): Rec[] {
+  if (!s.settings || !s.rules) return [];
+  return buildRecommendations({ rules: s.rules.targets, junk: s.junk, projects: s.projects, installers: s.installers, settings: s.settings, lang, profile: s.info?.userProfile ?? "", t });
+}
 
 function pageFor(rec: Rec): PageId {
   if (rec.kind === "artifacts") return "projects";
@@ -162,15 +170,15 @@ function QuickActions() {
 
 /** One-click cleanup of the safe, regenerable items: caches, temp files and logs. */
 function QuickClean({ recs }: { recs: Rec[] }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const fmt = useBytes();
-  const { info, settings, junk, running, scanAll, toast, refreshDrives } = useApp();
+  const { info, settings, junk, running, scanAll, toast, refreshDrives, quickCleanPending } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<CleanReport | null>(null);
   const elevated = !!info?.elevated;
   const safeRules = recs.filter((r) => r.kind === "rule" && r.risk === "safe");
-  const items = safeRules.filter((r) => r.blockedBy.length === 0 && (!r.admin || elevated));
+  const items = quickCleanItems(recs, elevated);
   const skipped = safeRules.length - items.length;
   const bytes = items.reduce((s, r) => s + r.bytes, 0);
   const scanning = !!(running.junk || running.projects);
@@ -179,6 +187,19 @@ function QuickClean({ recs }: { recs: Rec[] }) {
     if (!junk) await scanAll();
     setConfirm(true);
   };
+
+  // A shortcut or jump list task asked for this review. It only opens the same confirmation as
+  // the button, after a fresh scan: sizes from an older scan may no longer be true.
+  useEffect(() => {
+    if (!quickCleanPending) return;
+    useApp.setState({ quickCleanPending: false });
+    void (async () => {
+      await scanAll();
+      const s = useApp.getState();
+      if (quickCleanItems(recommendationsFor(s, i18n.language, t), !!s.info?.elevated).length > 0) setConfirm(true);
+      else toast("neutral", t("overview.quickNothing"));
+    })();
+  }, [quickCleanPending, scanAll, toast, t, i18n.language]);
 
   const run = async () => {
     if (!settings) return;
@@ -247,10 +268,7 @@ export function OverviewPage() {
   const { info, settings, rules, junk, junkAt, projects, installers, drives, running, scanAll, toast, go, refreshDrives } = useApp();
   const scanning = !!(running.junk || running.projects);
 
-  const recs = useMemo(() => {
-    if (!settings || !rules) return [];
-    return buildRecommendations({ rules: rules.targets, junk, projects, installers, settings, lang: i18n.language, profile: info?.userProfile ?? "", t });
-  }, [settings, rules, junk, projects, installers, i18n.language, info, t]);
+  const recs = useMemo(() => recommendationsFor({ settings, rules, junk, projects, installers, info }, i18n.language, t), [settings, rules, junk, projects, installers, i18n.language, info, t]);
 
   const [manual, setManual] = useState<Set<string> | null>(null);
   const selected = useMemo(() => manual ?? defaultSelection(recs), [manual, recs]);

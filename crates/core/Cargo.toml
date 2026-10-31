@@ -35,6 +35,7 @@ windows = { version = "=0.62.2", features = [
   "Win32_System_Environment",
   "Win32_System_IO",
   "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
   "Win32_System_Diagnostics_ToolHelp",
   "Win32_System_Ole",
   "Win32_System_Registry",
@@ -43,6 +44,8 @@ windows = { version = "=0.62.2", features = [
   "Win32_System_Variant",
   "Win32_System_Wmi",
   "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+  "Win32_UI_Shell_PropertiesSystem",
   "Win32_UI_WindowsAndMessaging",
 ] }
 

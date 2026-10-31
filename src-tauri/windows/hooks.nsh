@@ -1,17 +1,48 @@
 ; NSIS hooks for the ReClaim Cleaner installer.
 
-; Removes the per-user "Analyze with ReClaim" Explorer entries, which the app itself writes when
-; the user turns them on in Settings. A setup that replaces the installed copy ("Uninstall before
-; installing", the default on upgrades and the choice a passive reinstall makes) runs this
-; uninstaller too, without /UPDATE but in place (`_?=`), while a real uninstall runs from a copy
-; in TEMP. The entries stay in place mode, or every upgrade would silently turn the feature off.
-; It runs after the uninstall, so one cancelled because ReClaim is running keeps them too.
+; "ReClaim Quick Clean" in the Start menu: it starts the app with --quick-clean, which opens the
+; quick clean review on the Overview (nothing is deleted before the user confirms). The file
+; name matches `launch::SHORTCUT_NAME`. Same rules as Tauri's own Start menu shortcut: none in
+; update mode (it is still there) or with /NS.
+!macro NSIS_HOOK_POSTINSTALL
+  ${If} $UpdateMode <> 1
+  ${AndIf} $NoShortcutMode <> 1
+    CreateShortcut "$SMPROGRAMS\ReClaim Quick Clean.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "--quick-clean" "$INSTDIR\${MAINBINARYNAME}.exe" 0
+  ${EndIf}
+!macroend
+
+; Removes the per-user "Analyze with ReClaim" Explorer entries, which the app itself writes the
+; first time an installed copy starts and when the user turns them on in Settings. A setup that
+; replaces the installed copy ("Uninstall before installing", the default on upgrades and the
+; choice a passive reinstall makes) runs this uninstaller too, without /UPDATE but in place
+; (`_?=`), while a real uninstall runs from a copy in TEMP. The entries stay in place mode, or
+; every upgrade would silently turn the feature off. It runs after the uninstall, so one
+; cancelled because ReClaim is running keeps them too.
 !macro NSIS_HOOK_POSTUNINSTALL
   ${If} $UpdateMode <> 1
   ${AndIf} $EXEDIR != $INSTDIR
     DeleteRegKey HKCU "Software\Classes\Directory\shell\ReClaim.Analyze"
     DeleteRegKey HKCU "Software\Classes\Directory\Background\shell\ReClaim.Analyze"
     DeleteRegKey HKCU "Software\Classes\Drive\shell\ReClaim.Analyze"
+  ${EndIf}
+
+  ; The quick clean shortcuts: the Start menu one from the setup and the desktop one from
+  ; Settings. Only shortcuts that start this copy are removed; the install that follows a
+  ; replace puts the Start menu one back.
+  ${If} $UpdateMode <> 1
+    !insertmacro IsShortcutTarget "$SMPROGRAMS\ReClaim Quick Clean.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+    Pop $0
+    ${If} $0 = 1
+      Delete "$SMPROGRAMS\ReClaim Quick Clean.lnk"
+    ${EndIf}
+  ${EndIf}
+  ${If} $UpdateMode <> 1
+  ${AndIf} $EXEDIR != $INSTDIR
+    !insertmacro IsShortcutTarget "$DESKTOP\ReClaim Quick Clean.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+    Pop $0
+    ${If} $0 = 1
+      Delete "$DESKTOP\ReClaim Quick Clean.lnk"
+    ${EndIf}
   ${EndIf}
 
   ; Tauri's "Delete app data" only removes `$APPDATA\${BUNDLEID}` and `$LOCALAPPDATA\${BUNDLEID}`,

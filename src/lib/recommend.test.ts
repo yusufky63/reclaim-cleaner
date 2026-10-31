@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRecommendations, defaultSelection, idleProjects, mergeReports, safeArtifactPaths } from "./recommend";
+import { buildRecommendations, defaultSelection, idleProjects, mergeReports, quickCleanItems, safeArtifactPaths } from "./recommend";
 import type { Project, Settings, TargetResult, TargetRule } from "./types";
 
 const t = (key: string, opts?: Record<string, unknown>) => `${key}${opts ? JSON.stringify(opts) : ""}`;
@@ -46,6 +46,7 @@ const settings: Settings = {
   installerAgeDays: 30,
   checkUpdates: false,
   onboarded: false,
+  explorerMenuDefaultApplied: false,
 };
 
 describe("buildRecommendations", () => {
@@ -92,6 +93,16 @@ describe("buildRecommendations", () => {
     expect(sel.has("art:node_modules")).toBe(true);
     expect(sel.has("rule:wintemp")).toBe(false);
     expect(sel.has("rule:ollama")).toBe(false);
+  });
+
+  it("quick cleans safe rules only, admin ones when elevated", () => {
+    const keys = (elevated: boolean) => quickCleanItems(recs, elevated).map((r) => r.key);
+    expect(keys(false)).toContain("rule:npm");
+    expect(keys(false)).not.toContain("rule:wintemp");
+    expect(keys(true)).toContain("rule:wintemp");
+    // Build artifacts and review items need their own pages.
+    expect(keys(true)).not.toContain("art:node_modules");
+    expect(keys(true)).not.toContain("rule:ollama");
   });
 
   it("uses Turkish names", () => {

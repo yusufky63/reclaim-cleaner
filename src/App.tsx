@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Shell } from "./components/Shell";
 import { Banner, EmptyState } from "./components/ui";
-import { api, isDesktop, onProgress, onShellAnalyze } from "./lib/api";
+import { api, isDesktop, onProgress, onQuickClean, onShellAnalyze } from "./lib/api";
 import { checkForUpdate } from "./lib/updates";
 import { OverviewPage } from "./pages/Overview";
 import { useApp } from "./store/app";
@@ -64,7 +64,7 @@ function Page() {
 }
 
 export function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const boot = useApp((s) => s.boot);
   const ready = useApp((s) => s.ready);
   const bootError = useApp((s) => s.bootError);
@@ -81,9 +81,22 @@ export function App() {
         .then((req) => req && useApp.getState().analyze(req))
         .catch(() => undefined);
     };
+    // A shortcut or jump list task asked for the quick clean review.
+    const takeQuickClean = () => {
+      void api
+        .quickCleanTake()
+        .then((asked) => asked && useApp.getState().requestQuickClean())
+        .catch(() => undefined);
+    };
     void boot().then(() => {
       takePending();
+      takeQuickClean();
       const { settings, info, toast } = useApp.getState();
+      // Installed copies add the Explorer entry the first time they start; say where it went.
+      void api
+        .shellMenuDefault(i18n.language)
+        .then((added) => added && toast("neutral", t("settings.explorerDefaultAdded")))
+        .catch(() => undefined);
       if (settings?.checkUpdates && info) {
         void checkForUpdate(info.version).then((r) => {
           if (r.kind === "available") toast("neutral", t("settings.updateAvailable", { version: r.version }));
@@ -92,13 +105,21 @@ export function App() {
     });
     const unlisten = onProgress((e) => useApp.getState().setProgress(e));
     const unlistenShell = onShellAnalyze(takePending);
+    const unlistenQuick = onQuickClean(takeQuickClean);
     return () => {
       void unlisten.then((f) => f());
       void unlistenShell.then((f) => f());
+      void unlistenQuick.then((f) => f());
     };
-    // Boot once; `t` only formats the optional update toast.
+    // Boot once; `t` and `i18n` only format the startup toasts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boot]);
+
+  useEffect(() => {
+    if (!ready || !isDesktop()) return;
+    // The jump list keeps the text it was given, so it is rewritten when the language changes.
+    void api.jumpListSet(t("overview.quickTitle"), t("overview.quickTaskHint")).catch(() => undefined);
+  }, [ready, t, i18n.language]);
 
   if (!isDesktop()) {
     return (

@@ -29,6 +29,8 @@ interface AppState {
   explorer: ScanSummary | null;
   /** Bumped after deletes so views re-read the explorer tree. */
   explorerVersion: number;
+  /** A shortcut or jump list task asked for the quick clean review; the Overview takes it. */
+  quickCleanPending: boolean;
   toasts: Toast[];
 
   go: (page: PageId) => void;
@@ -41,6 +43,8 @@ interface AppState {
   scanExplorer: (root: string, selection?: string[]) => Promise<ScanSummary | null>;
   /** Opens the space map for folders Explorer asked to analyze. */
   analyze: (req: AnalyzeRequest) => Promise<void>;
+  /** Opens the Overview and its quick clean review, as a shortcut or jump list task asked. */
+  requestQuickClean: () => void;
   scanAll: () => Promise<void>;
   setProgress: (e: ProgressEvent) => void;
   setRunning: (kind: string, on: boolean) => void;
@@ -92,6 +96,7 @@ export const useApp = create<AppState>((set, get) => ({
   installers: null,
   explorer: null,
   explorerVersion: 0,
+  quickCleanPending: false,
   toasts: [],
 
   go: (page) => set({ page }),
@@ -185,6 +190,8 @@ export const useApp = create<AppState>((set, get) => ({
     if (req.kind === "one") await get().scanExplorer(req.path);
     else await get().scanExplorer(req.parent, req.names);
   },
+
+  requestQuickClean: () => set({ page: "overview", quickCleanPending: true }),
 
   scanAll: async () => {
     await Promise.all([get().scanJunk(), get().scanProjects(), get().scanInstallers(), get().refreshDrives()]);

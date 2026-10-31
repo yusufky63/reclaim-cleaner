@@ -23,6 +23,7 @@ use reclaim_core::history::{self, HistoryEntry};
 use reclaim_core::icons;
 use reclaim_core::installers::{self, InstallerFile};
 use reclaim_core::junk::{self, TargetResult};
+use reclaim_core::launch;
 use reclaim_core::leftovers::{self, Leftover};
 use reclaim_core::locks::{self, CloseOutcome, LockReport};
 use reclaim_core::organize;
@@ -206,7 +207,9 @@ fn settings_get(state: State<'_, AppState>) -> Settings {
 }
 
 #[tauri::command]
-fn settings_set(state: State<'_, AppState>, settings: Settings) -> CmdResult<Settings> {
+fn settings_set(state: State<'_, AppState>, mut settings: Settings) -> CmdResult<Settings> {
+    // Only the app sets this, and the UI may hold a copy read before it did.
+    settings.explorer_menu_default_applied |= state.settings.read().explorer_menu_default_applied;
     settings.save(&state.data_dir).map_err(err)?;
     *state.settings.write() = settings.clone();
     *state.settings_error.write() = None;
@@ -1143,6 +1146,29 @@ fn shell_menu_set(enabled: bool, lang: String) -> CmdResult<MenuStatus> {
     Ok(shell::status(&exe))
 }
 
+/// Turns the Explorer entry on the first time an installed copy starts, once. Portable copies
+/// stay out of the registry unless the user turns it on. Returns whether it was added now.
+#[tauri::command]
+fn shell_menu_default(state: State<'_, AppState>, lang: String) -> CmdResult<bool> {
+    if is_portable() || state.settings_error.read().is_some() {
+        return Ok(false);
+    }
+    let mut settings = state.settings.write();
+    if settings.explorer_menu_default_applied {
+        return Ok(false);
+    }
+    let exe = current_exe().map_err(err)?;
+    let added = !shell::status(&exe).enabled;
+    if added {
+        shell::register(&exe, &lang).map_err(err)?;
+    }
+    let mut next = settings.clone();
+    next.explorer_menu_default_applied = true;
+    next.save(&state.data_dir).map_err(err)?;
+    *settings = next;
+    Ok(added)
+}
+
 /// The folders Explorer asked to analyze since the last call, merged into one request.
 #[tauri::command]
 fn shell_take_pending(state: State<'_, AppState>) -> Option<AnalyzeRequest> {
@@ -1177,6 +1203,37 @@ fn queue_analyze(app: &AppHandle, args: &[String]) {
             .store(false, Ordering::SeqCst);
         let _ = app.emit("shell-analyze", ());
     });
+}
+
+/// Notes a `--quick-clean` request and tells a running UI. A cold start leaves it for the UI to
+/// take once it has loaded.
+fn queue_quick_clean(app: &AppHandle, args: &[String]) {
+    if launch::quick_clean_requested(args) {
+        app.state::<AppState>()
+            .quick_clean
+            .store(true, Ordering::SeqCst);
+        let _ = app.emit("quick-clean", ());
+    }
+}
+
+/// Whether a shortcut or jump list task asked for the quick clean review since the last call.
+#[tauri::command]
+fn quick_clean_take(state: State<'_, AppState>) -> bool {
+    state.quick_clean.swap(false, Ordering::SeqCst)
+}
+
+/// Sets the "Quick clean" task in the taskbar and Start jump list, in the UI language.
+#[tauri::command]
+fn jump_list_set(title: String, description: String) -> CmdResult<()> {
+    launch::set_jump_list(&current_exe().map_err(err)?, &title, &description).map_err(err)
+}
+
+/// Puts a "ReClaim Quick Clean" shortcut on the desktop and returns its path.
+#[tauri::command]
+fn desktop_shortcut_create(title: String, description: String) -> CmdResult<String> {
+    launch::create_desktop_shortcut(&current_exe().map_err(err)?, &title, &description)
+        .map(|p| p.to_string_lossy().into_owned())
+        .map_err(err)
 }
 
 /// Lets a standard-user Explorer reach this copy when it runs as administrator. Windows blocks
@@ -1224,6 +1281,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             queue_analyze(app, &args);
+            queue_quick_clean(app, &args);
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.unminimize();
                 let _ = w.set_focus();
@@ -1238,6 +1296,7 @@ pub fn run() {
             allow_forwarding_when_elevated(app);
             let args: Vec<String> = std::env::args().collect();
             queue_analyze(app.handle(), &args);
+            queue_quick_clean(app.handle(), &args);
             // A moved portable copy or a reinstall elsewhere leaves entries pointing at a
             // program that no longer exists; point them at this copy.
             if let Ok(exe) = current_exe() {
@@ -1296,6 +1355,10 @@ pub fn run() {
             shell_menu_status,
             shell_menu_set,
             shell_take_pending,
+            shell_menu_default,
+            quick_clean_take,
+            jump_list_set,
+            desktop_shortcut_create,
         ])
         .run(tauri::generate_context!())
         .expect("error while running ReClaim Cleaner");

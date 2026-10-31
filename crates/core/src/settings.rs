@@ -29,6 +29,9 @@ pub struct Settings {
     pub installer_age_days: u32,
     pub check_updates: bool,
     pub onboarded: bool,
+    /// The Explorer entry is on by default for installed copies. This records that the default
+    /// was applied once, so an entry the user turned off stays off.
+    pub explorer_menu_default_applied: bool,
 }
 
 impl Default for Settings {
@@ -47,6 +50,7 @@ impl Default for Settings {
             installer_age_days: 30,
             check_updates: false,
             onboarded: false,
+            explorer_menu_default_applied: false,
         }
     }
 }

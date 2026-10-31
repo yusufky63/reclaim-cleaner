@@ -121,6 +121,10 @@ export const api = {
   shellMenuStatus: () => call<MenuStatus>("shell_menu_status"),
   shellMenuSet: (enabled: boolean, lang: string) => call<MenuStatus>("shell_menu_set", { enabled, lang }),
   shellTakePending: () => call<AnalyzeRequest | null>("shell_take_pending"),
+  shellMenuDefault: (lang: string) => call<boolean>("shell_menu_default", { lang }),
+  quickCleanTake: () => call<boolean>("quick_clean_take"),
+  jumpListSet: (title: string, description: string) => call<void>("jump_list_set", { title, description }),
+  desktopShortcutCreate: (title: string, description: string) => call<string>("desktop_shortcut_create", { title, description }),
 
   history: (limit: number) => call<HistoryEntry[]>("history_list", { limit }),
   historyClear: () => call<void>("history_clear"),
@@ -130,6 +134,12 @@ export const api = {
 export function onShellAnalyze(cb: () => void): Promise<UnlistenFn> {
   if (!isDesktop()) return Promise.resolve(() => {});
   return listen("shell-analyze", () => cb());
+}
+
+/** Fires when a shortcut or jump list task asked the running app for a quick clean. */
+export function onQuickClean(cb: () => void): Promise<UnlistenFn> {
+  if (!isDesktop()) return Promise.resolve(() => {});
+  return listen("quick-clean", () => cb());
 }
 
 export function onProgress(cb: (e: ProgressEvent) => void): Promise<UnlistenFn> {

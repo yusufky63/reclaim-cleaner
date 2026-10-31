@@ -1,4 +1,4 @@
-import { ExternalLink, FolderOpen, GitBranch, RefreshCw, ShieldCheck } from "lucide-react";
+import { ExternalLink, FolderOpen, GitBranch, RefreshCw, ShieldCheck, Zap } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { FolderList } from "../components/common";
@@ -48,6 +48,34 @@ function ExplorerMenu() {
           </div>
         )}
       </div>
+    </Card>
+  );
+}
+
+/** A desktop shortcut that opens the quick clean review. The jump list task needs no setup. */
+function QuickCleanShortcut() {
+  const { t } = useTranslation();
+  const toast = useApp((s) => s.toast);
+  const [busy, setBusy] = useState(false);
+  const create = async () => {
+    setBusy(true);
+    try {
+      const path = await api.desktopShortcutCreate(t("overview.quickTitle"), t("overview.quickTaskHint"));
+      toast("positive", t("settings.quickShortcutDone", { path }));
+    } catch (e) {
+      toast("danger", errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card>
+      <CardHeader title={t("settings.quickTitle")} />
+      <Row label={t("settings.quickShortcut")} hint={t("settings.quickShortcutHint")}>
+        <Button size="sm" icon={<Zap size={15} strokeWidth={1.75} />} loading={busy} onClick={() => void create()}>
+          {t("settings.quickShortcutButton")}
+        </Button>
+      </Row>
     </Card>
   );
 }
@@ -181,6 +209,7 @@ export function SettingsPage() {
       </Card>
 
       <ExplorerMenu />
+      <QuickCleanShortcut />
 
       <Card>
         <CardHeader title={t("settings.updates")} />
