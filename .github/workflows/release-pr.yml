@@ -74,6 +74,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          # The script needs no packages; without this, setup-node looks for pnpm's cache.
+          package-manager-cache: false
       - id: plan
         run: echo "version=$(node scripts/release.ts plan)" >> "$GITHUB_OUTPUT"
 
