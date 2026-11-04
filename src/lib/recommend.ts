@@ -41,6 +41,15 @@ export function isCleanable(rule: TargetRule): boolean {
   return rule.mode !== "report" || !!rule.command?.startsWith("api:SHEmptyRecycleBin");
 }
 
+/**
+ * A rule whose only way in is a command the user runs: it names no paths, so it can never be
+ * measured. It is worth showing where the command is copied rather than run, and only when this
+ * system has the tool, which keeps the apt rules off Fedora.
+ */
+export function isCommandOnly(rule: TargetRule, res: TargetResult, runCommands: boolean): boolean {
+  return !runCommands && rule.mode === "report" && rule.paths.length === 0 && !!rule.command && !rule.command.startsWith("api:") && res.commandAvailable;
+}
+
 export function idleProjects(projects: Project[], idleDays: number, now = Date.now()): Project[] {
   return projects.filter((p) => daysSince(p.lastActivity, now) >= idleDays);
 }

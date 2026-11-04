@@ -315,6 +315,7 @@ export const en = {
     hiddenCaution_one: "{{count}} caution item hidden. Enable caution items in Settings to see it.",
     hiddenCaution_other: "{{count}} caution items hidden. Enable caution items in Settings to see them.",
     minAge: "Only files older than {{hours}} h",
+    notMeasured: "Not measured",
   },
   projects: {
     title: "Developer",

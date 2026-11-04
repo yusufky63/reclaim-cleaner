@@ -315,6 +315,7 @@ export const tr: Messages = {
     hiddenCaution_one: "{{count}} dikkat öğesi gizli. Görmek için Ayarlar'da dikkat öğelerini aç.",
     hiddenCaution_other: "{{count}} dikkat öğesi gizli. Görmek için Ayarlar'da dikkat öğelerini aç.",
     minAge: "Sadece {{hours}} saatten eski dosyalar",
+    notMeasured: "Ölçülmedi",
   },
   projects: {
     title: "Geliştirici",
