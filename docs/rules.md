@@ -1,11 +1,12 @@
 # Rule format
 
-Cleanup targets are data. Two files ship inside the app:
+Cleanup targets are data. Three files ship with the source, and each build embeds the ones for its platform:
 
-- `rules/targets.json`: fixed locations such as caches, temp folders, logs and dumps.
-- `rules/artifacts.json`: build and dependency folders inside projects, recognised by marker files.
+- `rules/targets.json`: fixed locations on Windows, such as caches, temp folders, logs and dumps.
+- `rules/linux/targets.json`: the same on Linux (see [Linux rules](#linux-rules)).
+- `rules/artifacts.json`: build and dependency folders inside projects, recognised by marker files. Shared by all platforms.
 
-Both are embedded at build time. `cargo test -p reclaim-core` parses them and checks every path against the protected-path guard, so a rule that points at a protected folder fails CI.
+`cargo test -p reclaim-core` parses them and checks every path against the protected-path guard, so a rule that points at a protected folder fails CI.
 
 ## Targets
 
@@ -61,6 +62,44 @@ When in doubt, choose the higher risk.
 - `WinSxS`, `Windows\Installer`, driver store, reset images, `hiberfil.sys`, `pagefile.sys`. Use Windows' tools (see the Windows tools page).
 - Registry keys.
 
+## Linux rules
+
+`rules/linux/targets.json` uses the same fields with these differences. `docs/research/linux.md` holds the paths, risks and sources behind it.
+
+| Field | On Linux |
+|---|---|
+| `paths` | Start with `%HOME%`, `%XDG_CACHE%`, `%XDG_CONFIG%`, `%XDG_DATA%` or `%XDG_STATE%` (each falls back to the XDG default, so `%XDG_CACHE%` is usually `~/.cache`), or `%STEAM%` and `%STEAMLIBRARY%`. Separators are `/`. A rule must name a child: `%XDG_CACHE%` alone is refused. Paths are case-sensitive. There are no brace lists, so `{Cache,Code Cache}` is written out as two paths. |
+| `closeApps` | Process names without `.exe`, such as `code` or `signal-desktop`. They are compared in lowercase. |
+| `admin` | Always `false`. The first Linux version never runs as root. |
+| `command` | Shown for copying, not run. It starts with the tool itself, without `sudo`: the scan uses the first word to tell whether this distro has the tool. The description says when root is needed. It may not contain placeholders or shell operators, and may be a listing command (`coredumpctl list`) when the system ages the data out by itself. The one exception is the Trash rule: `api:SHEmptyRecycleBin` is run by the app, follows the trash spec and has no `paths`. |
+| `verified` | `true` only when `source` is a primary source that names the path. Anything derived from a convention stays `false`, including Electron folder names and most Flatpak and Snap paths. |
+
+### System areas
+
+Package caches, the journal, snaps, Flatpak runtimes and containers are `report` rules with their official command. Nothing below `/var`, `/usr` or `/etc` is ever deleted as files, and no variable reaches those folders, so most of these rules have empty `paths`. Their size is not measured.
+
+### Flatpak and Snap
+
+Inside a sandboxed app's folder the guard allows only its cache, so rules follow the same line:
+
+- Flatpak moves an app's XDG folders into `%HOME%/.var/app/<id>/`. A rule may use `<id>/cache`, never `<id>/config`, `<id>/data` or `<id>/.local`.
+- A strictly confined Snap keeps its cache in `%HOME%/snap/<name>/common/.cache`. Everything else there is app data, and numbered revisions would count the same app twice. Classic snaps such as `code` use the real home folder, so they need no extra path.
+- Electron apps keep their caches under `config`, so their Flatpak and Snap installs have no rule yet. The same goes for Telegram, whose cache is under `data`.
+- When the native path is verified, sandbox paths go in a separate unverified rule (`chrome-sandbox-cache`). Otherwise they share one rule with the native path.
+
+### What never becomes a Linux rule
+
+The list below is enforced by tests in `crates/core/src/rules.rs`.
+
+- `~/.cache`, `~/.config`, `~/.local/share`, `~/.var/app`, `~/snap` as a whole.
+- Trash folders. Only the `recycle-bin` rule empties the trash, through its command.
+- Keys and passwords: `~/.ssh`, `~/.gnupg`, `~/.password-store`, keyrings.
+- A whole browser profile. Chromium-based profiles allow only `*/Service Worker/CacheStorage`, at `review`. Firefox profiles are off limits; its cache lives in `%XDG_CACHE%/mozilla`.
+- Mail: `~/.thunderbird`, Evolution.
+- Telegram's `tdata`, except `user_data*/cache` and `user_data*/media_cache`. Signal's `sql` and `attachments.noindex`.
+
+Proton, Wine, Lutris and Heroic prefixes hold save games that may exist nowhere else, so they are `report` rules at `caution`.
+
 ## Artifacts
 
 ```json
@@ -85,4 +124,4 @@ Rules are tried in file order, so specific owners come before generic ones: a Gr
 
 ## Your own rules
 
-Put a JSON array of target rules in `%APPDATA%\ReClaim\rules\*.json` (or `data\rules` next to the exe in portable mode). They appear with a "Your rule" badge. User rules are validated more strictly: they cannot set `admin`, cannot run commands and cannot reuse a built-in id. Invalid files are listed in Settings and ignored.
+Put a JSON array of target rules in `%APPDATA%\ReClaim\rules\*.json` (or `data\rules` next to the exe in portable mode). They appear with a "Your rule" badge. User rules are validated more strictly: they cannot set `admin`, cannot run commands and cannot reuse a built-in id. Invalid files are listed in Settings and ignored. On Linux they follow the Linux path format above.
