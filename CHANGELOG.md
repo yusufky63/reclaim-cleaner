@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-04
+
 ### Added
 
 - Linux beta: a deb package for Ubuntu and Debian and an AppImage for other x86-64 distributions. Space map, Large files, Duplicates, Empty folders, Junk and caches, Developer, AI models, AI assistants, Downloads and Games work. It deletes only inside your home folder and never as root. See the README for what is still Windows-only.
@@ -86,7 +88,8 @@ First public version.
 - English and Turkish UI, light and dark theme, portable mode.
 - NSIS installer (English and Turkish), MSI packages (en-US, tr-TR) and a portable zip.
 
-[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.1.0...v0.2.0
