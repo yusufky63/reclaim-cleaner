@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
 ### Added
 
 - Linux engine foundation: exact path comparison, a Linux protected-path guard, mount-aware scanning, a delete walker that crosses neither links nor mounts, and drives, processes, trash, user folders and Steam from Linux sources. Linux cleanup rules were checked against other open-source cleaners. There is no Linux release yet.
@@ -76,7 +78,8 @@ First public version.
 - English and Turkish UI, light and dark theme, portable mode.
 - NSIS installer (English and Turkish), MSI packages (en-US, tr-TR) and a portable zip.
 
-[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/yusufky63/reclaim-cleaner/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yusufky63/reclaim-cleaner/releases/tag/v0.1.0
