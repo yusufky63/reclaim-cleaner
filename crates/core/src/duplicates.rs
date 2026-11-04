@@ -174,7 +174,7 @@ pub fn find_duplicates(
     let mut seen = std::collections::HashSet::new();
     let all: Vec<Candidate> = all
         .into_iter()
-        .filter(|c| seen.insert(c.path.to_string_lossy().to_lowercase()))
+        .filter(|c| seen.insert(crate::paths::key(&c.path)))
         .collect();
 
     let mut by_size: HashMap<u64, Vec<Candidate>> = HashMap::new();
@@ -262,16 +262,25 @@ pub fn find_duplicates(
     groups
 }
 
-// Rule expansion and the guard only know Windows paths so far.
-#[cfg(all(test, windows))]
+#[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    fn guard_for(_tmp: &Path) -> Guard {
+        Guard::new(&[], None)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn guard_for(tmp: &Path) -> Guard {
+        Guard::for_home(tmp, &[], None)
+    }
 
     #[test]
     fn groups_identical_files_only() {
         let tmp = tempfile::tempdir().unwrap();
         let a = tmp.path().join("a");
-        let b = tmp.path().join(r"b\c");
+        let b = tmp.path().join("b").join("c");
         fs::create_dir_all(&a).unwrap();
         fs::create_dir_all(&b).unwrap();
         let data: Vec<u8> = (0..100_000u32).map(|i| (i % 251) as u8).collect();
@@ -281,7 +290,7 @@ mod tests {
         other[50_000] ^= 1; // same size, same edges, different middle
         fs::write(a.join("near.bin"), &other).unwrap();
         fs::hard_link(a.join("one.bin"), a.join("hard.bin")).unwrap();
-        let guard = Guard::new(&[], None);
+        let guard = guard_for(tmp.path());
         let groups = find_duplicates(&[tmp.path().to_path_buf()], 1024, &guard, &Job::new());
         assert_eq!(groups.len(), 1);
         assert_eq!(

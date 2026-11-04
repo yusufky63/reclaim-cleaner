@@ -1294,7 +1294,9 @@ pub fn run() {
         .setup(|app| {
             #[cfg(windows)]
             allow_forwarding_when_elevated(app);
-            let args: Vec<String> = std::env::args().collect();
+            let args: Vec<String> = std::env::args_os()
+                .map(|a| a.to_string_lossy().into_owned())
+                .collect();
             queue_analyze(app.handle(), &args);
             queue_quick_clean(app.handle(), &args);
             // A moved portable copy or a reinstall elsewhere leaves entries pointing at a

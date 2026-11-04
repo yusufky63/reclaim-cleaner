@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use parking_lot::Mutex;
+#[cfg(not(target_os = "linux"))]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +21,7 @@ use crate::job::Job;
 use crate::junk::{cutoff_for, matching_files};
 use crate::paths::{Guard, Origin, expand_pattern, is_within, key};
 use crate::rules::{Mode, TargetRule};
-use crate::walk::measure_path;
+use crate::walk::{DirAction, WalkContext, measure_path};
 use crate::{Error, Result};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -139,6 +140,12 @@ fn io_reason(e: &std::io::Error) -> &'static str {
         // ERROR_SHARING_VIOLATION and ERROR_LOCK_VIOLATION.
         #[cfg(windows)]
         (_, Some(32)) | (_, Some(33)) => "in_use",
+        // A mount point or a folder busy some other way.
+        #[cfg(target_os = "linux")]
+        (ErrorKind::ResourceBusy, _) => "in_use",
+        // A link where a folder was: `linux_delete::open_dir` answers this for it.
+        #[cfg(target_os = "linux")]
+        (_, Some(code)) if code == rustix::io::Errno::LOOP.raw_os_error() => "link",
         (ErrorKind::PermissionDenied, _) => "access_denied",
         (ErrorKind::NotFound, _) => "not_found",
         _ => "io",
@@ -235,6 +242,7 @@ fn probe(path: &Path, budget: &mut usize) -> Option<&'static str> {
 
 /// Removes a file, clearing the read-only flag if that is what blocks it (common in caches
 /// that copy files from read-only sources).
+#[cfg(not(target_os = "linux"))]
 fn remove_file(path: &Path) -> std::io::Result<()> {
     match fs::remove_file(path) {
         Err(e) if e.kind() == ErrorKind::PermissionDenied => {
@@ -256,6 +264,7 @@ fn remove_file(path: &Path) -> std::io::Result<()> {
 /// Deletes everything inside `dir` permanently. Files newer than `cutoff` and anything inside
 /// `keep` (exclusion keys) stay. Links are removed as links, never followed. Returns true when
 /// `dir` ended up empty.
+#[cfg(not(target_os = "linux"))]
 fn purge_dir(dir: &Path, cutoff: Option<i64>, keep: &[String], skip: &[String], acc: &Acc) -> bool {
     if acc.job.is_cancelled() {
         return false;
@@ -350,6 +359,369 @@ fn purge_dir(dir: &Path, cutoff: Option<i64>, keep: &[String], skip: &[String], 
     empty && results.into_iter().all(|r| r)
 }
 
+/// Permanent deletes on Linux. Every step goes through a folder descriptor opened from `/` without
+/// following a link, so swapping a folder for a link while the delete runs ends in an error
+/// rather than somewhere else. `std::fs::remove_dir_all` is not used: it descends into mounts.
+#[cfg(target_os = "linux")]
+mod linux_delete {
+    use std::ffi::{OsStr, OsString};
+    use std::io;
+    use std::os::unix::ffi::OsStrExt;
+    use std::path::{Component, Path};
+    use std::sync::atomic::Ordering;
+
+    use rustix::fd::{AsFd, OwnedFd};
+    use rustix::fs::{
+        AtFlags, CWD, Dir, FileType, Mode, OFlags, Stat, StatxAttributes, StatxFlags, fstat,
+        openat, statat, statx, unlinkat,
+    };
+    use rustix::io::Errno;
+
+    use super::Acc;
+    use crate::fsmeta::plausible_time;
+    use crate::mounts::MountTable;
+    use crate::paths::{is_protected_name, is_within, key};
+    use crate::walk::name_excluded;
+
+    const READ_DIR: OFlags = OFlags::RDONLY
+        .union(OFlags::DIRECTORY)
+        .union(OFlags::NOFOLLOW)
+        .union(OFlags::CLOEXEC);
+    /// `O_PATH` only needs search rights, and folders on the way may not be readable (`/home`).
+    const TRAVERSE: OFlags = OFlags::PATH
+        .union(OFlags::DIRECTORY)
+        .union(OFlags::NOFOLLOW)
+        .union(OFlags::CLOEXEC);
+
+    /// Opens a real path one name at a time from `/`. `O_NOFOLLOW` only guards the last name of a
+    /// path, so a whole path handed to `open` could still pass through a link.
+    fn open_real(path: &Path) -> io::Result<OwnedFd> {
+        let mut dir = openat(CWD, "/", TRAVERSE, Mode::empty())?;
+        for part in path.components() {
+            match part {
+                Component::RootDir => {}
+                Component::Normal(name) => dir = open_dir(&dir, name, TRAVERSE)?,
+                _ => return Err(io::ErrorKind::InvalidInput.into()),
+            }
+        }
+        Ok(dir)
+    }
+
+    /// Opens the folder `name` without following a link. With `O_DIRECTORY` Linux answers `ENOTDIR`
+    /// for a link as well as for a file, so a link is told apart here to be reported as one.
+    fn open_dir(parent: &OwnedFd, name: &OsStr, flags: OFlags) -> rustix::io::Result<OwnedFd> {
+        openat(parent, name, flags, Mode::empty()).map_err(|e| {
+            let is_link = e == Errno::NOTDIR
+                && statat(parent, name, AtFlags::SYMLINK_NOFOLLOW)
+                    .is_ok_and(|st| file_type(&st) == FileType::Symlink);
+            if is_link { Errno::LOOP } else { e }
+        })
+    }
+
+    /// Space that removing this name gives back. Hard links share theirs until the last name goes.
+    fn freed_by(st: &Stat) -> u64 {
+        if st.st_nlink > 1 {
+            return 0;
+        }
+        st.st_blocks as u64 * 512
+    }
+
+    /// True when `dir` is the root of a mount. A bind mount of the same file system keeps its
+    /// `st_dev`, and this also sees a mount made after the table was read. Kernels before 5.8 do
+    /// not report it, which leaves the table and the device check.
+    fn is_mount_root(dir: impl AsFd) -> bool {
+        statx(dir, "", AtFlags::EMPTY_PATH, StatxFlags::empty()).is_ok_and(|s| {
+            s.stx_attributes_mask.contains(StatxAttributes::MOUNT_ROOT)
+                && s.stx_attributes.contains(StatxAttributes::MOUNT_ROOT)
+        })
+    }
+
+    fn read_names(dir: impl AsFd) -> io::Result<Vec<OsString>> {
+        let mut names = Vec::new();
+        for entry in Dir::read_from(dir)? {
+            let entry = entry?;
+            let name = entry.file_name().to_bytes();
+            if name != b"." && name != b".." {
+                names.push(OsStr::from_bytes(name).to_os_string());
+            }
+        }
+        Ok(names)
+    }
+
+    fn file_type(st: &Stat) -> FileType {
+        FileType::from_raw_mode(st.st_mode)
+    }
+
+    struct Purge<'a, 'j> {
+        acc: &'a Acc<'j>,
+        cutoff: Option<i64>,
+        keep: &'a [String],
+        skip: &'a [String],
+        mounts: &'a MountTable,
+        /// The device of the folder the delete started in. It is never left.
+        dev: u64,
+    }
+
+    impl Purge<'_, '_> {
+        /// Opens the folder `name` for deleting in, or reports why it may not be entered.
+        fn enter(&self, parent: &OwnedFd, name: &OsStr, path: &Path) -> Option<OwnedFd> {
+            if self.mounts.is_mount_point(path) {
+                self.acc.fail(path, "protected");
+                return None;
+            }
+            let dir = match open_dir(parent, name, READ_DIR) {
+                Ok(dir) => dir,
+                Err(e) => {
+                    self.acc.fail_io(path, &e.into());
+                    return None;
+                }
+            };
+            let same_device = fstat(&dir).is_ok_and(|st| st.st_dev == self.dev);
+            if !same_device || is_mount_root(&dir) {
+                self.acc.fail(path, "protected");
+                return None;
+            }
+            Some(dir)
+        }
+
+        /// Removes what may go inside `dir` and returns true when it ended up empty.
+        fn contents(&mut self, dir: &OwnedFd, path: &Path) -> bool {
+            if self.acc.job.is_cancelled() {
+                return false;
+            }
+            let names = match read_names(dir) {
+                Ok(names) => names,
+                Err(e) => {
+                    self.acc.fail_io(path, &e);
+                    return false;
+                }
+            };
+            let mut empty = true;
+            for name in names {
+                empty &= self.entry(dir, &name, &path.join(&name));
+            }
+            empty
+        }
+
+        /// Handles one folder entry and returns true when it is gone.
+        fn entry(&mut self, dir: &OwnedFd, name: &OsStr, path: &Path) -> bool {
+            let text = name.to_string_lossy();
+            // Removing a folder removes what is below it, so these names are kept here too.
+            if is_protected_name(&text) || name_excluded(&text, self.skip) {
+                return false;
+            }
+            if !self.keep.is_empty() {
+                let k = key(path);
+                if self.keep.iter().any(|x| is_within(&k, x)) {
+                    return false;
+                }
+            }
+            let st = match statat(dir, name, AtFlags::SYMLINK_NOFOLLOW) {
+                Ok(st) => st,
+                Err(e) => {
+                    self.acc.fail_io(path, &e.into());
+                    return false;
+                }
+            };
+            match file_type(&st) {
+                // Removed as a link; the target is not touched.
+                FileType::Symlink => self.unlink(dir, name, path, AtFlags::empty()),
+                FileType::Directory => {
+                    let Some(child) = self.enter(dir, name, path) else {
+                        return false;
+                    };
+                    if !self.contents(&child, path) {
+                        return false;
+                    }
+                    drop(child);
+                    let gone = self.unlink(dir, name, path, AtFlags::REMOVEDIR);
+                    if gone {
+                        self.acc.dirs.fetch_add(1, Ordering::Relaxed);
+                    }
+                    gone
+                }
+                _ => {
+                    let mtime = plausible_time(st.st_mtime as i64);
+                    if self.cutoff.is_some_and(|c| mtime > c) {
+                        return false;
+                    }
+                    let gone = self.unlink(dir, name, path, AtFlags::empty());
+                    if gone {
+                        self.acc.deleted_file(freed_by(&st));
+                    }
+                    gone
+                }
+            }
+        }
+
+        fn unlink(&self, dir: &OwnedFd, name: &OsStr, path: &Path, flags: AtFlags) -> bool {
+            match unlinkat(dir, name, flags) {
+                Ok(()) => true,
+                Err(e) => {
+                    self.acc.fail_io(path, &e.into());
+                    false
+                }
+            }
+        }
+    }
+
+    /// The trusted parent of `real` and the name inside it. `real` must have its parent resolved.
+    fn open_parent(real: &Path) -> io::Result<(OwnedFd, u64, &OsStr)> {
+        let (Some(parent), Some(name)) = (real.parent(), real.file_name()) else {
+            return Err(io::ErrorKind::InvalidInput.into());
+        };
+        let fd = open_real(parent)?;
+        let dev = fstat(&fd)?.st_dev;
+        Ok((fd, dev, name))
+    }
+
+    fn mount_table(path: &Path, acc: &Acc) -> Option<MountTable> {
+        match MountTable::read_current() {
+            Ok(table) => Some(table),
+            Err(_) => {
+                acc.fail(path, "protected");
+                None
+            }
+        }
+    }
+
+    /// Deletes what may go inside `real`, keeping the folder itself.
+    pub(super) fn permanent_contents(
+        real: &Path,
+        cutoff: Option<i64>,
+        keep: &[String],
+        skip: &[String],
+        acc: &Acc,
+    ) {
+        if let Some(mounts) = mount_table(real, acc) {
+            purge_below(real, cutoff, keep, skip, acc, &mounts);
+        }
+    }
+
+    pub(super) fn purge_below(
+        real: &Path,
+        cutoff: Option<i64>,
+        keep: &[String],
+        skip: &[String],
+        acc: &Acc,
+        mounts: &MountTable,
+    ) {
+        let (parent, dev, name) = match open_parent(real) {
+            Ok(opened) => opened,
+            Err(e) => return acc.fail_io(real, &e),
+        };
+        let mut purge = Purge {
+            acc,
+            cutoff,
+            keep,
+            skip,
+            mounts,
+            dev,
+        };
+        if let Some(dir) = purge.enter(&parent, name, real) {
+            purge.contents(&dir, real);
+        }
+    }
+
+    /// Deletes the folder `real` with everything inside, unless something had to stay.
+    pub(super) fn permanent_dir(real: &Path, keep: &[String], acc: &Acc) {
+        if let Some(mounts) = mount_table(real, acc) {
+            remove_dir(real, keep, acc, &mounts);
+        }
+    }
+
+    pub(super) fn remove_dir(real: &Path, keep: &[String], acc: &Acc, mounts: &MountTable) {
+        let (parent, dev, name) = match open_parent(real) {
+            Ok(opened) => opened,
+            Err(e) => return acc.fail_io(real, &e),
+        };
+        let mut purge = Purge {
+            acc,
+            cutoff: None,
+            keep,
+            skip: &[],
+            mounts,
+            dev,
+        };
+        let Some(dir) = purge.enter(&parent, name, real) else {
+            return;
+        };
+        if purge.contents(&dir, real) {
+            drop(dir);
+            if purge.unlink(&parent, name, real, AtFlags::REMOVEDIR) {
+                acc.dirs.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    }
+
+    /// Deletes the single file `real`. A link is refused here too, in case one took its place.
+    pub(super) fn permanent_file(real: &Path, acc: &Acc) {
+        let (parent, _, name) = match open_parent(real) {
+            Ok(opened) => opened,
+            Err(e) => return acc.fail_io(real, &e),
+        };
+        let st = match statat(&parent, name, AtFlags::SYMLINK_NOFOLLOW) {
+            Ok(st) => st,
+            Err(e) => return acc.fail_io(real, &e.into()),
+        };
+        match file_type(&st) {
+            FileType::Symlink => acc.fail(real, "link"),
+            FileType::Directory => acc.fail(real, "io"),
+            _ => match unlinkat(&parent, name, AtFlags::empty()) {
+                Ok(()) => acc.deleted_file(freed_by(&st)),
+                Err(e) => acc.fail_io(real, &e.into()),
+            },
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+use linux_delete::{permanent_contents, permanent_dir, permanent_file};
+
+#[cfg(not(target_os = "linux"))]
+fn permanent_contents(
+    dir: &Path,
+    cutoff: Option<i64>,
+    keep: &[String],
+    skip: &[String],
+    acc: &Acc,
+) {
+    purge_dir(dir, cutoff, keep, skip, acc);
+}
+
+#[cfg(not(target_os = "linux"))]
+fn permanent_dir(path: &Path, keep: &[String], acc: &Acc) {
+    if purge_dir(path, None, keep, &[], acc) {
+        match fs::remove_dir(path) {
+            Ok(()) => {
+                acc.dirs.fetch_add(1, Ordering::Relaxed);
+            }
+            Err(e) => acc.fail_io(path, &e),
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn permanent_file(path: &Path, acc: &Acc) {
+    let bytes = fs::symlink_metadata(path).map(|m| m.len()).unwrap_or(0);
+    match remove_file(path) {
+        Ok(()) => acc.deleted_file(bytes),
+        Err(e) => acc.fail_io(path, &e),
+    }
+}
+
+/// The spelling of `path` that a permanent delete walks and that exclusions are compared with.
+/// On Linux that is the path with its parent resolved, which is the one the guard approved.
+#[cfg(target_os = "linux")]
+fn delete_path(path: &Path) -> PathBuf {
+    crate::paths::resolve_parent(path).unwrap_or_else(|| path.to_path_buf())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn delete_path(path: &Path) -> PathBuf {
+    path.to_path_buf()
+}
+
 /// Moves paths to the Recycle Bin. Runs on its own thread because the shell API needs a
 /// single-threaded COM apartment that the caller's thread may not have.
 fn recycle(paths: Vec<PathBuf>, acc: &Acc) {
@@ -403,6 +775,7 @@ fn eligible_files(
     cutoff: Option<i64>,
     keep: &[String],
     skip: &[String],
+    ctx: &WalkContext,
     out: &mut Vec<PathBuf>,
 ) {
     let Ok(rd) = fs::read_dir(dir) else { return };
@@ -421,7 +794,9 @@ fn eligible_files(
             continue;
         }
         if ft.is_dir() {
-            eligible_files(&path, cutoff, keep, skip, out);
+            if ctx.action(&path) == DirAction::Enter {
+                eligible_files(&path, cutoff, keep, skip, ctx, out);
+            }
         } else if let Ok(md) = entry.metadata()
             && !is_cloud_only(&md)
             && cutoff.is_none_or(|c| mtime(&md) <= c)
@@ -449,11 +824,10 @@ fn wipe_contents(
         Err(e) => return acc.fail_io(dir, &e),
         _ => {}
     }
-    let keep = guard.exclusions_inside(dir);
+    let real = delete_path(dir);
+    let keep = guard.exclusions_inside(&real);
     match method {
-        DeleteMethod::Permanent => {
-            purge_dir(dir, cutoff, &keep, skip, acc);
-        }
+        DeleteMethod::Permanent => permanent_contents(&real, cutoff, &keep, skip, acc),
         DeleteMethod::Recycle => {
             let mut targets = Vec::new();
             if cutoff.is_none() && keep.is_empty() {
@@ -465,7 +839,14 @@ fn wipe_contents(
                     );
                 }
             } else {
-                eligible_files(dir, cutoff, &keep, skip, &mut targets);
+                eligible_files(
+                    &real,
+                    cutoff,
+                    &keep,
+                    skip,
+                    &WalkContext::new(&real),
+                    &mut targets,
+                );
             }
             recycle(targets, acc);
         }
@@ -484,7 +865,8 @@ fn remove_one(path: &Path, method: DeleteMethod, origin: Origin, guard: &Guard, 
     if is_link(&md.file_type()) {
         return acc.fail(path, "link");
     }
-    let keep = guard.exclusions_inside(path);
+    let real = delete_path(path);
+    let keep = guard.exclusions_inside(&real);
     match method {
         DeleteMethod::Recycle => {
             if !keep.is_empty() {
@@ -492,20 +874,8 @@ fn remove_one(path: &Path, method: DeleteMethod, origin: Origin, guard: &Guard, 
             }
             recycle(vec![path.to_path_buf()], acc);
         }
-        DeleteMethod::Permanent if md.is_dir() => {
-            if purge_dir(path, None, &keep, &[], acc) {
-                match fs::remove_dir(path) {
-                    Ok(()) => {
-                        acc.dirs.fetch_add(1, Ordering::Relaxed);
-                    }
-                    Err(e) => acc.fail_io(path, &e),
-                }
-            }
-        }
-        DeleteMethod::Permanent => match remove_file(path) {
-            Ok(()) => acc.deleted_file(md.len()),
-            Err(e) => acc.fail_io(path, &e),
-        },
+        DeleteMethod::Permanent if md.is_dir() => permanent_dir(&real, &keep, acc),
+        DeleteMethod::Permanent => permanent_file(&real, acc),
     }
 }
 
@@ -888,5 +1258,462 @@ mod tests {
         assert_eq!(probe_reason(&dir), "in_use");
         drop(held);
         assert!(log.exists());
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod linux_tests {
+    use super::*;
+    use crate::mounts::{MountTable, parse_mountinfo};
+    use crate::rules::{Group, Risk};
+    use crate::walk::WalkContext;
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::fs::{PermissionsExt, symlink};
+    use std::process::Command;
+
+    fn rule(path: &Path, mode: Mode) -> TargetRule {
+        TargetRule {
+            id: "test-rule".into(),
+            group: Group::Apps,
+            name: "t".into(),
+            name_tr: "t".into(),
+            description: "d".into(),
+            description_tr: "d".into(),
+            paths: vec![path.to_string_lossy().into_owned()],
+            mode,
+            include: vec!["*.log".into()],
+            exclude: vec![],
+            min_age_hours: None,
+            risk: Risk::Safe,
+            admin: false,
+            close_apps: vec![],
+            command: None,
+            verified: true,
+            source: None,
+            user: false,
+        }
+    }
+
+    /// A home folder in a temp folder, with a guard for it and a place outside it.
+    struct Fixture {
+        _tmp: tempfile::TempDir,
+        home: PathBuf,
+        outside: PathBuf,
+        guard: Guard,
+    }
+
+    fn fixture(exclusions: &[&str]) -> Fixture {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let home = root.join("home");
+        let outside = root.join("outside");
+        fs::create_dir_all(&home).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("keep.txt"), [7u8; 16]).unwrap();
+        let exclusions: Vec<String> = exclusions
+            .iter()
+            .map(|e| home.join(e).to_string_lossy().into_owned())
+            .collect();
+        let guard = Guard::for_home(&home, &exclusions, None);
+        Fixture {
+            _tmp: tmp,
+            home,
+            outside,
+            guard,
+        }
+    }
+
+    fn file(path: &Path, bytes: usize) -> u64 {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, vec![1u8; bytes]).unwrap();
+        crate::fsmeta::disk_size(&fs::metadata(path).unwrap())
+    }
+
+    fn wipe(rule: &TargetRule, guard: &Guard) -> CleanReport {
+        clean_targets(&[rule], DeleteMethod::Permanent, guard, &Job::new(), false)
+    }
+
+    fn pick(paths: &[PathBuf], guard: &Guard) -> CleanReport {
+        clean_paths(paths, DeleteMethod::Permanent, guard, &Job::new())
+    }
+
+    fn reasons(report: &CleanReport) -> Vec<&str> {
+        report.failures.iter().map(|f| f.reason.as_str()).collect()
+    }
+
+    #[test]
+    fn contents_mode_keeps_root_and_removes_symlinks_as_links() {
+        let f = fixture(&[]);
+        let cache = f.home.join(".cache/app");
+        let one = file(&cache.join("1.bin"), 4096);
+        let two = file(&cache.join("a/b/2.bin"), 4096);
+        symlink(&f.outside, cache.join("dir-link")).unwrap();
+        symlink(f.outside.join("keep.txt"), cache.join("a/file-link")).unwrap();
+        symlink(f.home.join("gone"), cache.join("a/dangling")).unwrap();
+        let report = wipe(&rule(&cache, Mode::Contents), &f.guard);
+        assert_eq!(report.freed, one + two);
+        assert_eq!(report.failed, 0, "{:?}", report.failures);
+        assert_eq!(report.files, 2);
+        assert_eq!(report.dirs, 2);
+        assert!(cache.is_dir(), "root folder is kept");
+        assert_eq!(fs::read_dir(&cache).unwrap().count(), 0);
+        assert_eq!(fs::read(f.outside.join("keep.txt")).unwrap(), [7u8; 16]);
+    }
+
+    #[test]
+    fn a_link_as_target_is_never_followed() {
+        let f = fixture(&[]);
+        let link = f.home.join("link");
+        symlink(&f.outside, &link).unwrap();
+        // A folder deleted by hand: the link is refused, as on Windows.
+        let report = pick(std::slice::from_ref(&link), &f.guard);
+        assert_eq!(reasons(&report), ["link"]);
+        assert!(link.symlink_metadata().is_ok());
+        // A rule pointing at a link expands to nothing.
+        let report = wipe(&rule(&link, Mode::Contents), &f.guard);
+        assert_eq!(report.freed, 0);
+        // A path through a link reaches the outside and is refused.
+        let report = pick(&[link.join("keep.txt")], &f.guard);
+        assert_eq!(reasons(&report), ["protected"]);
+        assert!(f.outside.join("keep.txt").exists());
+    }
+
+    #[test]
+    fn a_path_through_a_link_inside_home_is_deleted_at_its_real_place() {
+        let f = fixture(&[]);
+        let real = f.home.join("real");
+        file(&real.join("x/a.bin"), 4096);
+        symlink(&real, f.home.join("alias")).unwrap();
+        let report = pick(&[f.home.join("alias/x")], &f.guard);
+        assert_eq!(report.failed, 0, "{:?}", report.failures);
+        assert!(!real.join("x").exists());
+        assert!(f.home.join("alias").symlink_metadata().is_ok());
+    }
+
+    #[test]
+    fn a_folder_turned_into_a_link_stops_the_trusted_walk() {
+        let f = fixture(&[]);
+        let parent = f.home.join("parent");
+        file(&parent.join("a.bin"), 4096);
+        let job = Job::new();
+        let acc = Acc::new(&job);
+        // What a swap after the guard's check looks like: the checked path now holds a link.
+        fs::rename(&parent, f.home.join("moved")).unwrap();
+        symlink(&f.outside, &parent).unwrap();
+        linux_delete::permanent_dir(&parent, &[], &acc);
+        linux_delete::permanent_contents(&parent, None, &[], &[], &acc);
+        linux_delete::permanent_file(&parent.join("keep.txt"), &acc);
+        let report = acc.into_report(vec![]);
+        assert_eq!(reasons(&report), ["link", "link", "link"]);
+        assert!(f.outside.join("keep.txt").exists());
+    }
+
+    #[test]
+    fn exclusions_survive_a_wipe_and_a_folder_delete() {
+        let f = fixture(&[".cache/app/keepme", "work/app/deep/keep.bin"]);
+        let cache = f.home.join(".cache/app");
+        let kept = file(&cache.join("keepme/k.bin"), 4096);
+        let dropped = file(&cache.join("drop/d.bin"), 4096);
+        let report = wipe(&rule(&cache, Mode::Contents), &f.guard);
+        assert_eq!(report.freed, dropped);
+        assert!(kept > 0 && cache.join("keepme/k.bin").exists());
+        assert!(!cache.join("drop").exists());
+
+        let app = f.home.join("work/app");
+        file(&app.join("deep/keep.bin"), 4096);
+        let gone = file(&app.join("deep/gone.bin"), 4096);
+        let also = file(&app.join("other/x.bin"), 4096);
+        let report = pick(std::slice::from_ref(&app), &f.guard);
+        assert_eq!(report.freed, gone + also);
+        assert!(app.join("deep/keep.bin").exists());
+        assert!(!app.join("deep/gone.bin").exists());
+        assert!(!app.join("other").exists());
+        // Excluded folders refuse a direct delete too.
+        let report = pick(&[app.join("deep/keep.bin")], &f.guard);
+        assert_eq!(reasons(&report), ["protected"]);
+    }
+
+    #[test]
+    fn excluded_names_and_cutoff_hold() {
+        let f = fixture(&[]);
+        let temp = f.home.join("tmp-app");
+        file(&temp.join("quit.blend"), 4096);
+        file(&temp.join("gradio/out.png"), 4096);
+        let junk = file(&temp.join("junk/a.tmp"), 4096);
+        let mut r = rule(&temp, Mode::Contents);
+        r.exclude = vec!["*.blend".into(), "gradio".into()];
+        let report = wipe(&r, &f.guard);
+        assert_eq!(report.freed, junk);
+        assert!(temp.join("quit.blend").exists());
+        assert!(temp.join("gradio/out.png").exists());
+        assert!(!temp.join("junk").exists());
+
+        let young = f.home.join("young");
+        file(&young.join("new.bin"), 4096);
+        let mut r = rule(&young, Mode::Contents);
+        r.min_age_hours = Some(1);
+        let report = wipe(&r, &f.guard);
+        assert_eq!(report.freed, 0);
+        assert!(young.join("new.bin").exists(), "too new to go");
+    }
+
+    #[test]
+    fn protected_names_stay_inside_a_deleted_folder() {
+        let f = fixture(&[]);
+        let project = f.home.join("project");
+        file(&project.join(".git/config"), 100);
+        file(&project.join("sub/lost+found/x"), 100);
+        file(&project.join("sub/.Trash-1000/files/y"), 100);
+        file(&project.join("src/main.rs"), 100);
+        let report = pick(std::slice::from_ref(&project), &f.guard);
+        assert_eq!(report.failed, 0);
+        assert!(project.join(".git/config").exists());
+        assert!(project.join("sub/lost+found/x").exists());
+        assert!(project.join("sub/.Trash-1000/files/y").exists());
+        assert!(!project.join("src").exists());
+    }
+
+    #[test]
+    fn files_mode_is_not_recursive_and_compares_case() {
+        let f = fixture(&[]);
+        let logs = f.home.join("Logs");
+        let a = file(&logs.join("a.log"), 4096);
+        file(&logs.join("b.txt"), 4096);
+        file(&logs.join("C.LOG"), 4096);
+        file(&logs.join("nested/c.log"), 4096);
+        let report = wipe(&rule(&logs, Mode::Files), &f.guard);
+        assert_eq!(report.freed, a);
+        assert!(logs.join("b.txt").exists());
+        assert!(logs.join("C.LOG").exists(), "globs compare case on Linux");
+        assert!(logs.join("nested/c.log").exists());
+    }
+
+    #[test]
+    fn hand_picked_paths_respect_the_guard() {
+        let f = fixture(&[]);
+        let big = f.home.join("big.bin");
+        let size = file(&big, 8192);
+        let report = pick(
+            &[
+                big.clone(),
+                PathBuf::from("/etc/passwd"),
+                f.outside.join("keep.txt"),
+                f.home.clone(),
+            ],
+            &f.guard,
+        );
+        assert_eq!(report.freed, size);
+        assert!(!big.exists());
+        assert_eq!(reasons(&report), ["protected", "protected", "protected"]);
+        assert!(f.outside.join("keep.txt").exists());
+        assert!(f.home.exists());
+    }
+
+    #[test]
+    fn a_guard_for_root_deletes_nothing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let file_path = fs::canonicalize(tmp.path()).unwrap().join("x.bin");
+        fs::write(&file_path, b"x").unwrap();
+        // This is what `Guard::new` builds under root; `Guard::default` refuses the same way.
+        let report = pick(std::slice::from_ref(&file_path), &Guard::default());
+        assert_eq!(reasons(&report), ["protected"]);
+        assert!(file_path.exists());
+    }
+
+    #[test]
+    fn read_only_files_go_without_clearing_anything() {
+        let f = fixture(&[]);
+        let dir = f.home.join("ro");
+        let path = dir.join("locked.bin");
+        file(&path, 4096);
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
+        // Another name of the file shows its mode was left alone after the delete.
+        let other = f.home.join("other-name.bin");
+        fs::hard_link(&path, &other).unwrap();
+        let report = pick(std::slice::from_ref(&dir), &f.guard);
+        assert_eq!(report.failed, 0, "{:?}", report.failures);
+        assert!(!dir.exists());
+        let mode = fs::metadata(&other).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o444);
+    }
+
+    #[test]
+    fn names_that_are_not_utf8_are_handled_as_bytes() {
+        let f = fixture(&[]);
+        let cache = f.home.join("odd-cache");
+        let name = OsStr::from_bytes(b"caf\xe9");
+        let size = file(&cache.join(name).join("x.bin"), 4096);
+        let raw = cache.join(OsStr::from_bytes(b"\xff\xfe.bin"));
+        let more = file(&raw, 4096);
+        let report = wipe(&rule(&cache, Mode::Contents), &f.guard);
+        assert_eq!(report.freed, size + more);
+        assert_eq!(report.failed, 0);
+        assert_eq!(fs::read_dir(&cache).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn hard_links_free_their_space_once() {
+        let f = fixture(&[]);
+        let cache = f.home.join("linked");
+        let size = file(&cache.join("a.bin"), 8192);
+        fs::hard_link(cache.join("a.bin"), cache.join("b.bin")).unwrap();
+        let report = wipe(&rule(&cache, Mode::Contents), &f.guard);
+        assert_eq!(report.freed, size);
+        assert_eq!(report.files, 2);
+    }
+
+    #[test]
+    fn a_hard_link_that_stays_elsewhere_frees_nothing() {
+        let f = fixture(&[]);
+        let cache = f.home.join("half-linked");
+        file(&cache.join("a.bin"), 8192);
+        let other = f.home.join("kept.bin");
+        fs::hard_link(cache.join("a.bin"), &other).unwrap();
+        let report = wipe(&rule(&cache, Mode::Contents), &f.guard);
+        assert_eq!(report.files, 1);
+        assert_eq!(report.freed, 0, "the space is still held by the other name");
+        assert_eq!(fs::read(&other).unwrap().len(), 8192);
+    }
+
+    #[test]
+    fn folders_the_mount_table_names_are_not_entered() {
+        let f = fixture(&[]);
+        let cache = f.home.join("mounted");
+        let mount = cache.join("sub/usb");
+        file(&mount.join("photo.jpg"), 4096);
+        let plain = file(&cache.join("plain.bin"), 4096);
+        let table = MountTable::from_mounts(parse_mountinfo(
+            format!("2 1 8:17 / {} rw - ext4 /dev/sdb1 rw", mount.display()).as_bytes(),
+        ));
+
+        // The guard already refuses a parent of a mount point, but the walker holds on its own.
+        let job = Job::new();
+        let acc = Acc::new(&job);
+        linux_delete::purge_below(&cache, None, &[], &[], &acc, &table);
+        let report = acc.into_report(vec![]);
+        assert_eq!(report.freed, plain);
+        assert_eq!(reasons(&report), ["protected"]);
+        assert!(mount.join("photo.jpg").exists());
+        assert!(mount.is_dir());
+
+        let job = Job::new();
+        let acc = Acc::new(&job);
+        linux_delete::remove_dir(&cache, &[], &acc, &table);
+        let report = acc.into_report(vec![]);
+        assert_eq!(reasons(&report), ["protected"]);
+        assert!(mount.join("photo.jpg").exists());
+        assert!(cache.exists(), "a folder with a mount inside stays");
+    }
+
+    #[test]
+    fn a_recycle_never_lists_files_from_another_mount() {
+        let f = fixture(&[]);
+        let dir = f.home.join("rec");
+        file(&dir.join("a.bin"), 10);
+        file(&dir.join("nas/b.bin"), 10);
+        let nas = dir.join("nas");
+        let table = MountTable::from_mounts(parse_mountinfo(
+            format!("2 1 0:9 / {} rw - nfs4 nas:/x rw", nas.display()).as_bytes(),
+        ));
+        let ctx = WalkContext::with_mounts(&dir, table);
+        let mut out = Vec::new();
+        eligible_files(&dir, Some(i64::MAX), &[], &[], &ctx, &mut out);
+        assert_eq!(out, vec![dir.join("a.bin")]);
+    }
+
+    /// Mounts a real file system over `path` for as long as it lives. `None` without the rights
+    /// to mount, which is the normal case: `docs/architecture.md` says how the checks run with them.
+    struct RealMount(PathBuf);
+
+    impl RealMount {
+        fn new(args: &[&OsStr], path: &Path) -> Option<RealMount> {
+            let ok = Command::new("mount")
+                .args(args)
+                .arg(path)
+                .output()
+                .is_ok_and(|o| o.status.success());
+            if !ok {
+                eprintln!("skipped: cannot mount here");
+            }
+            ok.then(|| RealMount(path.to_path_buf()))
+        }
+    }
+
+    impl Drop for RealMount {
+        fn drop(&mut self) {
+            let _ = Command::new("umount").arg("-l").arg(&self.0).output();
+        }
+    }
+
+    #[test]
+    fn a_real_mount_is_not_crossed_even_with_an_outdated_table() {
+        let f = fixture(&[]);
+        let cache = f.home.join("real-mount");
+        let point = cache.join("m");
+        fs::create_dir_all(&point).unwrap();
+        let args: Vec<&OsStr> = ["-t", "tmpfs", "none"].iter().map(OsStr::new).collect();
+        let Some(_mount) = RealMount::new(&args, &point) else {
+            return;
+        };
+        file(&point.join("on-tmpfs.bin"), 4096);
+        let plain = file(&cache.join("plain.bin"), 4096);
+
+        let guard = Guard::for_home(&f.home, &[], None);
+        assert!(guard.check(&cache, Origin::User).is_err(), "a mount inside");
+        assert!(
+            guard.check(&point, Origin::User).is_err(),
+            "the mount itself"
+        );
+
+        // An empty table is what a mount made after the table was read looks like.
+        let job = Job::new();
+        let acc = Acc::new(&job);
+        linux_delete::purge_below(&cache, None, &[], &[], &acc, &MountTable::default());
+        let report = acc.into_report(vec![]);
+        assert_eq!(report.freed, plain);
+        assert_eq!(reasons(&report), ["protected"]);
+        assert!(point.join("on-tmpfs.bin").exists());
+    }
+
+    #[test]
+    fn a_real_bind_mount_is_not_crossed_although_it_keeps_its_device() {
+        let f = fixture(&[]);
+        let cache = f.home.join("real-bind");
+        let point = cache.join("m");
+        fs::create_dir_all(&point).unwrap();
+        let source = f.outside.clone();
+        let args: Vec<&OsStr> = vec![OsStr::new("--bind"), source.as_os_str()];
+        let Some(_mount) = RealMount::new(&args, &point) else {
+            return;
+        };
+        use std::os::unix::fs::MetadataExt;
+        assert_eq!(
+            fs::metadata(&point).unwrap().dev(),
+            fs::metadata(&cache).unwrap().dev(),
+            "the device check alone would not see this mount"
+        );
+        let table = MountTable::read_current().unwrap();
+        assert!(table.at(&point).is_some_and(|m| m.root != Path::new("/")));
+
+        for mounts in [MountTable::default(), table] {
+            let job = Job::new();
+            let acc = Acc::new(&job);
+            linux_delete::purge_below(&cache, None, &[], &[], &acc, &mounts);
+            let report = acc.into_report(vec![]);
+            assert_eq!(reasons(&report), ["protected"]);
+            assert!(f.outside.join("keep.txt").exists());
+            assert!(point.join("keep.txt").exists());
+        }
+    }
+
+    #[test]
+    fn running_apps_block_a_rule() {
+        let f = fixture(&[]);
+        let mut r = rule(&f.home, Mode::Contents);
+        let exe = std::env::current_exe().unwrap();
+        r.close_apps = vec![exe.file_name().unwrap().to_string_lossy().into_owned()];
+        let report = wipe(&r, &f.guard);
+        assert_eq!(reasons(&report), ["app_running"]);
     }
 }

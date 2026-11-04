@@ -21,6 +21,8 @@ ReClaim Cleaner is a Windows 10/11 disk cleaner and space analyzer. It is a Taur
 ```
 crates/core/        reclaim-core: the engine. Pure Rust, no Tauri dependency, unit tested.
   src/paths.rs        env var + wildcard expansion, protected paths, path guards
+  src/mounts.rs       Linux mount table from /proc/self/mountinfo, scan policy per mount
+  src/xdg.rs          Linux home, XDG base directories and user-dirs.dirs
   src/fsmeta.rs       attributes: reparse points, cloud placeholders, age
   src/walk.rs         parallel size walker (rayon over std::fs::read_dir)
   src/explorer.rs     arena tree for the treemap, large files, extension stats
@@ -36,6 +38,7 @@ crates/core/        reclaim-core: the engine. Pure Rust, no Tauri dependency, un
   src/leftovers.rs    leftover folders after an uninstall, scored by confidence
   src/startup.rs      Run keys and Startup folders, StartupApproved toggles
   src/system.rs       drives, elevation, processes, Recycle Bin API, Windows version
+  src/system_linux.rs the same facts on Linux: mountinfo, statvfs, /proc, freedesktop trash
   src/hidden.rs       hidden space: shadow storage (WMI), reserve, MFT, system files, virtual disks
   src/locks.rs        what is using a file or folder (Restart Manager), graceful close
   src/shell.rs        Explorer context menu verbs and command-line paths
@@ -54,14 +57,23 @@ The engine is a separate crate so `cargo test` runs without a WebView, and so a 
 
 ## Platforms
 
-Windows is the only supported system. The workspace also builds on Linux, the first step toward a Linux version:
+Windows is the only released system. The engine also has a Linux foundation, on its way to a Linux version; its UI and packages come separately.
 
-- `windows` and `winreg` are Windows-only dependencies. Every Win32, registry or `std::os::windows` call sits behind `#[cfg(windows)]`, with a non-Windows version beside it.
-- The non-Windows versions report nothing (no drives, apps, startup items, Steam folder) and refuse actions with `Error::Unsupported`, which reaches the UI as the `unsupported` code. They never guess.
-- The guard refuses every delete off Windows (`Error::Unsupported`), because its protected lists only name Windows folders. A Linux build can scan and measure but cannot delete until it has lists of its own.
+- `windows` and `winreg` are Windows-only dependencies, `rustix` is Linux-only. Every Win32, registry or `std::os::windows` call sits behind `#[cfg(windows)]`, with a non-Windows version beside it.
+- **Not ported yet:** hidden space, locks, apps, leftovers, startup items and the shell menu have non-Windows versions that report nothing and refuse actions with `Error::Unsupported`, which reaches the UI as the `unsupported` code. They never guess. Any other non-Windows system keeps the old behaviour for everything: the guard refuses every delete.
+- **Paths on Linux** are compared as exact bytes with `/` separators and no lowercasing (`paths::key`), including names that are not UTF-8. Globs in rules compare case too. Rules use `%HOME%`, `%XDG_CACHE%`, `%XDG_CONFIG%`, `%XDG_DATA%` and `%XDG_STATE%` (`xdg.rs`: spec defaults, relative values ignored) plus `%STEAM%` and `%STEAMLIBRARY%`, written with `/`.
+- **The guard on Linux** implements the lists in [research/linux.md](research/linux.md):
+  - Nothing inside `/boot`, `/usr`, `/etc`, `/var/lib`, `/run` and the other system trees may go, nor `.git`, `lost+found` or `.Trash*` at any depth (the walker keeps those names inside a folder it deletes), nor the app's own data folder.
+  - `/`, `$HOME`, the XDG folders, the `user-dirs.dirs` folders and every mount point in `/proc/self/mountinfo` may not be removed or emptied as a whole. Their parents may not either, because removing a folder removes what is below it.
+  - Keys, passwords, mail and wallets, browser profiles (a rule may name `<profile>/Service Worker/CacheStorage`) and Flatpak and Snap app data are off limits at any depth; only `~/.var/app/<id>/cache` and `~/snap/<name>/<rev>/.cache` stay open.
+  - For this first version every delete must also resolve to a place inside the home folder, and every delete is refused when running as root, without a usable `$HOME`, or when the mount table cannot be read. Only `system::empty_recycle_bin` touches the user's own trash folders, through `trash::os_limited`, and it skips an item with a mount inside it.
+  - A path's parent is resolved before checking, so a folder link cannot lead a delete elsewhere. The last name is not followed: a link is checked itself.
+- **Deleting on Linux** (`clean.rs`, `linux_delete`) opens the real parent one name at a time from `/` with `O_NOFOLLOW`, then works with `openat` and `unlinkat` relative to that folder. It enters no folder that is on another device, is the root of a mount (`STATX_ATTR_MOUNT_ROOT`) or is in the mount table, which together also catch bind mounts. Links are removed as links. It never uses `remove_dir_all`, and it does not clear read-only flags, because Linux removes a file when its folder is writable.
+- **Scanning on Linux** (`mounts.rs`, `walk.rs`, `explorer.rs`) reads the mount table when a walk starts. Kernel file systems, squashfs, overlay and `/proc`, `/sys`, `/dev`, `/run` are skipped. Remote and `fuse.*` mounts, tmpfs and other local disks show as stubs (`NodeView.mount`) without being entered, so a scan stays on one mount. A folder the user names may be on any mount except a kernel one. Size is `st_blocks * 512`, and a hard-linked file counts once per `(st_dev, st_ino)`. Only `walk.rs` and `explorer.rs` apply this; the artifact, duplicate and empty folder walkers do not yet.
+- **System facts on Linux** (`system_linux.rs`): drives from the mount table and `statvfs`, processes from `/proc`, user folders from `user-dirs.dirs`, the trash through `trash::os_limited`, Steam from its native and Flatpak folders with links resolved (not Snap, whose folder the guard refuses). Settings live in `$XDG_DATA_HOME/ReClaim`. Nothing runs as root and paths are never sent to `pkexec`.
 - `app_info` reports `platform` (`windows`, `linux`, `macos`) so the UI can leave out pages a system lacks.
 - Duplicate detection identifies hard links by volume serial and file index on Windows and by device and inode on Unix. "Show in folder" uses Explorer on Windows and the file manager's D-Bus call (through the opener plugin) elsewhere.
-- Tests that need Windows paths, junctions, the registry, Windows processes, rule expansion or the guard are marked `cfg(windows)`; the walker's link test has a symlink twin on Unix. CI runs clippy and the tests on Ubuntu and on Windows.
+- Tests that need Windows paths, junctions, the registry or Windows processes are marked `cfg(windows)`, and what has a Linux meaning has a twin under `cfg(target_os = "linux")`. Tests of the Linux guard and delete path build the guard from a temp home (`Guard::for_home`), so they run under any user. The two tests with real mounts skip themselves without the right to mount; to run them, use a container with `--cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor=unconfined`. CI runs clippy and the tests on Ubuntu and on Windows.
 
 ## Data flow
 

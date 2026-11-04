@@ -1,6 +1,8 @@
 //! Small helpers over file metadata.
 
 use std::fs::{FileType, Metadata};
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::MetadataExt;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -34,8 +36,8 @@ pub fn is_cloud_only(md: &Metadata) -> bool {
         != 0
 }
 
-/// Linux has no placeholder attribute. Cloud drives there are FUSE mounts, which need a mount
-/// check rather than a file check.
+/// Linux has no placeholder attribute. Cloud drives there are FUSE mounts, which the walkers
+/// handle through the mount table instead.
 #[cfg(not(windows))]
 pub fn is_cloud_only(_md: &Metadata) -> bool {
     false
@@ -52,11 +54,27 @@ pub fn is_hidden_system(_md: &Metadata) -> bool {
     false
 }
 
+/// The space a file takes. Linux counts allocated blocks, so sparse VM disks and Docker images
+/// show what they really cost.
+#[cfg(target_os = "linux")]
+pub fn disk_size(md: &Metadata) -> u64 {
+    md.blocks() * 512
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn disk_size(md: &Metadata) -> u64 {
+    md.len()
+}
+
 /// Last write time as Unix seconds; 0 when unknown. Timestamps more than a day in the future
 /// (broken archives and copy tools produce dates like 2106) count as unknown, so one bad file
 /// cannot make a whole folder look recently used.
 pub fn mtime(md: &Metadata) -> i64 {
-    let t = md.modified().ok().map(to_unix).unwrap_or(0);
+    plausible_time(md.modified().ok().map(to_unix).unwrap_or(0))
+}
+
+/// `t`, or 0 when it is too far in the future to be true.
+pub fn plausible_time(t: i64) -> i64 {
     if t > latest_plausible() { 0 } else { t }
 }
 

@@ -86,7 +86,9 @@ fn list(dir: &Path) -> Option<DirListing> {
 
 fn marker_present(dir: &Path, listing: &DirListing, marker: &str) -> bool {
     if marker.contains('/') || marker.contains('\\') {
-        return dir.join(marker.replace('/', "\\")).exists();
+        return dir
+            .join(marker.replace(['/', '\\'], std::path::MAIN_SEPARATOR_STR))
+            .exists();
     }
     if marker.contains('*') || marker.contains('?') {
         return listing.files.iter().any(|f| wildcard_match(marker, f));
@@ -125,7 +127,11 @@ fn activity(dir: &Path, listing: &DirListing, artifact_names: &HashSet<String>) 
         }
     }
     // The git index changes on every commit and checkout, a good proxy for "worked on".
-    for p in [r".git\index", r".git\HEAD", r".git\FETCH_HEAD"] {
+    for p in [
+        Path::new(".git").join("index"),
+        Path::new(".git").join("HEAD"),
+        Path::new(".git").join("FETCH_HEAD"),
+    ] {
         if let Ok(md) = fs::metadata(dir.join(p)) {
             latest = latest.max(mtime(&md));
         }
@@ -198,7 +204,7 @@ fn walk(
                 bytes: measured.iter().map(|h| h.bytes).sum(),
                 artifacts: measured,
             };
-            out.lock().insert(project.path.to_lowercase(), project);
+            out.lock().insert(crate::paths::key(dir), project);
         }
     }
     descend
@@ -238,7 +244,7 @@ const PROJECT_FOLDER_NAMES: &[&str] = &[
 /// Folders where code usually lives. Only existing ones are returned.
 pub fn suggested_roots() -> Vec<String> {
     let mut out: Vec<PathBuf> = Vec::new();
-    if let Some(home) = env_path("USERPROFILE") {
+    if let Some(home) = env_path(if cfg!(windows) { "USERPROFILE" } else { "HOME" }) {
         out.extend(PROJECT_FOLDER_NAMES.iter().map(|n| home.join(n)));
         for sub in [
             r"source\repos",
@@ -255,10 +261,15 @@ pub fn suggested_roots() -> Vec<String> {
             r"Documents\GitHub",
             r"Documents\Projects",
         ] {
-            out.push(home.join(sub));
+            out.push(home.join(sub.replace('\\', std::path::MAIN_SEPARATOR_STR)));
         }
     }
-    for d in crate::system::drives().iter().filter(|d| !d.removable) {
+    // The system root of a Unix machine holds `/dev` and `/src`, which are not project folders.
+    let system_root_counts = cfg!(windows);
+    for d in crate::system::drives()
+        .iter()
+        .filter(|d| !d.removable && (system_root_counts || !d.system))
+    {
         let root = PathBuf::from(&d.root);
         out.extend(PROJECT_FOLDER_NAMES.iter().map(|n| root.join(n)));
         for sub in ["dev", "src", "code", "repos", "git", "workspace", "Work"] {
@@ -269,13 +280,14 @@ pub fn suggested_roots() -> Vec<String> {
     out.into_iter()
         .filter(|p| p.is_dir())
         .map(|p| p.to_string_lossy().into_owned())
-        .filter(|p| seen.insert(p.to_lowercase()))
+        .filter(|p| seen.insert(crate::paths::key(Path::new(p))))
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fsmeta::disk_size;
     use crate::rules::builtin_artifacts;
 
     #[test]
@@ -294,8 +306,8 @@ mod tests {
         fs::create_dir_all(web.join("node_modules/pkg")).unwrap();
         fs::create_dir_all(web.join(".next")).unwrap();
         fs::write(web.join("package.json"), b"{}").unwrap();
-        fs::write(web.join("node_modules/pkg/index.js"), [0u8; 100]).unwrap();
-        fs::write(web.join(".next/build.js"), [0u8; 50]).unwrap();
+        fs::write(web.join("node_modules/pkg/index.js"), [0u8; 8192]).unwrap();
+        fs::write(web.join(".next/build.js"), [0u8; 4096]).unwrap();
         // A "target" folder without Cargo.toml is not an artifact.
         let docs = tmp.path().join("docs");
         fs::create_dir_all(docs.join("target")).unwrap();
@@ -303,19 +315,23 @@ mod tests {
         let rust = tmp.path().join("tool");
         fs::create_dir_all(rust.join("target/debug")).unwrap();
         fs::write(rust.join("Cargo.toml"), b"[package]").unwrap();
-        fs::write(rust.join("target/debug/tool.exe"), [0u8; 30]).unwrap();
+        fs::write(rust.join("target/debug/tool.exe"), [0u8; 8192]).unwrap();
         // A Gradle "build" is owned by the Gradle rule, not the JS one.
         let app = tmp.path().join("android");
         fs::create_dir_all(app.join("build")).unwrap();
         fs::write(app.join("build.gradle"), b"").unwrap();
         fs::write(app.join("package.json"), b"{}").unwrap();
-        fs::write(app.join("build/out.apk"), [0u8; 7]).unwrap();
+        fs::write(app.join("build/out.apk"), [0u8; 8192]).unwrap();
 
         let job = Job::new();
         let projects = scan_projects(&[tmp.path().to_path_buf()], builtin_artifacts(), &job);
         assert_eq!(projects.len(), 3);
         let web_p = projects.iter().find(|p| p.name == "web").unwrap();
-        assert_eq!(web_p.bytes, 150);
+        let on_disk = |name: &str| disk_size(&fs::metadata(web.join(name)).unwrap());
+        assert_eq!(
+            web_p.bytes,
+            on_disk("node_modules/pkg/index.js") + on_disk(".next/build.js")
+        );
         assert_eq!(web_p.artifacts.len(), 2);
         assert!(projects.iter().all(|p| p.name != "docs"));
         let android = projects.iter().find(|p| p.name == "android").unwrap();

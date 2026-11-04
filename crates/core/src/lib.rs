@@ -22,6 +22,8 @@ pub mod junk;
 pub mod launch;
 pub mod leftovers;
 pub mod locks;
+#[cfg(target_os = "linux")]
+pub mod mounts;
 pub mod organize;
 pub mod paths;
 pub mod rules;
@@ -30,9 +32,13 @@ pub mod shell;
 pub mod startup;
 pub mod steam;
 pub mod system;
+#[cfg(target_os = "linux")]
+mod system_linux;
 pub mod walk;
 #[cfg(windows)]
 mod winstr;
+#[cfg(target_os = "linux")]
+pub mod xdg;
 
 pub use error::{Error, Result};
 pub use job::{Job, ProgressSnapshot};

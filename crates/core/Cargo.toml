@@ -49,5 +49,9 @@ windows = { version = "=0.62.2", features = [
   "Win32_UI_WindowsAndMessaging",
 ] }
 
+# The Linux delete walker and system facts use openat, unlinkat, statx and statvfs without unsafe.
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { version = "=1.1.5", features = ["fs", "process", "std"] }
+
 [dev-dependencies]
 tempfile = "=3.27.0"

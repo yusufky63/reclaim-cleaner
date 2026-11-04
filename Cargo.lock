@@ -2795,6 +2795,7 @@ dependencies = [
  "parking_lot",
  "png 0.18.1",
  "rayon",
+ "rustix",
  "serde",
  "serde_json",
  "tempfile",

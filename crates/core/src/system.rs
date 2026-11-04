@@ -1,7 +1,9 @@
 //! System facts: drives, elevation, running processes, the Recycle Bin, known folders and the
-//! OS version. Thin wrappers over Win32 so the rest of the engine stays platform-neutral; on
-//! other systems the `fallback` versions report nothing until they are ported.
+//! OS version. Thin wrappers over Win32 so the rest of the engine stays platform-neutral. Linux
+//! has its own versions in `system_linux`; what is not ported there comes from `fallback`, which
+//! reports nothing.
 
+#[cfg(not(target_os = "linux"))]
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -521,8 +523,8 @@ pub fn which(exe: &str) -> Option<PathBuf> {
 
 /// Stand-ins for systems without a port yet. They report nothing rather than guess, and every
 /// action fails with [`Error::Unsupported`].
-#[cfg(not(windows))]
-mod fallback {
+#[cfg(not(any(windows, target_os = "linux")))]
+mod unported {
     use super::*;
 
     pub fn drives() -> Vec<Drive> {
@@ -535,10 +537,6 @@ mod fallback {
 
     pub fn is_elevated() -> bool {
         false
-    }
-
-    pub fn current_user_sid() -> Option<String> {
-        None
     }
 
     pub fn running_processes() -> HashSet<String> {
@@ -574,6 +572,22 @@ mod fallback {
             music: None,
             videos: None,
         }
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub use crate::system_linux::*;
+#[cfg(not(any(windows, target_os = "linux")))]
+pub use unported::*;
+
+/// Stand-ins for what only exists on Windows so far. They report nothing rather than guess, and
+/// every action fails with [`Error::Unsupported`].
+#[cfg(not(windows))]
+mod fallback {
+    use super::*;
+
+    pub fn current_user_sid() -> Option<String> {
+        None
     }
 
     /// `PRETTY_NAME` and `VERSION_ID` from `/etc/os-release`, the file every current
