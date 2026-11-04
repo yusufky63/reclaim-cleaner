@@ -84,6 +84,9 @@ struct Acc<'a> {
     dirs: AtomicU64,
     failed: AtomicU64,
     failures: Mutex<Vec<Failure>>,
+    /// Files in use, read once when the first file is about to go: a cleanup can pick thousands.
+    #[cfg(target_os = "linux")]
+    open_files: std::sync::OnceLock<Option<std::collections::HashSet<(u64, u64)>>>,
 }
 
 impl<'a> Acc<'a> {
@@ -96,7 +99,18 @@ impl<'a> Acc<'a> {
             dirs: AtomicU64::new(0),
             failed: AtomicU64::new(0),
             failures: Mutex::new(Vec::new()),
+            #[cfg(target_os = "linux")]
+            open_files: std::sync::OnceLock::new(),
         }
+    }
+
+    /// True when a program holds this file open, or when there is no telling.
+    #[cfg(target_os = "linux")]
+    fn is_open(&self, dev: u64, ino: u64) -> bool {
+        self.open_files
+            .get_or_init(crate::system::open_files)
+            .as_ref()
+            .is_none_or(|open| open.contains(&(dev, ino)))
     }
 
     fn fail(&self, path: &Path, reason: &str) {
@@ -555,6 +569,10 @@ mod linux_delete {
                     if self.cutoff.is_some_and(|c| mtime > c) {
                         return false;
                     }
+                    if self.acc.is_open(st.st_dev, st.st_ino) {
+                        self.acc.fail(path, "in_use");
+                        return false;
+                    }
                     let gone = self.unlink_inside(dir, name, path, AtFlags::empty());
                     if gone {
                         self.acc.deleted_file(freed_by(&st));
@@ -692,6 +710,7 @@ mod linux_delete {
         match file_type(&st) {
             FileType::Symlink => acc.fail(real, "link"),
             FileType::Directory => acc.fail(real, "io"),
+            _ if acc.is_open(st.st_dev, st.st_ino) => acc.fail(real, "in_use"),
             _ => match unlinkat(&parent, name, AtFlags::empty()) {
                 Ok(()) => acc.deleted_file(freed_by(&st)),
                 Err(e) => acc.fail_io(real, &e.into()),
@@ -878,6 +897,17 @@ fn wipe_contents(
     }
 }
 
+/// True when one of the rule's apps runs. An empty list means processes could not be read, since
+/// this app is always on it, and "cannot tell" must not read as "nothing is running".
+fn apps_block(rule: &TargetRule, running: &std::collections::HashSet<String>) -> bool {
+    !rule.close_apps.is_empty()
+        && (running.is_empty()
+            || rule
+                .close_apps
+                .iter()
+                .any(|a| running.contains(&a.to_lowercase())))
+}
+
 /// Removes `path` itself (a file or a folder with everything inside).
 fn remove_one(path: &Path, method: DeleteMethod, origin: Origin, guard: &Guard, acc: &Acc) {
     // A scan shows a name that is not valid text with U+FFFD. That spelling reaches no file, or
@@ -975,11 +1005,7 @@ pub fn clean_targets(
             acc.fail(&label, "needs_admin");
             continue;
         }
-        if rule
-            .close_apps
-            .iter()
-            .any(|a| running.contains(&a.to_lowercase()))
-        {
+        if apps_block(rule, &running) {
             acc.fail(&label, "app_running");
             continue;
         }
@@ -1569,6 +1595,32 @@ mod linux_tests {
         assert!(!dir.exists());
         let mode = fs::metadata(&other).unwrap().permissions().mode();
         assert_eq!(mode & 0o777, 0o444);
+    }
+
+    #[test]
+    fn files_in_use_stay() {
+        let f = fixture(&[]);
+        let dir = f.home.join("app-data");
+        file(&dir.join("held.bin"), 4096);
+        file(&dir.join("free.bin"), 4096);
+        let handle = fs::File::open(dir.join("held.bin")).unwrap();
+        let report = pick(std::slice::from_ref(&dir), &f.guard);
+        drop(handle);
+        assert_eq!(reasons(&report), ["in_use"]);
+        assert!(dir.join("held.bin").exists());
+        assert!(!dir.join("free.bin").exists());
+    }
+
+    #[test]
+    fn a_rule_with_apps_is_blocked_when_processes_cannot_be_read() {
+        let f = fixture(&[]);
+        let mut r = rule(&f.home, Mode::Contents);
+        r.close_apps = vec!["some-app".into()];
+        assert!(super::apps_block(&r, &Default::default()));
+        assert!(!super::apps_block(&r, &["other".to_string()].into()));
+        assert!(super::apps_block(&r, &["some-app".to_string()].into()));
+        r.close_apps.clear();
+        assert!(!super::apps_block(&r, &Default::default()));
     }
 
     #[test]

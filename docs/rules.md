@@ -69,7 +69,7 @@ When in doubt, choose the higher risk.
 | Field | On Linux |
 |---|---|
 | `paths` | Start with `%HOME%`, `%XDG_CACHE%`, `%XDG_CONFIG%`, `%XDG_DATA%` or `%XDG_STATE%` (each falls back to the XDG default, so `%XDG_CACHE%` is usually `~/.cache`), or `%STEAM%` and `%STEAMLIBRARY%`. Separators are `/`. A rule must name a child: `%XDG_CACHE%` alone is refused. Paths are case-sensitive. There are no brace lists, so `{Cache,Code Cache}` is written out as two paths. |
-| `closeApps` | Process names without `.exe`, such as `code` or `signal-desktop`. They are compared in lowercase. |
+| `closeApps` | Process names without `.exe`, such as `code` or `signal-desktop`. They are compared in lowercase with each process's `comm`, `exe` and `argv[0]`, with the app behind `java` and `electron*` taken from the arguments, and with live profile locks of browsers and mail clients. If processes cannot be read, the rule is blocked. |
 | `admin` | Always `false`. The first Linux version never runs as root. |
 | `command` | Shown for copying, not run. It starts with the tool itself, without `sudo`: the scan uses the first word to tell whether this distro has the tool. The description says when root is needed. It may not contain placeholders or shell operators, and may be a listing command (`coredumpctl list`) when the system ages the data out by itself. The one exception is the Trash rule: `api:SHEmptyRecycleBin` is run by the app, follows the trash spec and has no `paths`. |
 | `verified` | `true` only when `source` is a primary source that names the path. Anything derived from a convention stays `false`, including Electron folder names and most Flatpak and Snap paths. |
@@ -84,7 +84,8 @@ Inside a sandboxed app's folder the guard allows only its cache, so rules follow
 
 - Flatpak moves an app's XDG folders into `%HOME%/.var/app/<id>/`. A rule may use `<id>/cache`, never `<id>/config`, `<id>/data` or `<id>/.local`.
 - A strictly confined Snap keeps its cache in `%HOME%/snap/<name>/common/.cache`. Everything else there is app data, and numbered revisions would count the same app twice. Classic snaps such as `code` use the real home folder, so they need no extra path.
-- Electron apps keep their caches under `config`, so their Flatpak and Snap installs have no rule yet. The same goes for Telegram, whose cache is under `data`.
+- `flatpak-app-cache` and `snap-app-cache` cover every app's own cache folder, keep files changed in the last day, and exclude apps with a rule of their own, so nothing counts twice. They name no `closeApps`, since a wildcard cannot, so they are `review`.
+- Electron apps keep their caches under `config`, so their Flatpak and Snap installs have no rule beyond that yet. The same goes for Telegram, whose cache is under `data`.
 - When the native path is verified, sandbox paths go in a separate unverified rule (`chrome-sandbox-cache`). Otherwise they share one rule with the native path.
 
 ### What never becomes a Linux rule

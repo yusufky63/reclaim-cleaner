@@ -371,6 +371,31 @@
     "source": "https://bugzilla.mozilla.org/show_bug.cgi?id=259356"
   },
   {
+    "id": "firefox-forks-cache",
+    "group": "browser",
+    "name": "LibreWolf, Zen and Waterfox cache",
+    "nameTr": "LibreWolf, Zen ve Waterfox önbelleği",
+    "description": "HTTP and startup caches of these Firefox-based browsers; profiles live elsewhere and are not touched, pages load slower once. The browser must be closed.",
+    "descriptionTr": "Firefox tabanlı bu tarayıcıların HTTP ve başlangıç önbellekleri; profiller başka yerdedir ve onlara dokunulmaz, sayfalar bir kez yavaş yüklenir. Tarayıcı kapalı olmalı.",
+    "paths": [
+      "%XDG_CACHE%/librewolf",
+      "%XDG_CACHE%/zen",
+      "%XDG_CACHE%/waterfox"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "librewolf",
+      "zen",
+      "zen-bin",
+      "waterfox",
+      "waterfox-bin"
+    ],
+    "verified": false
+  },
+  {
     "id": "vscode-cache",
     "group": "apps",
     "name": "VS Code cache",
@@ -419,6 +444,35 @@
     ],
     "verified": false,
     "source": "https://www.electronjs.org/docs/latest/api/app#appgetpathname"
+  },
+  {
+    "id": "vscode-extra-cache",
+    "group": "apps",
+    "name": "VS Code extra caches",
+    "nameTr": "VS Code ek önbellekleri",
+    "description": "Compiled code, downloaded extension packages and logs of VS Code and VSCodium; rebuilt on the next start. The editor must be closed.",
+    "descriptionTr": "VS Code ve VSCodium'un derlenmiş kodu, indirilmiş eklenti paketleri ve günlükleri; bir sonraki açılışta yeniden oluşur. Düzenleyici kapalı olmalı.",
+    "paths": [
+      "%XDG_CONFIG%/Code/CachedData",
+      "%XDG_CONFIG%/Code/CachedExtensionVSIXs",
+      "%XDG_CONFIG%/Code/logs",
+      "%XDG_CONFIG%/Code - Insiders/CachedData",
+      "%XDG_CONFIG%/Code - Insiders/CachedExtensionVSIXs",
+      "%XDG_CONFIG%/Code - Insiders/logs",
+      "%XDG_CONFIG%/VSCodium/CachedData",
+      "%XDG_CONFIG%/VSCodium/CachedExtensionVSIXs",
+      "%XDG_CONFIG%/VSCodium/logs"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "code",
+      "code-insiders",
+      "codium"
+    ],
+    "verified": false
   },
   {
     "id": "vscodium-cache",
@@ -780,11 +834,89 @@
     ],
     "mode": "contents",
     "minAgeHours": null,
-    "risk": "safe",
+    "risk": "review",
     "admin": false,
     "closeApps": [
       "spotify"
     ],
+    "verified": false
+  },
+  {
+    "id": "thunderbird-cache",
+    "group": "apps",
+    "name": "Thunderbird cache",
+    "nameTr": "Thunderbird önbelleği",
+    "description": "Web content Thunderbird keeps for each profile; your mail lives in the profile and is not touched. Thunderbird must be closed.",
+    "descriptionTr": "Thunderbird'ün her profil için tuttuğu web içeriği; postalarınız profilde durur ve onlara dokunulmaz. Thunderbird kapalı olmalı.",
+    "paths": [
+      "%XDG_CACHE%/thunderbird/*/cache2"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "thunderbird",
+      "thunderbird-bin"
+    ],
+    "verified": false
+  },
+  {
+    "id": "flatpak-app-cache",
+    "group": "apps",
+    "name": "Flatpak app caches",
+    "nameTr": "Flatpak uygulama önbellekleri",
+    "description": "Caches of apps installed as Flatpaks, which they rebuild. Close these apps first; files changed in the last day stay.",
+    "descriptionTr": "Flatpak olarak kurulu uygulamaların önbellekleri, uygulamalar bunları yeniden oluşturur. Önce bu uygulamaları kapatın; son bir günde değişen dosyalar kalır.",
+    "paths": [
+      "%HOME%/.var/app/*/cache"
+    ],
+    "mode": "contents",
+    "exclude": [
+      "BraveSoftware",
+      "chromium",
+      "google-chrome",
+      "huggingface",
+      "lm-studio",
+      "microsoft-edge",
+      "mozilla",
+      "opera",
+      "spotify",
+      "vivaldi"
+    ],
+    "minAgeHours": 24,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
+    "verified": false
+  },
+  {
+    "id": "snap-app-cache",
+    "group": "apps",
+    "name": "Snap app caches",
+    "nameTr": "Snap uygulama önbellekleri",
+    "description": "Caches of apps installed as Snaps, which they rebuild. Close these apps first; files changed in the last day stay.",
+    "descriptionTr": "Snap olarak kurulu uygulamaların önbellekleri, uygulamalar bunları yeniden oluşturur. Önce bu uygulamaları kapatın; son bir günde değişen dosyalar kalır.",
+    "paths": [
+      "%HOME%/snap/*/common/.cache"
+    ],
+    "mode": "contents",
+    "exclude": [
+      "BraveSoftware",
+      "chromium",
+      "google-chrome",
+      "huggingface",
+      "lm-studio",
+      "microsoft-edge",
+      "mozilla",
+      "opera",
+      "spotify",
+      "vivaldi"
+    ],
+    "minAgeHours": 24,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [],
     "verified": false
   },
   {
@@ -962,10 +1094,14 @@
     "group": "dev",
     "name": "Deno cache",
     "nameTr": "Deno önbelleği",
-    "description": "Remote modules and compiled code cached by Deno; rebuilt on the next run.",
-    "descriptionTr": "Deno'nun önbelleğe aldığı uzak modüller ve derlenmiş kod; sonraki çalıştırmada yeniden oluşur.",
+    "description": "Remote modules and compiled code cached by Deno; rebuilt on the next run. Stored data such as localStorage and KV is kept.",
+    "descriptionTr": "Deno'nun önbelleğe aldığı uzak modüller ve derlenmiş kod; sonraki çalıştırmada yeniden oluşur. localStorage ve KV gibi saklanan veriler korunur.",
     "paths": [
-      "%XDG_CACHE%/deno"
+      "%XDG_CACHE%/deno/deps",
+      "%XDG_CACHE%/deno/remote",
+      "%XDG_CACHE%/deno/gen",
+      "%XDG_CACHE%/deno/npm",
+      "%XDG_CACHE%/deno/registries"
     ],
     "mode": "contents",
     "minAgeHours": null,
@@ -1117,6 +1253,25 @@
     "source": "https://doc.rust-lang.org/cargo/guide/cargo-home.html"
   },
   {
+    "id": "rustup-downloads",
+    "group": "dev",
+    "name": "rustup downloads",
+    "nameTr": "rustup indirmeleri",
+    "description": "Toolchain archives rustup downloaded; installed toolchains are not touched, and archives download again when needed.",
+    "descriptionTr": "rustup'ın indirdiği araç zinciri arşivleri; kurulu araç zincirlerine dokunulmaz, arşivler gerektiğinde yeniden indirilir.",
+    "paths": [
+      "%HOME%/.rustup/downloads"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "safe",
+    "admin": false,
+    "closeApps": [
+      "rustup"
+    ],
+    "verified": false
+  },
+  {
     "id": "go-build-cache",
     "group": "dev",
     "name": "Go build cache",
@@ -1168,7 +1323,9 @@
     "minAgeHours": null,
     "risk": "review",
     "admin": false,
-    "closeApps": [],
+    "closeApps": [
+      "gradle"
+    ],
     "verified": true,
     "source": "https://docs.gradle.org/current/userguide/directory_layout.html"
   },
@@ -1387,13 +1544,14 @@
     "group": "dev",
     "name": "JetBrains IDE caches",
     "nameTr": "JetBrains IDE önbellekleri",
-    "description": "Indexes and caches of JetBrains IDEs, per product and version; settings and plugins are elsewhere. The next start re-indexes projects, which can take a while. The IDE must be closed.",
-    "descriptionTr": "JetBrains IDE'lerinin ürün ve sürüm başına dizinleri ve önbellekleri; ayarlar ve eklentiler başka yerdedir. Sonraki açılışta projeler yeniden dizinlenir, zaman alabilir. IDE kapalı olmalı.",
+    "description": "Indexes and caches of JetBrains IDEs, per product and version; settings and plugins are elsewhere. The next start re-indexes projects, which can take a while. The IDE must be closed. Local History, which holds your earlier file versions, is kept.",
+    "descriptionTr": "JetBrains IDE'lerinin ürün ve sürüm başına dizinleri ve önbellekleri; ayarlar ve eklentiler başka yerdedir. Sonraki açılışta projeler yeniden dizinlenir, zaman alabilir. IDE kapalı olmalı. Dosyalarınızın eski sürümlerini tutan Local History korunur.",
     "paths": [
       "%XDG_CACHE%/JetBrains/*"
     ],
     "mode": "contents",
     "exclude": [
+      "LocalHistory",
       "log"
     ],
     "minAgeHours": null,
@@ -1448,12 +1606,15 @@
     "group": "dev",
     "name": "Android Studio caches",
     "nameTr": "Android Studio önbellekleri",
-    "description": "Indexes and caches of Android Studio; settings are elsewhere. The next start re-indexes projects. Android Studio must be closed.",
-    "descriptionTr": "Android Studio'nun dizinleri ve önbellekleri; ayarlar başka yerdedir. Sonraki açılışta projeler yeniden dizinlenir. Android Studio kapalı olmalı.",
+    "description": "Indexes and caches of Android Studio; settings are elsewhere. The next start re-indexes projects. Android Studio must be closed. Local History, which holds your earlier file versions, is kept.",
+    "descriptionTr": "Android Studio'nun dizinleri ve önbellekleri; ayarlar başka yerdedir. Sonraki açılışta projeler yeniden dizinlenir. Android Studio kapalı olmalı. Dosyalarınızın eski sürümlerini tutan Local History korunur.",
     "paths": [
       "%XDG_CACHE%/Google/AndroidStudio*"
     ],
     "mode": "contents",
+    "exclude": [
+      "LocalHistory"
+    ],
     "minAgeHours": null,
     "risk": "review",
     "admin": false,
@@ -1950,14 +2111,14 @@
     "group": "system",
     "name": "Mesa shader cache",
     "nameTr": "Mesa gölgelendirici önbelleği",
-    "description": "Compiled shaders of the Mesa graphics drivers; rebuilt as apps and games run, with some stutter at first.",
-    "descriptionTr": "Mesa grafik sürücülerinin derlenmiş gölgelendiricileri; uygulamalar ve oyunlar çalıştıkça yeniden oluşur, başta biraz takılma olabilir.",
+    "description": "Compiled shaders of the Mesa graphics drivers; rebuilt as apps and games run, with some stutter at first. A running desktop uses it too, so cleaning it can disturb the session.",
+    "descriptionTr": "Mesa grafik sürücülerinin derlenmiş gölgelendiricileri; uygulamalar ve oyunlar çalıştıkça yeniden oluşur, başta biraz takılma olabilir. Çalışan masaüstü de bunu kullanır, bu yüzden temizlemek oturumu bozabilir.",
     "paths": [
       "%XDG_CACHE%/mesa_shader_cache*"
     ],
     "mode": "contents",
     "minAgeHours": null,
-    "risk": "safe",
+    "risk": "review",
     "admin": false,
     "closeApps": [],
     "verified": true,
@@ -1976,7 +2137,7 @@
     ],
     "mode": "contents",
     "minAgeHours": null,
-    "risk": "safe",
+    "risk": "review",
     "admin": false,
     "closeApps": [],
     "verified": true,
@@ -1994,7 +2155,7 @@
     ],
     "mode": "contents",
     "minAgeHours": null,
-    "risk": "safe",
+    "risk": "review",
     "admin": false,
     "closeApps": [],
     "verified": false
@@ -2084,9 +2245,10 @@
     ],
     "mode": "contents",
     "minAgeHours": null,
-    "risk": "safe",
+    "risk": "review",
     "admin": false,
     "closeApps": [
+      "fossilize_replay",
       "steam"
     ],
     "verified": false
@@ -2305,7 +2467,10 @@
     "paths": [
       "%XDG_CACHE%/wine"
     ],
-    "mode": "contents",
+    "mode": "files",
+    "include": [
+      "*.msi"
+    ],
     "minAgeHours": null,
     "risk": "safe",
     "admin": false,
@@ -2379,6 +2544,29 @@
     "command": "paccache -r",
     "verified": true,
     "source": "https://man.archlinux.org/man/paccache.8"
+  },
+  {
+    "id": "aur-helper-cache",
+    "group": "system",
+    "name": "AUR helper caches",
+    "nameTr": "AUR yardımcısı önbellekleri",
+    "description": "Sources and packages that yay and paru keep; downloaded and built again on the next install or update.",
+    "descriptionTr": "yay ve paru'nun tuttuğu kaynaklar ve paketler; bir sonraki kurulum ya da güncellemede yeniden indirilip derlenir.",
+    "paths": [
+      "%XDG_CACHE%/yay",
+      "%XDG_CACHE%/paru"
+    ],
+    "mode": "contents",
+    "minAgeHours": null,
+    "risk": "review",
+    "admin": false,
+    "closeApps": [
+      "yay",
+      "paru",
+      "makepkg",
+      "pacman"
+    ],
+    "verified": false
   },
   {
     "id": "zypper-cache",

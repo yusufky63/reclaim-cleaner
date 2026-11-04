@@ -628,7 +628,8 @@ const HOME_USER_FOLDERS: &[&str] = &[
     "Videos",
 ];
 
-/// Below the home folder: keys and passwords, mail and wallets. Never inside a rule.
+/// Below the home folder: keys and passwords, mail, wallets, browser profiles without an HTTP
+/// cache of their own, and what decides which programs start. Never inside a rule.
 #[cfg(target_os = "linux")]
 const HOME_PRECIOUS: &[&str] = &[
     ".ssh",
@@ -640,11 +641,22 @@ const HOME_PRECIOUS: &[&str] = &[
     ".pki",
     ".mozilla",
     ".config/mozilla",
+    ".librewolf",
+    ".config/librewolf",
+    ".zen",
+    ".waterfox",
     ".thunderbird",
+    ".mozilla-thunderbird",
+    ".config/thunderbird",
     ".local/share/evolution",
     ".bitcoin",
     ".electrum",
     ".ethereum",
+    ".kube",
+    ".docker/config.json",
+    ".local/share/applications",
+    ".config/autostart",
+    ".config/systemd",
 ];
 
 /// Browser profiles below the config folder. These browsers keep their HTTP cache in `~/.cache`,
@@ -657,6 +669,8 @@ const BROWSER_PROFILES: &[&str] = &[
     "chromium",
     "microsoft-edge",
     "vivaldi",
+    "opera",
+    "net.imput.helium",
 ];
 
 /// Brave adds a folder for its channel: `BraveSoftware/Brave-Browser/<profile>`.
@@ -786,6 +800,11 @@ impl Guard {
 
         let mut precious = in_home(HOME_PRECIOUS);
         precious.push(xdg.config.join("mozilla"));
+        precious.push(xdg.config.join("librewolf"));
+        precious.push(xdg.config.join("thunderbird"));
+        precious.push(xdg.config.join("autostart"));
+        precious.push(xdg.config.join("systemd"));
+        precious.push(xdg.data.join("applications"));
         precious.push(xdg.data.join("keyrings"));
         precious.push(xdg.data.join("kwalletd"));
         precious.push(xdg.data.join("evolution"));
@@ -1587,6 +1606,38 @@ mod tests {
             );
             // The `$HOME/` entry named no folder, so the home folder's children are not affected.
             assert!(g.check(&home.join("Other"), Origin::User).is_ok());
+        }
+
+        #[test]
+        fn profiles_and_startup_settings_are_off_limits() {
+            let tmp = tempfile::tempdir().unwrap();
+            let home = tmp.path();
+            let guard = Guard::for_home(home, &[], None);
+            for p in [
+                ".config/opera/Default/Cookies",
+                ".config/net.imput.helium/Default",
+                ".librewolf/abc.default/key4.db",
+                ".zen/abc",
+                ".waterfox/abc",
+                ".config/thunderbird/abc",
+                ".mozilla-thunderbird/abc",
+                ".kube/config",
+                ".docker/config.json",
+                ".local/share/applications/app.desktop",
+                ".config/autostart/app.desktop",
+                ".config/systemd/user/app.service",
+            ] {
+                let path = home.join(p);
+                assert!(guard.check(&path, Origin::User).is_err(), "{p}");
+                assert!(guard.is_private(&path), "{p}");
+            }
+            // What only holds such a place is not private itself, and its neighbours may go.
+            assert!(!guard.is_private(&home.join(".docker")));
+            assert!(
+                guard
+                    .check(&home.join(".docker/buildx-cache"), Origin::User)
+                    .is_ok()
+            );
         }
 
         #[test]

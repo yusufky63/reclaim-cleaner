@@ -168,13 +168,154 @@ fn names_of(pid: u32) -> Vec<String> {
         && let Some(first) = cmdline.split(|&b| b == 0).next()
     {
         names.extend(program_name(first));
+        let runtimes: Vec<String> = names.clone();
+        names.extend(owners_behind_runtime(&runtimes, &cmdline));
     }
     names
 }
 
-/// Lowercase program names of every process this user can see.
+/// JetBrains products as `closeApps` names them. `idea` also matches every product's own launcher
+/// flags, which at worst blocks one more rule while an IDE runs.
+const JETBRAINS_NAMES: &[&str] = &[
+    "idea",
+    "pycharm",
+    "webstorm",
+    "clion",
+    "goland",
+    "rider",
+    "phpstorm",
+    "rubymine",
+    "datagrip",
+    "rustrover",
+    "studio",
+];
+
+/// The apps a shared runtime is running. A script-started IDE or a Gradle daemon shows up only as
+/// `java`, and Arch's packaged Electron apps only as `electron33`, with the app in the arguments.
+fn owners_behind_runtime(runtimes: &[String], cmdline: &[u8]) -> Vec<String> {
+    let args: Vec<String> = cmdline
+        .split(|&b| b == 0)
+        .skip(1)
+        .map(|a| String::from_utf8_lossy(a).to_lowercase())
+        .collect();
+    let mut owners = Vec::new();
+    if runtimes.iter().any(|r| r == "java") {
+        let all = args.join(" ");
+        if all.contains("org.gradle") {
+            owners.push("gradle".to_string());
+        }
+        if all.contains("com.intellij") || all.contains("idea.paths.selector") {
+            owners.extend(
+                JETBRAINS_NAMES
+                    .iter()
+                    .filter(|n| all.contains(*n))
+                    .map(|n| n.to_string()),
+            );
+        }
+    }
+    if runtimes.iter().any(|r| r.starts_with("electron"))
+        && let Some(app) = args.iter().find(|a| !a.starts_with('-'))
+    {
+        // `/usr/lib/code/out/cli.js` names the app somewhere along the path, and a name that means
+        // nothing is compared with `closeApps` and ignored.
+        owners.extend(app.split('/').filter(|s| !s.is_empty()).map(String::from));
+    }
+    owners
+}
+
+/// Browsers and mail clients keep a lock in their profile while they run, whatever the program is
+/// called (an AppImage, a wrapper), as a link whose target ends in the process id.
+const CHROMIUM_LOCKS: &[(&str, &str)] = &[
+    ("google-chrome", "chrome"),
+    ("google-chrome-beta", "chrome"),
+    ("google-chrome-unstable", "chrome"),
+    ("chromium", "chromium"),
+    ("BraveSoftware/Brave-Browser", "brave"),
+    ("microsoft-edge", "msedge"),
+    ("vivaldi", "vivaldi-bin"),
+    ("opera", "opera"),
+];
+
+const FIREFOX_LOCKS: &[(&str, &str)] = &[
+    (".mozilla/firefox", "firefox"),
+    (".thunderbird", "thunderbird"),
+    (".librewolf", "librewolf"),
+    (".zen", "zen"),
+    (".waterfox", "waterfox"),
+];
+
+/// The process id at the end of a lock link: `host-1234` (Chromium), `127.0.1.1:+1234` (Firefox).
+fn lock_pid(target: &[u8]) -> Option<u32> {
+    let start = target.iter().rposition(|b| !b.is_ascii_digit())? + 1;
+    std::str::from_utf8(&target[start..]).ok()?.parse().ok()
+}
+
+fn lock_is_live(link: &Path) -> bool {
+    use std::os::unix::ffi::OsStrExt;
+    fs::read_link(link)
+        .ok()
+        .and_then(|t| lock_pid(t.as_os_str().as_bytes()))
+        .is_some_and(|pid| Path::new(&format!("/proc/{pid}")).exists())
+}
+
+/// Program names whose profile lock is held by a live process. Only reads the lock links.
+fn names_from_locks(home: &Path, config: &Path) -> Vec<String> {
+    let mut names = Vec::new();
+    for (dir, name) in CHROMIUM_LOCKS {
+        if lock_is_live(&config.join(dir).join("SingletonLock")) {
+            names.push(name.to_string());
+        }
+    }
+    for (dir, name) in FIREFOX_LOCKS {
+        let Ok(profiles) = fs::read_dir(home.join(dir)) else {
+            continue;
+        };
+        if profiles
+            .flatten()
+            .any(|p| lock_is_live(&p.path().join("lock")))
+        {
+            names.push(name.to_string());
+        }
+    }
+    names
+}
+
+/// Lowercase program names of every process this user can see. Empty means the list could not be
+/// read, because this app itself is always on it.
 pub fn running_processes() -> HashSet<String> {
-    process_ids().into_iter().flat_map(names_of).collect()
+    let mut names: HashSet<String> = process_ids().into_iter().flat_map(names_of).collect();
+    if !names.is_empty()
+        && let Some(xdg) = Xdg::current()
+    {
+        names.extend(names_from_locks(&xdg.home, &xdg.config));
+    }
+    names
+}
+
+/// Device and inode of every regular file this user's processes hold open, or `None` when the
+/// process list could not be read. Removing such a file works on Linux, but the program keeps
+/// using it and the space stays taken until it lets go.
+pub fn open_files() -> Option<HashSet<(u64, u64)>> {
+    use std::os::unix::fs::MetadataExt;
+    let pids = process_ids();
+    if pids.is_empty() {
+        return None;
+    }
+    let mut open = HashSet::new();
+    for pid in pids {
+        // Other users' processes refuse this, and their files are not this user's to delete.
+        let Ok(fds) = fs::read_dir(format!("/proc/{pid}/fd")) else {
+            continue;
+        };
+        for fd in fds.flatten() {
+            if let Ok(md) = fs::metadata(fd.path())
+                && md.is_file()
+            {
+                open.insert((md.dev(), md.ino()));
+            }
+        }
+    }
+    Some(open)
 }
 
 pub fn known_folders() -> Vec<PathBuf> {
@@ -418,6 +559,77 @@ mod tests {
         let exe = std::env::current_exe().unwrap();
         let me = exe.file_name().unwrap().to_string_lossy().to_lowercase();
         assert!(running_processes().contains(&me));
+    }
+
+    #[test]
+    fn sees_the_apps_behind_a_runtime() {
+        let names = |runtime: &str, args: &[u8]| {
+            let mut cmdline = b"argv0\0".to_vec();
+            cmdline.extend_from_slice(args);
+            owners_behind_runtime(&[runtime.to_string()], &cmdline)
+        };
+        assert_eq!(
+            names(
+                "java",
+                b"-Xmx1g\0org.gradle.launcher.daemon.bootstrap.GradleDaemon\08.5\0"
+            ),
+            ["gradle"]
+        );
+        let ide = names(
+            "java",
+            b"-Didea.paths.selector=PyCharm2026.1\0com.intellij.idea.Main\0",
+        );
+        assert!(ide.contains(&"pycharm".to_string()), "{ide:?}");
+        assert!(names("java", b"-jar\0/opt/server.jar\0").is_empty());
+        let code = names(
+            "electron33",
+            b"--enable-features=x\0/usr/lib/code/out/cli.js\0",
+        );
+        assert!(code.contains(&"code".to_string()), "{code:?}");
+        assert!(names("code", b"/usr/lib/code/out/cli.js\0").is_empty());
+    }
+
+    #[test]
+    fn reads_profile_locks() {
+        use std::os::unix::fs::symlink;
+
+        assert_eq!(lock_pid(b"host-1234"), Some(1234));
+        assert_eq!(lock_pid(b"127.0.1.1:+1234"), Some(1234));
+        assert_eq!(lock_pid(b"host-"), None);
+
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path();
+        let config = home.join(".config");
+        let live = format!("host-{}", std::process::id());
+        // Above the kernel's limit for process ids, so never alive.
+        let dead = "host-99999999";
+        fs::create_dir_all(config.join("chromium")).unwrap();
+        fs::create_dir_all(config.join("vivaldi")).unwrap();
+        fs::create_dir_all(home.join(".thunderbird/abc")).unwrap();
+        symlink(&live, config.join("chromium/SingletonLock")).unwrap();
+        symlink(dead, config.join("vivaldi/SingletonLock")).unwrap();
+        symlink(&live, home.join(".thunderbird/abc/lock")).unwrap();
+        assert_eq!(names_from_locks(home, &config), ["chromium", "thunderbird"]);
+    }
+
+    #[test]
+    fn sees_files_this_process_holds_open() {
+        use std::os::unix::fs::MetadataExt;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let held = tmp.path().join("held.bin");
+        let free = tmp.path().join("free.bin");
+        fs::write(&held, b"x").unwrap();
+        fs::write(&free, b"x").unwrap();
+        let handle = fs::File::open(&held).unwrap();
+        let open = open_files().unwrap();
+        let id = |p: &Path| {
+            let md = fs::metadata(p).unwrap();
+            (md.dev(), md.ino())
+        };
+        assert!(open.contains(&id(&held)));
+        assert!(!open.contains(&id(&free)));
+        drop(handle);
     }
 
     #[test]

@@ -202,6 +202,16 @@ What the reconciliation page can list, as the Linux side of `hidden.rs`:
   2. Later: run only system-installed official binaries through `pkexec` (`/usr/bin/apt-get clean`, `/usr/bin/journalctl --vacuum-size=…`), with a fixed argument list per rule id. The existing rule that an elevated step receives ids, never paths, stays.
   3. PackageKit (`pkcon`) may give one cross-distro path for package cleanup **[unverified that it covers cleaning]**.
 
+## Comparison with other cleaners (November 2026)
+
+Rules and guard lists were compared with BleachBit, Mole's Linux branch, Beav, Czkawka, kondo, npkill, gdu, Stacer and Sweeper. BleachBit, Mole and Stacer are GPL, so only facts such as which path a tool cleans were used, never their code or rule files. Nothing here was run on a real desktop, and new paths stay `verified: false`.
+
+- **Changed because of it:** JetBrains and Android Studio rules keep `LocalHistory`, which [JetBrains documents](https://www.jetbrains.com/help/idea/directories-used-by-the-ide-to-store-settings-caches-plugins-and-logs.html) in the cache folder. Deno keeps `location_data` and stored data. Wine removes only `*.msi`. Spotify is `review`, because of offline music.
+- **Shader caches are `review`.** [BleachBit issue 1853](https://github.com/bleachbit/bleachbit/issues/1853) reports that cleaning `~/.cache` crashed Plasma, and Mole makes GPU shader caches opt-in because of recompile time.
+- **Running checks fail closed** and see the app behind `java` and `electron*`, profile locks (Firefox `lock`, Chromium `SingletonLock`) and open files by device and inode.
+- **Left for later:** Chromium GPU caches under the profile (they need a guard exception), `kio_http_cache_cleaner`, prune commands (`uv cache prune`, `ccache --cleanup`), Kubernetes and minikube caches, listing Snap revisions in the app, `.obsolete` VS Code extensions.
+- **Not worth it:** SQLite vacuum, which touches profiles we protect, and deleting from `/tmp`.
+
 ## Open questions
 
 1. Is "one filesystem" one mount or one `st_dev`? Btrfs subvolumes make the difference visible.
