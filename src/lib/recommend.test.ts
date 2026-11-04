@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRecommendations, defaultSelection, idleProjects, isCommandOnly, mergeReports, quickCleanItems, safeArtifactPaths } from "./recommend";
+import { buildRecommendations, defaultSelection, idleProjects, isCleanable, isCommandOnly, mergeReports, quickCleanItems, safeArtifactPaths } from "./recommend";
 import type { Project, Settings, TargetResult, TargetRule } from "./types";
 
 const t = (key: string, opts?: Record<string, unknown>) => `${key}${opts ? JSON.stringify(opts) : ""}`;
@@ -70,6 +70,15 @@ describe("isCommandOnly", () => {
     expect(isCommandOnly({ ...pathless, mode: "contents" }, empty(true), false)).toBe(false);
     expect(isCommandOnly({ ...pathless, command: null }, empty(true), false)).toBe(false);
     expect(isCommandOnly({ ...pathless, command: "api:SHEmptyRecycleBinW()" }, empty(true), false)).toBe(false);
+  });
+});
+
+describe("the Linux Trash rule", () => {
+  const trash = rule("recycle-bin", "review", { mode: "report", paths: [], command: "api:SHEmptyRecycleBin" });
+
+  it("is cleaned by the app, so nothing offers its command", () => {
+    expect(isCleanable(trash)).toBe(true);
+    expect(isCommandOnly(trash, { id: trash.id, bytes: 0, files: 0, found: [], running: [], partial: false, commandAvailable: true }, false)).toBe(false);
   });
 });
 
