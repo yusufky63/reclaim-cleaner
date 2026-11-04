@@ -71,7 +71,7 @@ When in doubt, choose the higher risk.
 | `paths` | Start with `%HOME%`, `%XDG_CACHE%`, `%XDG_CONFIG%`, `%XDG_DATA%` or `%XDG_STATE%` (each falls back to the XDG default, so `%XDG_CACHE%` is usually `~/.cache`), or `%STEAM%` and `%STEAMLIBRARY%`. Separators are `/`. A rule must name a child: `%XDG_CACHE%` alone is refused. Paths are case-sensitive. There are no brace lists, so `{Cache,Code Cache}` is written out as two paths. |
 | `closeApps` | Process names without `.exe`, such as `code` or `signal-desktop`. They are compared in lowercase. |
 | `admin` | Always `false`. The first Linux version never runs as root. |
-| `command` | Shown for copying, not run. It starts with the tool itself, without `sudo`: the scan uses the first word to tell whether this distro has the tool. The description says when root is needed. It may not contain placeholders or shell operators, and may be a listing command (`coredumpctl list`) when the system ages the data out by itself. |
+| `command` | Shown for copying, not run. It starts with the tool itself, without `sudo`: the scan uses the first word to tell whether this distro has the tool. The description says when root is needed. It may not contain placeholders or shell operators, and may be a listing command (`coredumpctl list`) when the system ages the data out by itself. The one exception is the Trash rule: `api:SHEmptyRecycleBin` is run by the app, follows the trash spec and has no `paths`. |
 | `verified` | `true` only when `source` is a primary source that names the path. Anything derived from a convention stays `false`, including Electron folder names and most Flatpak and Snap paths. |
 
 ### System areas
@@ -92,6 +92,7 @@ Inside a sandboxed app's folder the guard allows only its cache, so rules follow
 The list below is enforced by tests in `crates/core/src/rules.rs`.
 
 - `~/.cache`, `~/.config`, `~/.local/share`, `~/.var/app`, `~/snap` as a whole.
+- Trash folders. Only the `recycle-bin` rule empties the trash, through its command.
 - Keys and passwords: `~/.ssh`, `~/.gnupg`, `~/.password-store`, keyrings.
 - A whole browser profile. Chromium-based profiles allow only `*/Service Worker/CacheStorage`, at `review`. Firefox profiles are off limits; its cache lives in `%XDG_CACHE%/mozilla`.
 - Mail: `~/.thunderbird`, Evolution.

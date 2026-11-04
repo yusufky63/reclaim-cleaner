@@ -312,8 +312,10 @@ pub fn load_user_targets(dir: &Path) -> (Vec<TargetRule>, Vec<String>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    use crate::paths::expand_vars;
     #[cfg(any(windows, target_os = "linux"))]
-    use crate::paths::{Guard, Origin, expand_vars};
+    use crate::paths::{Guard, Origin};
     use std::collections::HashSet;
     #[cfg(any(windows, target_os = "linux"))]
     use std::path::PathBuf;
@@ -384,35 +386,38 @@ mod tests {
         }
     }
 
-    /// The Linux twin of `builtin_rule_paths_pass_the_guard`. Variables go through the real
-    /// `paths` module, so this also catches `LINUX_SYNTAX` drifting away from it.
-    // Ignored until the Linux guard and the XDG expansion from the linux-engine session are on
-    // main: `expand_vars` refuses %HOME% and the XDG variables without them.
+    /// The Linux twin of `builtin_rule_paths_pass_the_guard`, on a home folder of its own so it
+    /// does not depend on who runs it.
+    // Ignored until the Linux guard from the linux-engine session is on main. Then remove the
+    // ignore and build the guard with `Guard::for_home(home, &[], None)`: `Guard::new` refuses
+    // everything when running as root, which is the case in Docker.
     #[cfg(target_os = "linux")]
     #[test]
-    #[ignore = "needs the Linux guard and XDG expansion from the linux-engine branch"]
+    #[ignore = "needs the Linux guard from the linux-engine branch"]
     fn linux_rule_paths_pass_the_guard() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path();
         let guard = Guard::new(&[], None);
         for r in builtin_targets() {
             for p in &r.paths {
                 let sample = p.replace('*', "sample");
-                // Steam folders are found at run time. The first Linux version only deletes
-                // inside the home folder, so both samples live there.
-                let concrete: Vec<String> = match sample.split_once('/') {
-                    Some((var, rest))
-                        if STEAM_VARS
-                            .iter()
-                            .any(|v| var.eq_ignore_ascii_case(&format!("%{v}%"))) =>
-                    {
-                        vec![
-                            expand_vars(&format!("%XDG_DATA%/Steam/{rest}")).unwrap(),
-                            expand_vars(&format!("%HOME%/Games/SteamLibrary/{rest}")).unwrap(),
-                        ]
-                    }
-                    _ => vec![expand_vars(&sample).unwrap()],
+                let (var, rest) = sample.split_once('/').unwrap();
+                let roots: Vec<PathBuf> = match var {
+                    "%HOME%" => vec![home.to_path_buf()],
+                    "%XDG_CACHE%" => vec![home.join(".cache")],
+                    "%XDG_CONFIG%" => vec![home.join(".config")],
+                    "%XDG_DATA%" => vec![home.join(".local/share")],
+                    "%XDG_STATE%" => vec![home.join(".local/state")],
+                    // Steam folders are found at run time. The first Linux version only deletes
+                    // inside the home folder, so both samples live there.
+                    "%STEAM%" | "%STEAMLIBRARY%" => vec![
+                        home.join(".local/share/Steam"),
+                        home.join("Games/SteamLibrary"),
+                    ],
+                    other => panic!("rule {} uses {other}", r.id),
                 };
-                for c in concrete {
-                    let path = PathBuf::from(c);
+                for root in roots {
+                    let path = root.join(rest);
                     let res = match r.mode {
                         Mode::Contents => guard.check_wipe(&path),
                         Mode::Folder => guard.check(&path, Origin::Rule),
@@ -502,7 +507,15 @@ mod tests {
             // The first word is how the scan tells whether this distro has the tool at all.
             let first = cmd.split_whitespace().next().unwrap();
             assert!(!["sudo", "pkexec", "su", "rm"].contains(&first), "{cmd}");
-            assert!(!cmd.starts_with("api:"), "{cmd}");
+            // The one action the app runs itself: emptying the user's own trash.
+            if cmd.starts_with("api:") {
+                assert_eq!(
+                    (r.id.as_str(), cmd),
+                    ("recycle-bin", "api:SHEmptyRecycleBin")
+                );
+                assert!(r.paths.is_empty() && r.risk != Risk::Safe);
+                continue;
+            }
             // A placeholder or a pipe would do something else when pasted into a shell.
             assert!(!cmd.contains(['<', '>', '|', ';', '&']), "{cmd}");
             assert!(
@@ -525,7 +538,6 @@ mod tests {
             "%HOME%/.var",
             "%HOME%/.var/app",
             "%HOME%/snap",
-            "%XDG_DATA%/Trash",
             "%XDG_CACHE%/huggingface",
         ];
         // Never inside a rule, not even a child. `~/.cache/doc` is Flatpak's document portal.
@@ -543,6 +555,7 @@ mod tests {
             "%XDG_DATA%/evolution",
             "%XDG_CONFIG%/mozilla",
             "%XDG_CACHE%/doc",
+            "%XDG_DATA%/Trash",
         ];
         const BROWSER_PROFILES: &[&str] = &[
             "%XDG_CONFIG%/google-chrome",

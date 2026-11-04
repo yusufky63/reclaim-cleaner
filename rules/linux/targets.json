@@ -1933,17 +1933,15 @@
     "group": "system",
     "name": "Trash",
     "nameTr": "Çöp Kutusu",
-    "description": "Files you moved to the trash in your home folder, measured only; after emptying they cannot be restored. Trash folders on other disks have their own copy and are not counted.",
-    "descriptionTr": "Ev klasörünüzde çöp kutusuna taşıdığınız dosyalar, yalnızca ölçülür; boşaltıldıktan sonra geri yüklenemez. Diğer disklerdeki çöp klasörleri ayrıdır ve sayılmaz.",
-    "paths": [
-      "%XDG_DATA%/Trash/files"
-    ],
+    "description": "Files you moved to the trash; emptied the way the trash specification describes, after which they cannot be restored.",
+    "descriptionTr": "Çöp kutusuna taşıdığınız dosyalar; çöp kutusu belirtiminin tarif ettiği şekilde boşaltılır, sonrasında geri yüklenemez.",
+    "paths": [],
     "mode": "report",
     "minAgeHours": null,
     "risk": "review",
     "admin": false,
     "closeApps": [],
-    "command": "gio trash --empty",
+    "command": "api:SHEmptyRecycleBin",
     "verified": true,
     "source": "https://specifications.freedesktop.org/trash/latest/"
   },
