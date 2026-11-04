@@ -17,8 +17,9 @@ use serde::Serialize;
 use crate::categories::{Category, classify_dir, classify_file, is_project_marker};
 use crate::fsmeta::{is_cloud_only, is_link, mtime, now_unix};
 use crate::job::Job;
-use crate::paths::key;
+use crate::paths::{SEP, key, name_key};
 use crate::rules::Risk;
+use crate::walk::{DirAction, MountKind, WalkContext};
 
 pub const BIG_FILE: u64 = 4 * 1024 * 1024;
 const NO_PARENT: u32 = u32::MAX;
@@ -47,6 +48,8 @@ pub struct Node {
     pub reclaim_review: u64,
     pub marked: Option<Risk>,
     pub removed: bool,
+    /// A mount the scan stopped at: shown, but not entered, so it holds nothing.
+    pub mount: Option<MountKind>,
 }
 
 struct RawDir {
@@ -64,6 +67,7 @@ struct RawDir {
     cloud_bytes: u64,
     cloud_files: u64,
     dirs: Vec<RawDir>,
+    mount: Option<MountKind>,
 }
 
 #[derive(Default)]
@@ -86,6 +90,7 @@ fn empty_raw(name: String) -> RawDir {
         cloud_bytes: 0,
         cloud_files: 0,
         dirs: Vec::new(),
+        mount: None,
     }
 }
 
@@ -99,7 +104,7 @@ fn add_child_totals(raw: &mut RawDir) {
     }
 }
 
-fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
+fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc, ctx: &WalkContext) -> RawDir {
     let mut raw = empty_raw(name);
     if job.is_cancelled() {
         return raw;
@@ -113,6 +118,7 @@ fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
         }
     };
     let mut subdirs: Vec<(PathBuf, String)> = Vec::new();
+    let mut stubs: Vec<RawDir> = Vec::new();
     let mut local_ext: HashMap<String, (u64, u64)> = HashMap::new();
     for entry in rd.flatten() {
         let Ok(ft) = entry.file_type() else { continue };
@@ -121,7 +127,16 @@ fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
         }
         let fname = entry.file_name().to_string_lossy().into_owned();
         if ft.is_dir() {
-            subdirs.push((entry.path(), fname));
+            let dir = entry.path();
+            match ctx.action(&dir) {
+                DirAction::Enter => subdirs.push((dir, fname)),
+                DirAction::Skip => {}
+                DirAction::Stub(kind) => {
+                    let mut stub = empty_raw(fname);
+                    stub.mount = Some(kind);
+                    stubs.push(stub);
+                }
+            }
             continue;
         }
         let Ok(md) = entry.metadata() else { continue };
@@ -133,7 +148,9 @@ fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
         if is_project_marker(&fname) {
             raw.is_project = true;
         }
-        let len = md.len();
+        let Some(len) = ctx.count(&md) else {
+            continue;
+        };
         let t = mtime(&md);
         raw.files += 1;
         raw.bytes += len;
@@ -173,8 +190,9 @@ fn scan_raw(path: &Path, name: String, job: &Job, ext: &ExtAcc) -> RawDir {
     }
     raw.dirs = subdirs
         .into_par_iter()
-        .map(|(p, n)| scan_raw(&p, n, job, ext))
+        .map(|(p, n)| scan_raw(&p, n, job, ext, ctx))
         .collect();
+    raw.dirs.append(&mut stubs);
     add_child_totals(&mut raw);
     raw
 }
@@ -233,6 +251,8 @@ pub struct NodeView {
     /// Bytes and count of children cut off by the `limit`.
     pub rest_bytes: u64,
     pub rest_count: u32,
+    /// Set for a mount the scan stopped at.
+    pub mount: Option<MountKind>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -260,17 +280,38 @@ impl Tree {
     }
 
     fn scan_inner(root: &Path, selection: Option<&[String]>, job: &Job) -> Tree {
+        Self::scan_with(root, selection, job, &WalkContext::new(root))
+    }
+
+    fn scan_with(root: &Path, selection: Option<&[String]>, job: &Job, ctx: &WalkContext) -> Tree {
         let started = Instant::now();
         job.set_stage("scan");
         let ext = ExtAcc::default();
-        let root_name = root.to_string_lossy().trim_end_matches('\\').to_string();
+        let trimmed = root.to_string_lossy();
+        let trimmed = trimmed.trim_end_matches(SEP);
+        // `/` is all separator, and it still needs a name in the breadcrumbs.
+        let root_name = if trimmed.is_empty() {
+            SEP.to_string()
+        } else {
+            trimmed.to_string()
+        };
+        // A folder the user named may be a mount of any kind, except a kernel interface.
+        let start = |path: &Path, name: String| {
+            if ctx.may_start(path) {
+                scan_raw(path, name, job, &ext, ctx)
+            } else {
+                let mut raw = empty_raw(name);
+                raw.denied = true;
+                raw
+            }
+        };
         let raw = match selection {
-            None => scan_raw(root, root_name, job, &ext),
+            None => start(root, root_name),
             Some(names) => {
                 let mut raw = empty_raw(root_name);
                 raw.dirs = names
                     .par_iter()
-                    .map(|n| scan_raw(&root.join(n), n.clone(), job, &ext))
+                    .map(|n| start(&root.join(n), n.clone()))
                     .collect();
                 add_child_totals(&mut raw);
                 raw
@@ -282,7 +323,7 @@ impl Tree {
             job.dirs.load(std::sync::atomic::Ordering::Relaxed) as usize * 2 + 16,
         );
         let root_cat = classify_dir(
-            raw.name.rsplit('\\').next().unwrap_or(""),
+            raw.name.rsplit(SEP).next().unwrap_or(""),
             Category::Other,
             depth0,
             raw.is_project,
@@ -347,7 +388,9 @@ impl Tree {
         let (mut rest_bytes, mut rest_count) = (0u64, 0u32);
         if depth > 0 {
             for (i, c) in live.iter().enumerate() {
-                if i < limit {
+                // Mounts the scan stopped at hold 0 bytes and sort last, and a limit must not
+                // hide that they exist.
+                if i < limit || self.nodes[*c as usize].mount.is_some() {
                     let child_limit = if depth > 1 {
                         (limit / 2).max(10)
                     } else {
@@ -383,6 +426,7 @@ impl Tree {
             children,
             rest_bytes,
             rest_count,
+            mount: node.mount,
         })
     }
 
@@ -448,24 +492,24 @@ impl Tree {
             .collect()
     }
 
-    /// Finds a node by absolute path (case-insensitive).
+    /// Finds a node by absolute path, comparing names the way the system does.
     pub fn find(&self, path: &Path) -> Option<u32> {
         let root_key = key(&self.root_path);
         let target = key(path);
         if target == root_key {
             return Some(0);
         }
-        let rest = if root_key.ends_with('\\') {
+        let rest = if root_key.ends_with(SEP) {
             target.strip_prefix(&root_key)?
         } else {
-            target.strip_prefix(&root_key)?.strip_prefix('\\')?
+            target.strip_prefix(&root_key)?.strip_prefix(SEP)?
         };
         let mut cur = 0u32;
-        for seg in rest.split('\\').filter(|s| !s.is_empty()) {
+        for seg in rest.split(SEP).filter(|s| !s.is_empty()) {
             let node = &self.nodes[cur as usize];
             cur = *node.children.iter().find(|c| {
                 let n = &self.nodes[**c as usize];
-                n.kind != NodeKind::Small && !n.removed && n.name.to_lowercase() == seg
+                n.kind != NodeKind::Small && !n.removed && name_key(&n.name) == seg
             })?;
         }
         Some(cur)
@@ -550,6 +594,7 @@ fn flatten(
         reclaim_review: 0,
         marked: None,
         removed: false,
+        mount: raw.mount,
     });
     let mut kids: Vec<(u64, u32)> = Vec::new();
     for d in raw.dirs {
@@ -605,6 +650,7 @@ fn leaf(
         reclaim_review: 0,
         marked: None,
         removed: false,
+        mount: None,
     }
 }
 
@@ -641,8 +687,9 @@ mod tests {
         assert_eq!(tree.large_files(BIG_FILE, 10).len(), 1);
 
         let nm = tmp.path().join("proj/node_modules");
-        tree.mark(&[(nm.clone(), Risk::Safe, 100)]);
-        assert_eq!(tree.nodes[0].reclaim_safe, 100);
+        let nm_bytes = tree.nodes[tree.find(&nm).unwrap() as usize].bytes;
+        tree.mark(&[(nm.clone(), Risk::Safe, nm_bytes)]);
+        assert_eq!(tree.nodes[0].reclaim_safe, nm_bytes);
         assert!(tree.remove(&nm));
         assert_eq!(tree.summary.files, 3);
         assert_eq!(tree.nodes[0].reclaim_safe, 0);
@@ -657,7 +704,12 @@ mod tests {
         write(&tmp.path().join("c/three.bin"), 40);
         write(&tmp.path().join("loose.bin"), 80);
         let tree = Tree::scan_selection(tmp.path(), &["a".into(), "c".into()], &Job::new());
-        assert_eq!(tree.summary.bytes, 50);
+        let on_disk =
+            |f: &str| crate::fsmeta::disk_size(&fs::symlink_metadata(tmp.path().join(f)).unwrap());
+        assert_eq!(
+            tree.summary.bytes,
+            on_disk("a/one.bin") + on_disk("c/three.bin")
+        );
         assert_eq!(
             tree.summary.selection,
             vec!["a".to_string(), "c".to_string()]
@@ -667,5 +719,132 @@ mod tests {
         assert!(tree.find(&tmp.path().join("b")).is_none());
         assert!(tree.denied_paths(5).is_empty());
         assert_eq!(tree.summary.cloud_files, 0);
+    }
+
+    #[cfg(target_os = "linux")]
+    mod linux {
+        use super::*;
+        use crate::mounts::{MountTable, parse_mountinfo};
+        use std::os::unix::fs::symlink;
+
+        fn scan(root: &Path, mounts: &[(&str, &str)]) -> Tree {
+            let text: String = mounts
+                .iter()
+                .enumerate()
+                .map(|(i, (name, fs))| {
+                    format!(
+                        "{} 1 0:{i} / {} rw - {fs} src rw\n",
+                        i + 2,
+                        root.join(name).display()
+                    )
+                })
+                .collect();
+            let table = MountTable::from_mounts(parse_mountinfo(text.as_bytes()));
+            let ctx = WalkContext::with_mounts(root, table);
+            Tree::scan_with(root, None, &Job::new(), &ctx)
+        }
+
+        #[test]
+        fn shows_remote_mounts_as_stubs_and_skips_the_rest() {
+            let tmp = tempfile::tempdir().unwrap();
+            for name in [
+                "plain", "nas", "rclone", "usb", "ram", "snap", "merged", "proc",
+            ] {
+                write(&tmp.path().join(name).join("f.bin"), 4096);
+            }
+            let tree = scan(
+                tmp.path(),
+                &[
+                    ("nas", "nfs4"),
+                    ("rclone", "fuse.rclone"),
+                    ("usb", "ext4"),
+                    ("ram", "tmpfs"),
+                    ("snap", "squashfs"),
+                    ("merged", "overlay"),
+                    ("proc", "proc"),
+                ],
+            );
+            assert_eq!(tree.summary.files, 1, "only the plain folder was entered");
+            let node = |name: &str| {
+                tree.find(&tmp.path().join(name))
+                    .map(|id| &tree.nodes[id as usize])
+            };
+            for (name, kind) in [
+                ("nas", MountKind::Remote),
+                ("rclone", MountKind::Remote),
+                ("usb", MountKind::Local),
+                ("ram", MountKind::Memory),
+            ] {
+                let n = node(name).unwrap_or_else(|| panic!("{name} is shown"));
+                assert_eq!(n.mount, Some(kind), "{name}");
+                assert_eq!(n.bytes, 0, "{name} was not entered");
+                assert_eq!(n.files, 0);
+            }
+            assert!(node("snap").is_none());
+            assert!(node("merged").is_none());
+            assert!(node("proc").is_none());
+            assert_eq!(node("plain").unwrap().mount, None);
+            let view = tree.view(0, 1, 50).unwrap();
+            let nas = view.children.iter().find(|c| c.name == "nas").unwrap();
+            assert_eq!(nas.mount, Some(MountKind::Remote));
+            assert_eq!(serde_json::to_value(nas).unwrap()["mount"], "remote");
+        }
+
+        #[test]
+        fn counts_hard_links_once_and_skips_symlinks() {
+            let tmp = tempfile::tempdir().unwrap();
+            write(&tmp.path().join("a/one.bin"), 8192);
+            fs::create_dir(tmp.path().join("b")).unwrap();
+            fs::hard_link(tmp.path().join("a/one.bin"), tmp.path().join("b/two.bin")).unwrap();
+            let outside = tempfile::tempdir().unwrap();
+            write(&outside.path().join("secret.bin"), 1000);
+            symlink(outside.path(), tmp.path().join("link")).unwrap();
+            let tree = Tree::scan(tmp.path(), &Job::new());
+            assert_eq!(tree.summary.files, 1);
+            assert_eq!(
+                tree.summary.bytes,
+                crate::fsmeta::disk_size(&fs::metadata(tmp.path().join("a/one.bin")).unwrap())
+            );
+            assert!(tree.find(&tmp.path().join("link")).is_none());
+        }
+
+        #[test]
+        fn a_limit_never_hides_a_mount() {
+            let tmp = tempfile::tempdir().unwrap();
+            write(&tmp.path().join("big/a.bin"), 16384);
+            write(&tmp.path().join("small/b.bin"), 4096);
+            fs::create_dir(tmp.path().join("nas")).unwrap();
+            let tree = scan(tmp.path(), &[("nas", "nfs4")]);
+            let view = tree.view(0, 1, 1).unwrap();
+            let names: Vec<&str> = view.children.iter().map(|c| c.name.as_str()).collect();
+            assert_eq!(names, ["big", "nas"]);
+            assert_eq!(view.rest_count, 1, "only the ordinary folder is folded");
+            assert_eq!(view.child_count, 3);
+        }
+
+        #[test]
+        fn compares_names_exactly() {
+            let tmp = tempfile::tempdir().unwrap();
+            write(&tmp.path().join("Data/x.bin"), 10);
+            write(&tmp.path().join("data/y.bin"), 10);
+            let tree = Tree::scan(tmp.path(), &Job::new());
+            let upper = tree.find(&tmp.path().join("Data")).unwrap();
+            let lower = tree.find(&tmp.path().join("data")).unwrap();
+            assert_ne!(upper, lower);
+            assert_eq!(tree.path_of(upper), tmp.path().join("Data"));
+            assert!(tree.find(&tmp.path().join("DATA")).is_none());
+        }
+
+        #[test]
+        fn refuses_kernel_roots_and_names_the_system_root() {
+            let tree = Tree::scan(Path::new("/proc"), &Job::new());
+            assert_eq!(tree.summary.files, 0);
+            assert!(tree.nodes[0].denied);
+            let ctx = WalkContext::with_mounts(Path::new("/"), MountTable::default());
+            let job = Job::new();
+            job.cancel();
+            let root = Tree::scan_with(Path::new("/"), None, &job, &ctx);
+            assert_eq!(root.nodes[0].name, "/");
+        }
     }
 }

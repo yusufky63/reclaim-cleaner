@@ -9,7 +9,7 @@ use serde::Serialize;
 
 use crate::fsmeta::{is_link, mtime};
 use crate::job::Job;
-use crate::paths::{Guard, Origin};
+use crate::paths::{Guard, Origin, key};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,27 +90,37 @@ pub fn find_empty(roots: &[PathBuf], guard: &Guard, job: &Job) -> Vec<EmptyFolde
     job.set_stage("empty");
     let mut out: Vec<EmptyFolder> = roots.par_iter().flat_map(|r| visit(r, job).2).collect();
     out.retain(|f| guard.check(Path::new(&f.path), Origin::User).is_ok());
-    out.sort_by_key(|a| a.path.to_lowercase());
-    out.dedup_by(|a, b| a.path.eq_ignore_ascii_case(&b.path));
+    out.sort_by_key(|a| key(Path::new(&a.path)));
+    out.dedup_by(|a, b| key(Path::new(&a.path)) == key(Path::new(&b.path)));
     out.truncate(5000);
     out
 }
 
-// Rule expansion and the guard only know Windows paths so far.
-#[cfg(all(test, windows))]
+#[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    fn guard_for(_tmp: &Path) -> Guard {
+        Guard::new(&[], None)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn guard_for(tmp: &Path) -> Guard {
+        Guard::for_home(tmp, &[], None)
+    }
 
     #[test]
     fn reports_topmost_empty_folders() {
         let tmp = tempfile::tempdir().unwrap();
-        fs::create_dir_all(tmp.path().join(r"a\b\c")).unwrap();
-        fs::create_dir_all(tmp.path().join(r"d\e")).unwrap();
-        fs::write(tmp.path().join(r"d\file.txt"), b"x").unwrap();
-        fs::create_dir_all(tmp.path().join(r"f\.git")).unwrap();
+        let d_e = Path::new("d").join("e");
+        fs::create_dir_all(tmp.path().join("a").join("b").join("c")).unwrap();
+        fs::create_dir_all(tmp.path().join(&d_e)).unwrap();
+        fs::write(tmp.path().join("d").join("file.txt"), b"x").unwrap();
+        fs::create_dir_all(tmp.path().join("f").join(".git")).unwrap();
         let found = find_empty(
             &[tmp.path().to_path_buf()],
-            &Guard::new(&[], None),
+            &guard_for(tmp.path()),
             &Job::new(),
         );
         let names: Vec<String> = found
@@ -123,7 +133,10 @@ mod tests {
                     .into_owned()
             })
             .collect();
-        assert_eq!(names, vec!["a".to_string(), r"d\e".to_string()]);
+        assert_eq!(
+            names,
+            vec!["a".to_string(), d_e.to_string_lossy().into_owned()]
+        );
         assert_eq!(found[0].nested, 2);
     }
 }

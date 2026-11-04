@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use rayon::prelude::*;
 use serde::Serialize;
 
-use crate::fsmeta::{is_cloud_only, is_link, mtime, now_unix};
+use crate::fsmeta::{disk_size, is_cloud_only, is_link, mtime, now_unix};
 use crate::job::Job;
 use crate::paths::{expand_pattern, wildcard_match};
 use crate::rules::{Mode, TargetRule};
@@ -61,7 +61,7 @@ pub fn matching_files(dir: &Path, include: &[String]) -> Vec<(PathBuf, u64, i64)
         if is_cloud_only(&md) {
             continue;
         }
-        out.push((entry.path(), md.len(), mtime(&md)));
+        out.push((entry.path(), disk_size(&md), mtime(&md)));
     }
     out
 }
@@ -88,7 +88,11 @@ pub fn scan_target(rule: &TargetRule, running: &HashSet<String>, job: &Job) -> T
         let info = recycle_bin_info();
         if info.bytes > 0 {
             found.push(FoundPath {
-                path: String::from("Recycle Bin"),
+                path: String::from(if cfg!(windows) {
+                    "Recycle Bin"
+                } else {
+                    "Trash"
+                }),
                 bytes: info.bytes,
                 files: info.items,
             });
@@ -171,7 +175,7 @@ pub fn scan_targets(rules: &[TargetRule], job: &Job) -> Vec<TargetResult> {
 }
 
 // Rule expansion and the guard only know Windows paths so far.
-#[cfg(all(test, windows))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::rules::{Group, Risk};
@@ -205,7 +209,7 @@ mod tests {
         let cache = tmp.path().join("Cache");
         fs::create_dir_all(cache.join("sub")).unwrap();
         fs::write(cache.join("a.bin"), [0u8; 10]).unwrap();
-        fs::write(cache.join(r"sub\b.bin"), [0u8; 20]).unwrap();
+        fs::write(cache.join("sub").join("b.bin"), [0u8; 20]).unwrap();
         fs::write(tmp.path().join("x.dmp"), [0u8; 5]).unwrap();
         fs::write(tmp.path().join("keep.txt"), [0u8; 7]).unwrap();
         let job = Job::new();
@@ -219,8 +223,12 @@ mod tests {
             &running,
             &job,
         );
+        let on_disk = |p: &Path| disk_size(&fs::metadata(p).unwrap());
         // Absolute paths without a variable are fine here: expand_pattern only needs a drive.
-        assert_eq!(r.bytes, 30);
+        assert_eq!(
+            r.bytes,
+            on_disk(&cache.join("a.bin")) + on_disk(&cache.join("sub").join("b.bin"))
+        );
         assert_eq!(r.files, 2);
         let r = scan_target(
             &rule(
@@ -231,7 +239,7 @@ mod tests {
             &running,
             &job,
         );
-        assert_eq!(r.bytes, 5);
+        assert_eq!(r.bytes, on_disk(&tmp.path().join("x.dmp")));
         assert!(r.running.is_empty());
     }
 }

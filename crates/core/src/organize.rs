@@ -55,8 +55,37 @@ pub struct AiModel {
     pub same_as: Vec<String>,
 }
 
+#[cfg(not(target_os = "linux"))]
 fn home() -> PathBuf {
     env_path("USERPROFILE").unwrap_or_else(|| PathBuf::from(r"C:\Users\Default"))
+}
+
+/// Falls back to a folder that holds nothing, so a broken `$HOME` finds no models rather than
+/// someone else's.
+#[cfg(target_os = "linux")]
+fn home() -> PathBuf {
+    crate::xdg::Xdg::current()
+        .map(|x| x.home)
+        .unwrap_or_else(|| PathBuf::from("/nonexistent"))
+}
+
+/// `base` joined with a relative path written with backslashes, which are separators only on
+/// Windows.
+fn under(base: &Path, rel: &str) -> PathBuf {
+    base.join(rel.replace('\\', std::path::MAIN_SEPARATOR_STR))
+}
+
+/// The Hugging Face cache's default parent: `$XDG_CACHE_HOME` on Linux, as the library documents.
+#[cfg(target_os = "linux")]
+fn default_cache() -> PathBuf {
+    crate::xdg::Xdg::current()
+        .map(|x| x.cache)
+        .unwrap_or_else(|| under(&home(), ".cache"))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn default_cache() -> PathBuf {
+    under(&home(), ".cache")
 }
 
 fn ext_of(name: &str) -> String {
@@ -125,7 +154,7 @@ fn model_entry(
 fn huggingface(job: &Job) -> Vec<AiModel> {
     let hub = env_path("HF_HUB_CACHE")
         .or_else(|| env_path("HF_HOME").map(|h| h.join("hub")))
-        .unwrap_or_else(|| home().join(r".cache\huggingface\hub"));
+        .unwrap_or_else(|| under(&default_cache(), r"huggingface\hub"));
     let Ok(rd) = fs::read_dir(&hub) else {
         return Vec::new();
     };
@@ -164,8 +193,8 @@ fn huggingface(job: &Job) -> Vec<AiModel> {
 /// LM Studio: `models/<publisher>/<repo>/files`, in the current and the legacy location.
 fn lmstudio(job: &Job) -> Vec<AiModel> {
     let roots = [
-        home().join(r".lmstudio\models"),
-        home().join(r".cache\lm-studio\models"),
+        under(&home(), r".lmstudio\models"),
+        under(&home(), r".cache\lm-studio\models"),
     ];
     let mut repos = Vec::new();
     for root in roots {
@@ -229,7 +258,7 @@ struct OllamaManifest {
 /// Ollama: manifests name the layers; blobs are shared between tags, so removal goes through
 /// `ollama rm` instead of deleting files.
 fn ollama() -> Vec<AiModel> {
-    let models = env_path("OLLAMA_MODELS").unwrap_or_else(|| home().join(r".ollama\models"));
+    let models = env_path("OLLAMA_MODELS").unwrap_or_else(|| under(&home(), r".ollama\models"));
     let base = models.join("manifests");
     let mut out = Vec::new();
     let mut stack = vec![(base.clone(), 0usize)];
@@ -309,10 +338,10 @@ fn ollama() -> Vec<AiModel> {
 fn comfy_roots(extra: &[PathBuf]) -> Vec<PathBuf> {
     let h = home();
     let mut candidates = vec![
-        h.join(r"Documents\ComfyUI"),
+        under(&h, r"Documents\ComfyUI"),
         h.join("ComfyUI"),
-        h.join(r"Desktop\ComfyUI"),
-        h.join(r"ComfyUI_windows_portable\ComfyUI"),
+        under(&h, r"Desktop\ComfyUI"),
+        under(&h, r"ComfyUI_windows_portable\ComfyUI"),
     ];
     if let Some(appdata) = env_path("APPDATA")
         && let Ok(text) = fs::read_to_string(appdata.join(r"ComfyUI\config.json"))
@@ -626,7 +655,7 @@ pub fn assistant_data(job: &Job) -> Vec<AssistantData> {
     let mut out: Vec<AssistantData> = SPECS
         .par_iter()
         .filter_map(|spec| {
-            let dir = h.join(spec.rel);
+            let dir = under(&h, spec.rel);
             if !dir.is_dir()
                 || dir
                     .symlink_metadata()

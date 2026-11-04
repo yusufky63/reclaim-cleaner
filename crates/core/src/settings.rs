@@ -1,5 +1,6 @@
 //! User settings and the app's data folder. In portable mode (a `portable` file next to the
-//! exe) everything lives in `.\data` beside the exe instead of `%APPDATA%\ReClaim`.
+//! exe) everything lives in `.\data` beside the exe instead of `%APPDATA%\ReClaim`
+//! (`$XDG_DATA_HOME/ReClaim` on Linux).
 
 use std::path::{Path, PathBuf};
 
@@ -60,9 +61,19 @@ pub fn data_dir() -> PathBuf {
     if let Some(dir) = portable_dir() {
         return dir;
     }
-    crate::paths::env_path("APPDATA")
+    default_data_parent()
         .unwrap_or_else(std::env::temp_dir)
         .join("ReClaim")
+}
+
+#[cfg(target_os = "linux")]
+fn default_data_parent() -> Option<PathBuf> {
+    crate::xdg::Xdg::current().map(|x| x.data)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn default_data_parent() -> Option<PathBuf> {
+    crate::paths::env_path("APPDATA")
 }
 
 /// `<exe dir>\data` when a `portable` marker file sits next to the exe.
@@ -123,5 +134,15 @@ mod tests {
         );
         std::fs::write(tmp.path().join("settings.json"), b"{ not json").unwrap();
         assert!(Settings::load(tmp.path()).is_err());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn keeps_data_in_the_xdg_data_folder() {
+        if portable_dir().is_none()
+            && let Some(xdg) = crate::xdg::Xdg::current()
+        {
+            assert_eq!(data_dir(), xdg.data.join("ReClaim"));
+        }
     }
 }

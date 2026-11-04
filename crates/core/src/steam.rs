@@ -1,8 +1,8 @@
 //! Steam: the install folder, every library folder on every drive, installed games and the
 //! per-game shader caches.
 //!
-//! Steam writes its install path to `HKCU\Software\Valve\Steam` and its library list to
-//! `steamapps\libraryfolders.vdf`. Each library keeps `appmanifest_<appid>.acf` files for the
+//! Steam writes its install path to `HKCU\Software\Valve\Steam` (on Linux it sits in a few known
+//! folders) and its library list to `steamapps\libraryfolders.vdf`. Each library keeps `appmanifest_<appid>.acf` files for the
 //! games installed there and a `steamapps\shadercache\<appid>` folder per game. Nothing here
 //! starts Steam or talks to its servers.
 
@@ -210,6 +210,7 @@ fn is_library(dir: &Path) -> bool {
     dir.is_absolute() && real_dir(dir) && real_dir(&dir.join("steamapps"))
 }
 
+#[cfg(windows)]
 fn clean_registry_path(raw: &str) -> Option<PathBuf> {
     let s = raw.trim().replace('/', "\\");
     let p = PathBuf::from(s.trim_end_matches('\\'));
@@ -244,18 +245,83 @@ pub fn steam_root() -> Option<PathBuf> {
         })
 }
 
-/// Steam on other systems is found through its own folders, which are not ported yet.
+/// A library folder from `libraryfolders.vdf`, with any links resolved so that one folder listed
+/// under two names counts once. Only absolute paths; a folder that is gone is left out.
+#[cfg(not(windows))]
+fn clean_registry_path(raw: &str) -> Option<PathBuf> {
+    let p = std::path::Path::new(raw.trim());
+    if !p.is_absolute() {
+        return None;
+    }
+    fs::canonicalize(p).ok()
+}
+
+/// Where Steam keeps its folder on Linux: the native install with the links it leaves in
+/// `~/.steam`, an older Debian package and Flatpak. The Snap folder
+/// (`~/snap/steam/common/.local/share/Steam`) is left out: the guard only opens `.cache` inside a
+/// Snap, so its rows would show a size and then fail to clean.
+#[cfg(target_os = "linux")]
+fn steam_candidates(xdg: &crate::xdg::Xdg) -> Vec<PathBuf> {
+    let h = &xdg.home;
+    vec![
+        xdg.data.join("Steam"),
+        h.join(".local/share/Steam"),
+        h.join(".steam/steam"),
+        h.join(".steam/root"),
+        h.join(".steam/debian-installation"),
+        h.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+    ]
+}
+
+/// Every Steam folder on Linux, each once: `~/.steam/steam` usually is a link to
+/// `~/.local/share/Steam`, so the links are resolved before they are compared.
+#[cfg(target_os = "linux")]
+pub fn installs() -> Vec<PathBuf> {
+    crate::xdg::Xdg::current()
+        .map(|xdg| installs_among(&steam_candidates(&xdg)))
+        .unwrap_or_default()
+}
+
+#[cfg(target_os = "linux")]
+fn installs_among(candidates: &[PathBuf]) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    for real in candidates.iter().filter_map(|c| fs::canonicalize(c).ok()) {
+        if !out.contains(&real) && is_library(&real) {
+            out.push(real);
+        }
+    }
+    out
+}
+
+#[cfg(windows)]
+pub fn installs() -> Vec<PathBuf> {
+    steam_root().into_iter().collect()
+}
+
+/// Steam on other systems is not ported yet.
+#[cfg(not(any(windows, target_os = "linux")))]
+pub fn installs() -> Vec<PathBuf> {
+    Vec::new()
+}
+
+/// The current user's Steam folder, if Steam is installed and the folder is real.
 #[cfg(not(windows))]
 pub fn steam_root() -> Option<PathBuf> {
-    None
+    installs().into_iter().next()
 }
+
+/// The name Steam's process goes by in [`crate::system::running_processes`].
+#[cfg(windows)]
+const STEAM_PROCESS: &str = "steam.exe";
+#[cfg(not(windows))]
+const STEAM_PROCESS: &str = "steam";
 
 /// The Steam folder itself plus every library it lists, each once, in Steam's order. Folders
 /// that are gone (an unplugged drive) or are links are left out.
 pub fn libraries_in(root: &Path) -> Vec<PathBuf> {
     let listed: Vec<PathBuf> = [
-        root.join(r"steamapps\libraryfolders.vdf"),
-        root.join(r"config\libraryfolders.vdf"),
+        root.join("steamapps").join("libraryfolders.vdf"),
+        root.join("config").join("libraryfolders.vdf"),
     ]
     .iter()
     .filter_map(|f| fs::read_to_string(f).ok())
@@ -283,7 +349,13 @@ pub fn libraries_in(root: &Path) -> Vec<PathBuf> {
 
 /// Every Steam library of the current user; empty when Steam is not installed.
 pub fn libraries() -> Vec<PathBuf> {
-    steam_root().map(|r| libraries_in(&r)).unwrap_or_default()
+    let mut out: Vec<PathBuf> = Vec::new();
+    for lib in installs().iter().flat_map(|r| libraries_in(r)) {
+        if !out.contains(&lib) {
+            out.push(lib);
+        }
+    }
+    out
 }
 
 fn manifests(library: &Path) -> Vec<Manifest> {
@@ -343,9 +415,9 @@ pub struct SteamReport {
     pub caches: Vec<ShaderCache>,
 }
 
-/// Shader cache folders (`steamapps\shadercache\<appid>`) of one library, unmeasured.
+/// Shader cache folders (`steamapps/shadercache/<appid>`) of one library, unmeasured.
 fn cache_dirs(library: &Path) -> Vec<(String, PathBuf)> {
-    let Ok(rd) = fs::read_dir(library.join(r"steamapps\shadercache")) else {
+    let Ok(rd) = fs::read_dir(library.join("steamapps").join("shadercache")) else {
         return Vec::new();
     };
     rd.flatten()
@@ -432,7 +504,7 @@ pub fn report_for(root: &Path, job: &Job) -> SteamReport {
                 .to_string_lossy()
                 .into_owned(),
         ),
-        running: crate::system::running_processes().contains("steam.exe"),
+        running: crate::system::running_processes().contains(STEAM_PROCESS),
         libraries,
         caches,
     }
@@ -556,6 +628,7 @@ mod tests {
         assert_eq!(paths, vec![root.join(r"steamapps\shadercache\999")]);
     }
 
+    #[cfg(windows)]
     #[test]
     fn registry_paths_must_be_drive_paths() {
         assert_eq!(
@@ -564,5 +637,98 @@ mod tests {
         );
         assert!(clean_registry_path(r"\\server\share\Steam").is_none());
         assert!(clean_registry_path("relative/steam").is_none());
+    }
+
+    #[cfg(target_os = "linux")]
+    mod linux {
+        use super::*;
+        use crate::xdg::Xdg;
+        use std::os::unix::fs::symlink;
+
+        fn write(path: &Path, text: &str) {
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        }
+
+        fn library(path: &Path) {
+            fs::create_dir_all(path.join("steamapps")).unwrap();
+        }
+
+        #[test]
+        fn resolves_links_and_lists_each_install_once() {
+            let tmp = tempfile::tempdir().unwrap();
+            let home = fs::canonicalize(tmp.path()).unwrap();
+            let native = home.join(".local/share/Steam");
+            library(&native);
+            fs::create_dir_all(home.join(".steam")).unwrap();
+            symlink(&native, home.join(".steam/steam")).unwrap();
+            symlink(&native, home.join(".steam/root")).unwrap();
+            let flatpak = home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam");
+            library(&flatpak);
+            // Refused by the guard, so not offered at all.
+            library(&home.join("snap/steam/common/.local/share/Steam"));
+            // Not Steam: no steamapps folder.
+            fs::create_dir_all(home.join(".steam/debian-installation")).unwrap();
+
+            let xdg = Xdg::from_vars(|n| (n == "HOME").then(|| home.clone().into_os_string()));
+            let found = installs_among(&steam_candidates(&xdg.unwrap()));
+            assert_eq!(found, vec![native, flatpak]);
+        }
+
+        #[test]
+        fn finds_only_a_link_when_the_install_lives_elsewhere() {
+            let tmp = tempfile::tempdir().unwrap();
+            let home = fs::canonicalize(tmp.path()).unwrap();
+            let real = home.join("games/Steam");
+            library(&real);
+            fs::create_dir_all(home.join(".steam")).unwrap();
+            symlink(&real, home.join(".steam/steam")).unwrap();
+            let xdg = Xdg::from_vars(|n| (n == "HOME").then(|| home.clone().into_os_string()));
+            assert_eq!(installs_among(&steam_candidates(&xdg.unwrap())), vec![real]);
+        }
+
+        #[test]
+        fn reads_libraries_with_unix_paths() {
+            let tmp = tempfile::tempdir().unwrap();
+            let base = fs::canonicalize(tmp.path()).unwrap();
+            let root = base.join("Steam");
+            let other = base.join("Library2");
+            let gone = base.join("Unplugged");
+            let alias = base.join("alias");
+            library(&root);
+            library(&other);
+            symlink(&root, &alias).unwrap();
+            let vdf = format!(
+                "\"libraryfolders\" {{ \"0\" {{ \"path\" \"{}\" }} \"1\" {{ \"path\" \"{}\" }} \"2\" {{ \"path\" \"{}\" }} \"3\" {{ \"path\" \"{}\" }} \"4\" {{ \"path\" \"relative/lib\" }} }}",
+                root.display(),
+                other.display(),
+                gone.display(),
+                alias.display(),
+            );
+            write(&root.join("steamapps/libraryfolders.vdf"), &vdf);
+            write(
+                &other.join("steamapps/appmanifest_70.acf"),
+                "\"AppState\" { \"appid\" \"70\" \"name\" \"Half-Life\" \"SizeOnDisk\" \"1000\" }",
+            );
+            write(&other.join("steamapps/shadercache/70/a.bin"), "1234567890");
+            write(&root.join("steamapps/shadercache/999/b.bin"), "12345");
+            assert_eq!(libraries_in(&root), vec![root.clone(), other.clone()]);
+
+            let r = report_for(&root, &Job::new());
+            assert_eq!(r.libraries.len(), 2);
+            assert_eq!(r.libraries[1].games[0].name, "Half-Life");
+            assert_eq!(r.caches.len(), 2);
+            assert!(r.libraries[0].free.is_some());
+            let paths = cache_paths_for(&root, &["999".into(), "12345".into()]);
+            assert_eq!(paths, vec![root.join("steamapps/shadercache/999")]);
+        }
+
+        #[test]
+        fn library_paths_must_be_absolute() {
+            assert!(clean_registry_path("relative/steam").is_none());
+            assert!(clean_registry_path(r"C:\\Steam").is_none());
+            assert!(clean_registry_path("/no/such/folder").is_none());
+            assert_eq!(clean_registry_path("/"), Some(PathBuf::from("/")));
+        }
     }
 }

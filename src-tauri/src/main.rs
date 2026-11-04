@@ -2,7 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    // Not `args()`: it panics on an argument that is not valid Unicode, which any program can pass.
+    let args: Vec<String> = std::env::args_os()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
     // Elevated helper mode: clean admin-only rules and exit without opening a window.
     if let Some(pos) = args.iter().position(|a| a == "--elevated-clean") {
         let code = reclaim_app::helper::run(args.get(pos + 1).map(String::as_str));

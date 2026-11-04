@@ -217,8 +217,25 @@ pub fn status(exe: &Path) -> MenuStatus {
     }
 }
 
+/// Checks one path from the file manager or another program: only absolute, plain paths to
+/// existing folders. `/` and everything else on a Unix system is a path, so nothing else needs
+/// repairing or refusing here.
+#[cfg(not(windows))]
+pub fn normalize_shell_arg(raw: &str) -> Option<PathBuf> {
+    let s = raw.trim().trim_matches('"').trim();
+    if s.is_empty() || s.len() > 32_000 || s.contains('\0') || !s.starts_with('/') {
+        return None;
+    }
+    if s.split('/').any(|seg| seg == ".." || seg == ".") {
+        return None;
+    }
+    let p: PathBuf = Path::new(s).components().collect();
+    p.is_dir().then_some(p)
+}
+
 /// Repairs and checks one path from Explorer. Accepts only existing folders on drive-letter
 /// paths; network shares, device paths and shell namespaces (`::{CLSID}`) are refused.
+#[cfg(windows)]
 pub fn normalize_shell_arg(raw: &str) -> Option<PathBuf> {
     let s = raw.trim().trim_matches('"').trim();
     if s.is_empty() || s.len() > 32_000 || s.contains('\0') {
@@ -447,5 +464,83 @@ mod tests {
         RegKey::predef(HKEY_CURRENT_USER)
             .delete_subkey_all(&base)
             .unwrap();
+    }
+}
+
+#[cfg(all(test, not(windows)))]
+mod unix_tests {
+    use super::*;
+
+    #[test]
+    fn accepts_only_plain_absolute_folders() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().to_string_lossy().into_owned();
+        assert_eq!(normalize_shell_arg(&dir), Some(tmp.path().to_path_buf()));
+        assert_eq!(
+            normalize_shell_arg(&format!("\"{dir}\"")),
+            Some(tmp.path().to_path_buf())
+        );
+        assert_eq!(
+            normalize_shell_arg(&format!("{dir}/")),
+            Some(tmp.path().to_path_buf()),
+            "a trailing slash goes"
+        );
+        assert_eq!(normalize_shell_arg("/"), Some(PathBuf::from("/")));
+        let spaced = tmp.path().join("My Folder");
+        std::fs::create_dir(&spaced).unwrap();
+        assert_eq!(
+            normalize_shell_arg(&spaced.to_string_lossy()),
+            Some(spaced.clone())
+        );
+        assert!(normalize_shell_arg("relative").is_none());
+        assert!(normalize_shell_arg("").is_none());
+        assert!(normalize_shell_arg(r"C:\Windows").is_none());
+        assert!(normalize_shell_arg("file:///home").is_none());
+        assert!(normalize_shell_arg(&format!("{dir}/../x")).is_none());
+        assert!(normalize_shell_arg(&format!("{dir}/./x")).is_none());
+        assert!(normalize_shell_arg(&format!("{dir}/gone")).is_none());
+        let file = tmp.path().join("f.txt");
+        std::fs::write(&file, b"").unwrap();
+        assert!(normalize_shell_arg(&file.to_string_lossy()).is_none());
+    }
+
+    #[test]
+    fn reads_only_analyze_flags() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().to_string_lossy().into_owned();
+        let args: Vec<String> = vec![
+            "reclaim-cleaner".into(),
+            "--elevated-clean".into(),
+            dir.clone(),
+            "--analyze".into(),
+            dir.clone(),
+            "--analyze".into(),
+        ];
+        assert_eq!(analyze_args(&args), vec![tmp.path().to_path_buf()]);
+    }
+
+    #[test]
+    fn merges_bursts_and_keeps_case_apart() {
+        let p = |s: &str| PathBuf::from(s);
+        assert_eq!(
+            plan_analyze(&[p("/data/A"), p("/data/a")]),
+            Some(AnalyzeRequest::Selection {
+                parent: "/data".into(),
+                names: vec!["A".into(), "a".into()]
+            }),
+            "two folders on Linux"
+        );
+        assert_eq!(
+            plan_analyze(&[p("/data/A"), p("/data/A/")]),
+            Some(AnalyzeRequest::One {
+                path: "/data/A".into()
+            })
+        );
+        assert_eq!(
+            plan_analyze(&[p("/data/A"), p("/other/B")]),
+            Some(AnalyzeRequest::One {
+                path: "/data/A".into()
+            })
+        );
     }
 }
