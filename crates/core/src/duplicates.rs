@@ -20,6 +20,7 @@ use xxhash_rust::xxh3::Xxh3;
 use crate::fsmeta::{is_cloud_only, is_link, mtime};
 use crate::job::Job;
 use crate::paths::{Guard, Origin};
+use crate::walk::{DirAction, WalkContext};
 
 const EDGE: u64 = 16 * 1024;
 
@@ -51,6 +52,7 @@ fn collect(
     min: u64,
     guard: &Guard,
     job: &Job,
+    ctx: &WalkContext,
     out: &parking_lot::Mutex<Vec<Candidate>>,
 ) {
     if job.is_cancelled() {
@@ -78,11 +80,19 @@ fn collect(
             {
                 continue;
             }
+            // Hashing reads whole files, so a remote mount would be downloaded. A name that is
+            // not valid text cannot reach the UI and come back, so nothing below it could go.
+            if path.to_str().is_none()
+                || ctx.action(&path) != DirAction::Enter
+                || guard.is_private(&path)
+            {
+                continue;
+            }
             subdirs.push(path);
             continue;
         }
         let Ok(md) = e.metadata() else { continue };
-        if is_cloud_only(&md) || md.len() < min {
+        if is_cloud_only(&md) || md.len() < min || path.to_str().is_none() {
             continue;
         }
         local.push(Candidate {
@@ -95,10 +105,9 @@ fn collect(
     if !local.is_empty() {
         out.lock().extend(local);
     }
-    let _ = guard;
     subdirs
         .par_iter()
-        .for_each(|d| collect(d, min, guard, job, out));
+        .for_each(|d| collect(d, min, guard, job, ctx, out));
 }
 
 fn quick_hash(path: &Path, size: u64) -> Option<u64> {
@@ -165,9 +174,12 @@ pub fn find_duplicates(
 ) -> Vec<DupGroup> {
     job.set_stage("collect");
     let all = parking_lot::Mutex::new(Vec::new());
-    roots
-        .par_iter()
-        .for_each(|r| collect(r, min_bytes.max(1), guard, job, &all));
+    roots.par_iter().for_each(|r| {
+        let ctx = WalkContext::new(r);
+        if ctx.may_start(r) {
+            collect(r, min_bytes.max(1), guard, job, &ctx, &all);
+        }
+    });
     let all = all.into_inner();
 
     // Overlapping roots would list the same file twice.
@@ -299,5 +311,39 @@ mod tests {
             "hard link counted once, near-duplicate excluded"
         );
         assert_eq!(groups[0].wasted, 100_000);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn stays_out_of_mounts_private_folders_and_unreadable_names() {
+        use crate::mounts::{MountTable, parse_mountinfo};
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path();
+        let data = vec![7u8; 4096];
+        let bad = OsStr::from_bytes(b"caf\xe9");
+        for dir in [
+            home.join("kept"),
+            home.join("rclone"),
+            home.join(".ssh"),
+            home.join(".config/chromium/Default"),
+            home.join(bad),
+        ] {
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("same.bin"), &data).unwrap();
+        }
+        fs::write(home.join("kept").join(bad), &data).unwrap();
+        let line = format!(
+            "2 1 0:9 / {} rw - fuse.rclone src rw\n",
+            home.join("rclone").display()
+        );
+        let table = MountTable::from_mounts(parse_mountinfo(line.as_bytes()));
+        let ctx = WalkContext::with_mounts(home, table);
+        let out = parking_lot::Mutex::new(Vec::new());
+        collect(home, 1, &guard_for(home), &Job::new(), &ctx, &out);
+        let found: Vec<PathBuf> = out.into_inner().into_iter().map(|c| c.path).collect();
+        assert_eq!(found, vec![home.join("kept").join("same.bin")]);
     }
 }

@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 
 use crate::fsmeta::{is_cloud_only, is_link, mtime, now_unix};
+use crate::walk::{DirAction, WalkContext};
 
 const EXTENSIONS: &[&str] = &[
     "exe",
@@ -38,39 +39,45 @@ pub struct InstallerFile {
 pub fn find_installers(dirs: &[PathBuf], min_age_days: u32) -> Vec<InstallerFile> {
     let cutoff = now_unix() - i64::from(min_age_days) * 86_400;
     let mut out = Vec::new();
-    let mut stack: Vec<(PathBuf, u8)> = dirs.iter().map(|d| (d.clone(), 0)).collect();
-    while let Some((dir, depth)) = stack.pop() {
-        let Ok(rd) = fs::read_dir(&dir) else { continue };
-        for e in rd.flatten() {
-            let Ok(ft) = e.file_type() else { continue };
-            if is_link(&ft) {
-                continue;
-            }
-            if ft.is_dir() {
-                if depth == 0 {
-                    stack.push((e.path(), 1));
+    for root in dirs {
+        let ctx = WalkContext::new(root);
+        if !ctx.may_start(root) {
+            continue;
+        }
+        let mut stack: Vec<(PathBuf, u8)> = vec![(root.clone(), 0)];
+        while let Some((dir, depth)) = stack.pop() {
+            let Ok(rd) = fs::read_dir(&dir) else { continue };
+            for e in rd.flatten() {
+                let Ok(ft) = e.file_type() else { continue };
+                if is_link(&ft) {
+                    continue;
                 }
-                continue;
+                if ft.is_dir() {
+                    if depth == 0 && ctx.action(&e.path()) == DirAction::Enter {
+                        stack.push((e.path(), 1));
+                    }
+                    continue;
+                }
+                let name = e.file_name().to_string_lossy().into_owned();
+                let ext = name
+                    .rsplit_once('.')
+                    .map(|(_, x)| x.to_lowercase())
+                    .unwrap_or_default();
+                if !EXTENSIONS.contains(&ext.as_str()) {
+                    continue;
+                }
+                let Ok(md) = e.metadata() else { continue };
+                if is_cloud_only(&md) || mtime(&md) > cutoff {
+                    continue;
+                }
+                out.push(InstallerFile {
+                    path: e.path().to_string_lossy().into_owned(),
+                    name,
+                    bytes: md.len(),
+                    mtime: mtime(&md),
+                    ext,
+                });
             }
-            let name = e.file_name().to_string_lossy().into_owned();
-            let ext = name
-                .rsplit_once('.')
-                .map(|(_, x)| x.to_lowercase())
-                .unwrap_or_default();
-            if !EXTENSIONS.contains(&ext.as_str()) {
-                continue;
-            }
-            let Ok(md) = e.metadata() else { continue };
-            if is_cloud_only(&md) || mtime(&md) > cutoff {
-                continue;
-            }
-            out.push(InstallerFile {
-                path: e.path().to_string_lossy().into_owned(),
-                name,
-                bytes: md.len(),
-                mtime: mtime(&md),
-                ext,
-            });
         }
     }
     out.sort_by_key(|x| std::cmp::Reverse(x.bytes));

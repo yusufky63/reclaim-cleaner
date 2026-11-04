@@ -822,6 +822,25 @@ impl Guard {
         self.check_linux(dir, Origin::Rule, &self.no_wipe)
     }
 
+    /// True for what lies inside system folders, keys, mail, browser profiles or a sandboxed
+    /// app's data. Duplicates and Large files stay out of these: nothing there may be deleted,
+    /// and the hashing would read private files for no result. Unlike `check`, a folder that only
+    /// holds such a place (`~/.config`) is not private.
+    pub fn is_private(&self, path: &Path) -> bool {
+        let real = resolve_parent(path).map(|p| key(&p));
+        [Some(key(path)), real].iter().flatten().any(|k| {
+            self.subtree
+                .iter()
+                .chain(&self.precious)
+                .any(|p| is_within(k, p))
+                || self
+                    .browser_roots
+                    .iter()
+                    .any(|(root, _)| is_within(k, root))
+                || self.home.iter().any(|h| is_sandbox_data(k, h))
+        })
+    }
+
     fn check_linux(&self, path: &Path, origin: Origin, whole: &[String]) -> Result<()> {
         let deny = |why: &str| Err(Error::Protected(format!("{} ({why})", path.display())));
         if let Some(why) = self.refuse_all {
@@ -1116,6 +1135,12 @@ impl Guard {
 }
 
 impl Guard {
+    /// Windows has no such list: its protected folders are checked when deleting.
+    #[cfg(not(target_os = "linux"))]
+    pub fn is_private(&self, _path: &Path) -> bool {
+        false
+    }
+
     pub fn is_excluded(&self, k: &str) -> bool {
         self.exclusions.iter().any(|e| is_within(k, e))
     }

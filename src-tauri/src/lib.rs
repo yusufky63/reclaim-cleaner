@@ -377,13 +377,18 @@ fn explorer_find(state: State<'_, AppState>, path: String) -> Option<u32> {
 }
 
 #[tauri::command]
-fn explorer_large(state: State<'_, AppState>, min_bytes: u64, limit: u32) -> Vec<FileView> {
-    state
+fn explorer_large(
+    state: State<'_, AppState>,
+    min_bytes: u64,
+    limit: u32,
+) -> CmdResult<Vec<FileView>> {
+    let guard = state.guard().map_err(err)?;
+    Ok(state
         .tree
         .read()
         .as_ref()
-        .map(|t| t.large_files(min_bytes, limit.min(5000) as usize))
-        .unwrap_or_default()
+        .map(|t| t.large_files(min_bytes, limit.min(5000) as usize, &guard))
+        .unwrap_or_default())
 }
 
 #[tauri::command]
@@ -648,7 +653,8 @@ async fn paths_clean(
         if let Some(tree) = tree.as_mut() {
             for p in &paths {
                 let path = Path::new(p);
-                if path.symlink_metadata().is_err() {
+                // This spelling reaches no file even though the file is there, and it was refused.
+                if !p.contains(char::REPLACEMENT_CHARACTER) && path.symlink_metadata().is_err() {
                     tree.remove(path);
                 }
             }

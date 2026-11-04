@@ -145,6 +145,7 @@ export const en = {
     needs_admin: "Needs administrator",
     excluded_inside: "Contains an excluded folder",
     use_command: "Use the official command",
+    unreadable_name: "Name is not valid text",
     io: "Could not delete",
   },
   errors: {
@@ -242,6 +243,7 @@ export const en = {
       remote: "Network or FUSE mount, not scanned",
       memory: "In memory, not scanned",
     },
+    unreadableName: "This name is not valid text, so ReClaim cannot act on this item by itself. Its size is counted. Rename it in a file manager or a terminal, or delete the folder that holds it.",
     mountHints: {
       local: "Another disk is mounted here, so this scan did not enter it and its size is not counted.",
       remote: "This scan did not enter it, because reading a network or FUSE mount can download data. Its size is not counted.",

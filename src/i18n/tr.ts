@@ -145,6 +145,7 @@ export const tr: Messages = {
     needs_admin: "Yönetici gerekir",
     excluded_inside: "Hariç tutulan bir klasör içeriyor",
     use_command: "Resmi komutu kullan",
+    unreadable_name: "Ad geçerli bir metin değil",
     io: "Silinemedi",
   },
   errors: {
@@ -242,6 +243,7 @@ export const tr: Messages = {
       remote: "Ağ ya da FUSE bağlantısı, taranmadı",
       memory: "Bellekte, taranmadı",
     },
+    unreadableName: "Bu ad geçerli bir metin değil, bu yüzden ReClaim bu öğe üzerinde tek başına işlem yapamaz. Boyutu sayıldı. Dosya yöneticisinde ya da terminalde yeniden adlandırın veya içinde bulunduğu klasörü silin.",
     mountHints: {
       local: "Buraya başka bir disk bağlı, bu yüzden bu tarama içine girmedi ve boyutu sayılmadı.",
       remote: "Bu tarama içine girmedi, çünkü ağ ya da FUSE bağlantısını okumak veri indirebilir. Boyutu sayılmadı.",

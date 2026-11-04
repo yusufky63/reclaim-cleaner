@@ -14,7 +14,7 @@ use crate::fsmeta::{is_link, mtime};
 use crate::job::Job;
 use crate::paths::{env_path, wildcard_match};
 use crate::rules::{ArtifactRule, Risk};
-use crate::walk::measure_dir;
+use crate::walk::{DirAction, WalkContext, measure_dir};
 
 const MAX_DEPTH: usize = 14;
 
@@ -76,7 +76,10 @@ fn list(dir: &Path) -> Option<DirListing> {
         }
         let name = e.file_name().to_string_lossy().into_owned();
         if ft.is_dir() {
-            dirs.push((name, e.path()));
+            // A name that is not valid text cannot reach the UI and come back to be removed.
+            if e.file_name().to_str().is_some() {
+                dirs.push((name, e.path()));
+            }
         } else {
             files.insert(name.to_lowercase());
         }
@@ -145,6 +148,7 @@ fn walk(
     depth: usize,
     rules: &[ArtifactRule],
     job: &Job,
+    ctx: &WalkContext,
     out: &Mutex<BTreeMap<String, Project>>,
 ) {
     if job.is_cancelled() || depth > MAX_DEPTH {
@@ -165,6 +169,9 @@ fn walk(
     let mut hits = Vec::new();
     let mut descend = Vec::new();
     for (name, path) in &listing.dirs {
+        if ctx.action(path) != DirAction::Enter {
+            continue;
+        }
         let lower = name.to_lowercase();
         if let Some(rule) = match_rule(dir, &listing, name, path, rules) {
             hits.push((rule, name.clone(), path.clone()));
@@ -209,14 +216,19 @@ fn walk(
     }
     descend
         .par_iter()
-        .for_each(|p| walk(p, depth + 1, rules, job, out));
+        .for_each(|p| walk(p, depth + 1, rules, job, ctx, out));
 }
 
 /// Finds projects with artifacts below `roots`. Results are sorted by reclaimable size.
 pub fn scan_projects(roots: &[PathBuf], rules: &[ArtifactRule], job: &Job) -> Vec<Project> {
     job.set_stage("projects");
     let out = Mutex::new(BTreeMap::new());
-    roots.par_iter().for_each(|r| walk(r, 0, rules, job, &out));
+    roots.par_iter().for_each(|r| {
+        let ctx = WalkContext::new(r);
+        if ctx.may_start(r) {
+            walk(r, 0, rules, job, &ctx, &out);
+        }
+    });
     let mut projects: Vec<Project> = out.into_inner().into_values().collect();
     projects.sort_by_key(|x| std::cmp::Reverse(x.bytes));
     projects
@@ -336,5 +348,37 @@ mod tests {
         assert!(projects.iter().all(|p| p.name != "docs"));
         let android = projects.iter().find(|p| p.name == "android").unwrap();
         assert_eq!(android.artifacts[0].rule_id, "gradle-build");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn stays_out_of_mounts_and_unreadable_names() {
+        use crate::mounts::{MountTable, parse_mountinfo};
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let project = |dir: PathBuf| {
+            fs::create_dir_all(dir.join("node_modules/pkg")).unwrap();
+            fs::write(dir.join("package.json"), b"{}").unwrap();
+            fs::write(dir.join("node_modules/pkg/index.js"), [0u8; 8192]).unwrap();
+        };
+        project(root.join("web"));
+        project(root.join("sshfs/remote"));
+        project(root.join(OsStr::from_bytes(b"caf\xe9")));
+        // A mount named like an artifact is not one.
+        project(root.join("tool"));
+        let line = format!(
+            "2 1 0:9 / {} rw - fuse.sshfs src rw\n3 1 0:10 / {} rw - tmpfs tmpfs rw\n",
+            root.join("sshfs").display(),
+            root.join("tool/node_modules").display()
+        );
+        let table = MountTable::from_mounts(parse_mountinfo(line.as_bytes()));
+        let ctx = WalkContext::with_mounts(root, table);
+        let out = Mutex::new(BTreeMap::new());
+        walk(root, 0, builtin_artifacts(), &Job::new(), &ctx, &out);
+        let names: Vec<String> = out.into_inner().into_values().map(|p| p.name).collect();
+        assert_eq!(names, vec!["web".to_string()]);
     }
 }

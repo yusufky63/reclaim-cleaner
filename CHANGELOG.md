@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Linux engine foundation: exact path comparison, a Linux protected-path guard, mount-aware scanning, a delete walker that crosses neither links nor mounts, and drives, processes, trash, user folders and Steam from Linux sources. There is no Linux release yet.
 
+### Fixed
+
+- An item whose name is not valid text now says so instead of failing with "Already gone", and deleting it can no longer hit another file spelled the same way once shown.
+
 ## [0.3.0] - 2026-10-31
 
 ### Added

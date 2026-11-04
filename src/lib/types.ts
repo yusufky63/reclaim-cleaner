@@ -202,6 +202,8 @@ export interface NodeView {
   marked: Risk | null;
   /** Set on a mount the scan did not enter: no bytes, no children. Never set on Windows. */
   mount?: MountKind | null;
+  /** The name is not valid text: shown with U+FFFD, and only removable with its folder. */
+  unreadableName?: boolean;
   childCount: number;
   children: NodeView[];
   restBytes: number;

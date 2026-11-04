@@ -335,8 +335,9 @@ export function ExplorerPage() {
                         )}
                       </div>
                     )}
+                    {detail.unreadableName && <p className="mt-3 text-[13px] text-ink-secondary">{t("explorer.unreadableName")}</p>}
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {detail.kind !== "small" && (
+                      {detail.kind !== "small" && !detail.unreadableName && (
                         <>
                           <Button size="sm" icon={<FolderOpen size={14} strokeWidth={1.75} />} onClick={() => void api.reveal(detail.path).catch((e) => toast("danger", errorText(e)))}>
                             {t("common.reveal")}
@@ -420,9 +421,11 @@ export function ExplorerPage() {
                   )}
                 </ul>
               </Card>
-              <Button size="sm" variant="ghost" icon={<ExternalLink size={14} strokeWidth={1.75} />} onClick={() => void api.open(node.path).catch((e) => toast("danger", errorText(e)))}>
-                {t("explorer.openFolder")}
-              </Button>
+              {!node.unreadableName && (
+                <Button size="sm" variant="ghost" icon={<ExternalLink size={14} strokeWidth={1.75} />} onClick={() => void api.open(node.path).catch((e) => toast("danger", errorText(e)))}>
+                  {t("explorer.openFolder")}
+                </Button>
+              )}
             </div>
           </div>
           {drive && hiddenSpace && <HiddenSpacePanel root={drive.root} />}

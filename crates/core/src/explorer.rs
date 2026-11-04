@@ -17,7 +17,7 @@ use serde::Serialize;
 use crate::categories::{Category, classify_dir, classify_file, is_project_marker};
 use crate::fsmeta::{is_cloud_only, is_link, mtime, now_unix};
 use crate::job::Job;
-use crate::paths::{SEP, key, name_key};
+use crate::paths::{Guard, SEP, key, name_key};
 use crate::rules::Risk;
 use crate::walk::{DirAction, MountKind, WalkContext};
 
@@ -253,6 +253,9 @@ pub struct NodeView {
     pub rest_count: u32,
     /// Set for a mount the scan stopped at.
     pub mount: Option<MountKind>,
+    /// The path holds a name that is not valid text, so it is shown with U+FFFD and that spelling
+    /// reaches no file. The item counts in the sizes, but it can only be removed with its folder.
+    pub unreadable_name: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -405,14 +408,16 @@ impl Tree {
                 }
             }
         }
+        let path = self.path_of(id).to_string_lossy().into_owned();
         Some(NodeView {
             id,
+            unreadable_name: path.contains(char::REPLACEMENT_CHARACTER),
             name: if node.kind == NodeKind::Small {
                 String::new()
             } else {
                 node.name.clone()
             },
-            path: self.path_of(id).to_string_lossy().into_owned(),
+            path,
             kind: node.kind,
             category: node.category,
             bytes: node.bytes,
@@ -469,7 +474,7 @@ impl Tree {
             .collect()
     }
 
-    pub fn large_files(&self, min_bytes: u64, limit: usize) -> Vec<FileView> {
+    pub fn large_files(&self, min_bytes: u64, limit: usize, guard: &Guard) -> Vec<FileView> {
         let mut files: Vec<(u32, &Node)> = self
             .nodes
             .iter()
@@ -480,6 +485,7 @@ impl Tree {
         files.sort_by_key(|f| std::cmp::Reverse(f.1.bytes));
         files
             .into_iter()
+            .filter(|(id, _)| !guard.is_private(&self.path_of(*id)))
             .take(limit)
             .map(|(id, n)| FileView {
                 id,
@@ -684,7 +690,7 @@ mod tests {
         assert_eq!(tree.nodes[proj as usize].category, Category::Projects);
         let movie = tree.find(&tmp.path().join("media/movie.mkv")).unwrap();
         assert_eq!(tree.nodes[movie as usize].category, Category::Media);
-        assert_eq!(tree.large_files(BIG_FILE, 10).len(), 1);
+        assert_eq!(tree.large_files(BIG_FILE, 10, &Guard::default()).len(), 1);
 
         let nm = tmp.path().join("proj/node_modules");
         let nm_bytes = tree.nodes[tree.find(&nm).unwrap() as usize].bytes;
@@ -726,6 +732,51 @@ mod tests {
         use super::*;
         use crate::mounts::{MountTable, parse_mountinfo};
         use std::os::unix::fs::symlink;
+
+        #[test]
+        fn large_files_leave_out_private_folders() {
+            let tmp = tempfile::tempdir().unwrap();
+            let home = tmp.path();
+            fs::create_dir_all(home.join("videos")).unwrap();
+            fs::create_dir_all(home.join(".ssh")).unwrap();
+            write(&home.join("videos/film.mkv"), BIG_FILE as usize);
+            write(&home.join(".ssh/backup.tar"), BIG_FILE as usize);
+            let tree = Tree::scan(home, &Job::new());
+            let guard = Guard::for_home(home, &[], None);
+            let names: Vec<String> = tree
+                .large_files(1, 10, &guard)
+                .into_iter()
+                .map(|f| f.name)
+                .collect();
+            assert_eq!(names, vec!["film.mkv".to_string()]);
+            // The tree itself still shows where the space went.
+            assert!(tree.find(&home.join(".ssh/backup.tar")).is_some());
+        }
+
+        #[test]
+        fn marks_what_lies_below_a_name_that_is_not_text() {
+            use std::ffi::OsStr;
+            use std::os::unix::ffi::OsStrExt;
+
+            let tmp = tempfile::tempdir().unwrap();
+            let root = tmp.path();
+            let odd = root.join(OsStr::from_bytes(b"caf\xe9"));
+            fs::create_dir_all(odd.join("inner")).unwrap();
+            write(&odd.join("inner/data.bin"), BIG_FILE as usize);
+            fs::create_dir_all(root.join("plain")).unwrap();
+            write(&root.join("plain/data.bin"), BIG_FILE as usize);
+            let tree = Tree::scan(root, &Job::new());
+            let view = tree.view(0, 3, 100).unwrap();
+            assert!(!view.unreadable_name);
+            for dir in &view.children {
+                let expected = dir.name != "plain";
+                assert_eq!(dir.unreadable_name, expected, "{}", dir.name);
+                for child in &dir.children {
+                    assert_eq!(child.unreadable_name, expected, "{}", child.name);
+                }
+            }
+            assert_eq!(view.bytes, tree.nodes[0].bytes);
+        }
 
         fn scan(root: &Path, mounts: &[(&str, &str)]) -> Tree {
             let text: String = mounts

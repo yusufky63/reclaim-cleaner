@@ -15,7 +15,7 @@ use crate::fsmeta::{is_cloud_only, is_link, mtime};
 use crate::job::Job;
 use crate::paths::env_path;
 use crate::rules::Risk;
-use crate::walk::measure_dir;
+use crate::walk::{DirAction, WalkContext, measure_dir};
 
 const MODEL_EXTS: &[&str] = &[
     "gguf",
@@ -796,6 +796,7 @@ fn original_name(name: &str) -> Option<String> {
 pub fn downloads(root: &Path, job: &Job) -> DownloadsReport {
     job.set_stage("downloads");
     let mut files = Vec::new();
+    let ctx = WalkContext::new(root);
     let mut stack = vec![(root.to_path_buf(), 0usize)];
     let mut truncated = false;
     while let Some((dir, depth)) = stack.pop() {
@@ -806,7 +807,7 @@ pub fn downloads(root: &Path, job: &Job) -> DownloadsReport {
                 continue;
             }
             if ft.is_dir() {
-                if depth < 4 {
+                if depth < 4 && ctx.action(&e.path()) == DirAction::Enter {
                     stack.push((e.path(), depth + 1));
                 }
                 continue;

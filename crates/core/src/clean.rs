@@ -37,7 +37,7 @@ pub enum DeleteMethod {
 pub struct Failure {
     pub path: String,
     /// `in_use`, `access_denied`, `protected`, `not_found`, `link`, `app_running`,
-    /// `needs_admin`, `excluded_inside`, `use_command`, `io`.
+    /// `needs_admin`, `excluded_inside`, `use_command`, `unreadable_name`, `io`.
     pub reason: String,
 }
 
@@ -372,8 +372,8 @@ mod linux_delete {
 
     use rustix::fd::{AsFd, OwnedFd};
     use rustix::fs::{
-        AtFlags, CWD, Dir, FileType, Mode, OFlags, Stat, StatxAttributes, StatxFlags, fstat,
-        openat, statat, statx, unlinkat,
+        AtFlags, CWD, Dir, FileType, Mode, OFlags, Stat, StatxAttributes, StatxFlags, fchmod,
+        fstat, openat, statat, statx, unlinkat,
     };
     use rustix::io::Errno;
 
@@ -452,6 +452,16 @@ mod linux_delete {
         FileType::from_raw_mode(st.st_mode)
     }
 
+    /// Adds the owner's write and search rights to an open folder. Answers false when it had them
+    /// already or the folder belongs to someone else, so nothing is retried for no reason.
+    fn make_writable(dir: &OwnedFd) -> bool {
+        let Ok(st) = fstat(dir) else {
+            return false;
+        };
+        let mode = st.st_mode & 0o7777;
+        mode & 0o300 != 0o300 && fchmod(dir, Mode::from_raw_mode(mode | 0o300)).is_ok()
+    }
+
     struct Purge<'a, 'j> {
         acc: &'a Acc<'j>,
         cutoff: Option<i64>,
@@ -525,7 +535,7 @@ mod linux_delete {
             };
             match file_type(&st) {
                 // Removed as a link; the target is not touched.
-                FileType::Symlink => self.unlink(dir, name, path, AtFlags::empty()),
+                FileType::Symlink => self.unlink_inside(dir, name, path, AtFlags::empty()),
                 FileType::Directory => {
                     let Some(child) = self.enter(dir, name, path) else {
                         return false;
@@ -534,7 +544,7 @@ mod linux_delete {
                         return false;
                     }
                     drop(child);
-                    let gone = self.unlink(dir, name, path, AtFlags::REMOVEDIR);
+                    let gone = self.unlink_inside(dir, name, path, AtFlags::REMOVEDIR);
                     if gone {
                         self.acc.dirs.fetch_add(1, Ordering::Relaxed);
                     }
@@ -545,11 +555,26 @@ mod linux_delete {
                     if self.cutoff.is_some_and(|c| mtime > c) {
                         return false;
                     }
-                    let gone = self.unlink(dir, name, path, AtFlags::empty());
+                    let gone = self.unlink_inside(dir, name, path, AtFlags::empty());
                     if gone {
                         self.acc.deleted_file(freed_by(&st));
                     }
                     gone
+                }
+            }
+        }
+
+        /// Removes a name from a folder this delete has entered. Linux asks for write rights on
+        /// the folder rather than the file, and some caches keep theirs read-only on purpose (Go's
+        /// module cache). The rights change only after a refusal, and never on the folder above
+        /// the one the user picked: that one stays as it was and the delete is reported as denied.
+        fn unlink_inside(&self, dir: &OwnedFd, name: &OsStr, path: &Path, flags: AtFlags) -> bool {
+            match unlinkat(dir, name, flags) {
+                Ok(()) => true,
+                Err(Errno::ACCESS) if make_writable(dir) => self.unlink(dir, name, path, flags),
+                Err(e) => {
+                    self.acc.fail_io(path, &e.into());
+                    false
                 }
             }
         }
@@ -855,6 +880,14 @@ fn wipe_contents(
 
 /// Removes `path` itself (a file or a folder with everything inside).
 fn remove_one(path: &Path, method: DeleteMethod, origin: Origin, guard: &Guard, acc: &Acc) {
+    // A scan shows a name that is not valid text with U+FFFD. That spelling reaches no file, or
+    // worse, another file really spelled that way, so it is never acted on.
+    if path
+        .to_str()
+        .is_some_and(|p| p.contains(char::REPLACEMENT_CHARACTER))
+    {
+        return acc.fail(path, "unreadable_name");
+    }
     if let Err(e) = guard.check(path, origin) {
         return acc.fail(path, e.code());
     }
@@ -1536,6 +1569,50 @@ mod linux_tests {
         assert!(!dir.exists());
         let mode = fs::metadata(&other).unwrap().permissions().mode();
         assert_eq!(mode & 0o777, 0o444);
+    }
+
+    #[test]
+    fn read_only_folders_go_too() {
+        let f = fixture(&[]);
+        let dir = f.home.join("mod");
+        let inner = dir.join("pkg@v1.2.3");
+        file(&inner.join("main.go"), 4096);
+        fs::set_permissions(&inner, fs::Permissions::from_mode(0o555)).unwrap();
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+        let report = pick(std::slice::from_ref(&dir), &f.guard);
+        assert_eq!(report.failed, 0, "{:?}", report.failures);
+        assert!(!dir.exists());
+    }
+
+    #[test]
+    fn the_folder_above_a_pick_keeps_its_rights() {
+        use std::os::unix::fs::MetadataExt;
+
+        let f = fixture(&[]);
+        // Root needs no write rights, so there is nothing to refuse.
+        if fs::metadata(&f.home).unwrap().uid() == 0 {
+            return;
+        }
+        let parent = f.home.join("ro");
+        let picked = parent.join("item.bin");
+        file(&picked, 4096);
+        fs::set_permissions(&parent, fs::Permissions::from_mode(0o555)).unwrap();
+        let report = pick(std::slice::from_ref(&picked), &f.guard);
+        let mode = fs::metadata(&parent).unwrap().permissions().mode();
+        fs::set_permissions(&parent, fs::Permissions::from_mode(0o755)).unwrap();
+        assert_eq!(report.failures[0].reason, "access_denied");
+        assert!(picked.exists());
+        assert_eq!(mode & 0o777, 0o555);
+    }
+
+    #[test]
+    fn a_path_spelled_with_the_replacement_character_is_refused() {
+        let f = fixture(&[]);
+        let real = f.home.join("caf\u{FFFD}.bin");
+        file(&real, 4096);
+        let report = pick(std::slice::from_ref(&real), &f.guard);
+        assert_eq!(report.failures[0].reason, "unreadable_name");
+        assert!(real.exists());
     }
 
     #[test]
