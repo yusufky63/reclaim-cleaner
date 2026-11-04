@@ -1,5 +1,6 @@
 # Collects release files into .\release: the NSIS setup, the MSI packages, a portable zip
-# (exe + "portable" marker) and SHA256SUMS.txt. Run after `pnpm app:build`.
+# (exe + "portable" marker), any Linux packages in .\linux-packages and SHA256SUMS.txt. Run after
+# `pnpm app:build`.
 # Spaces become dashes so GitHub keeps the file names as they are.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -24,8 +25,12 @@ $bundle = Join-Path $root 'target\release\bundle'
 Get-ChildItem -Path (Join-Path $bundle 'nsis\*.exe'), (Join-Path $bundle 'msi\*.msi') -ErrorAction SilentlyContinue |
   ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $out ($_.Name -replace ' ', '-')) }
 
+$linux = Join-Path $root 'linux-packages'
+if (Test-Path -LiteralPath $linux) { Copy-Item -Path (Join-Path $linux '*') -Destination $out }
+
 $sums = Get-ChildItem -LiteralPath $out -File | Sort-Object Name | ForEach-Object {
   "{0}  {1}" -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
 }
-Set-Content -LiteralPath (Join-Path $out 'SHA256SUMS.txt') -Value $sums -Encoding ascii
+# Line feeds, because `sha256sum -c` on Linux reads a carriage return as part of the file name.
+[IO.File]::WriteAllText((Join-Path $out 'SHA256SUMS.txt'), (($sums -join "`n") + "`n"), [Text.Encoding]::ASCII)
 Get-ChildItem -LiteralPath $out | Format-Table Name, Length -AutoSize

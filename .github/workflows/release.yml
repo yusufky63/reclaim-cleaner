@@ -16,7 +16,54 @@ permissions:
   contents: write
 
 jobs:
+  linux:
+    # The oldest supported Ubuntu, so the packages also run on systems with a newer glibc.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      # linuxdeploy is an AppImage itself and would otherwise need FUSE.
+      APPIMAGE_EXTRACT_AND_RUN: 1
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Check the tag matches the app version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$TAG" ]; then
+            echo "Tag $TAG does not match package.json version $version. Merge the release PR instead of tagging by hand."
+            exit 1
+          fi
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev patchelf file
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: pnpm install --frozen-lockfile
+      - run: cargo test --workspace --locked
+
+      - name: Build packages
+        run: pnpm tauri build --bundles deb,appimage
+
+      - run: sh scripts/package-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: linux-packages
+          if-no-files-found: error
+
   release:
+    needs: linux
     runs-on: windows-latest
     timeout-minutes: 60
     env:
@@ -49,6 +96,11 @@ jobs:
       - name: Build installers
         run: pnpm tauri build --bundles nsis,msi
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: linux-packages
+
       - name: Package portable zip and checksums
         shell: pwsh
         run: ./scripts/package-portable.ps1
@@ -64,6 +116,6 @@ jobs:
           $log = Get-Content CHANGELOG.md -Raw
           $m = [regex]::Match($log, "(?ms)^## \[$([regex]::Escape($version))\][^\n]*\n(.*?)(?=^## \[|\z)")
           $notes = if ($m.Success) { $m.Groups[1].Value.Trim() } else { "See CHANGELOG.md." }
-          $notes += "`n`n### Verify your download`nSHA-256 checksums are in SHA256SUMS.txt. Builds are not code-signed yet; see the README for the SmartScreen note."
+          $notes += "`n`n### Verify your download`nSHA-256 checksums are in SHA256SUMS.txt. Builds are not code-signed yet; see the README for the SmartScreen note. The Linux packages are a beta; see the README for what they include."
           Set-Content -Path release-notes.md -Value $notes -Encoding utf8
           gh release create $tag --draft --title "ReClaim Cleaner $version" --notes-file release-notes.md (Get-ChildItem release -File | ForEach-Object FullName)

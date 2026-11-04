@@ -34,7 +34,27 @@ Ekran görüntüleri gerçek bir bilgisayarda değil, üretilmiş bir demo profi
 | `ReClaim-Cleaner_<sürüm>_x64_en-US.msi` / `_tr-TR.msi` | Kurumsal dağıtım ve Grup İlkesi. |
 | `ReClaim-Cleaner_<sürüm>_x64_portable.zip` | Kurulumsuz. Ayarlar ve geçmiş exe'nin yanındaki `data` klasöründe durur. Windows 10 ve 11'de zaten bulunan WebView2 gerekir. |
 
+| `ReClaim-Cleaner_<sürüm>_amd64.deb` | Linux beta: Ubuntu, Debian ve türevleri. |
+| `ReClaim-Cleaner_<sürüm>_amd64.AppImage` | Linux beta: diğer x86-64 dağıtımlar, kurulumsuz. |
+
 Her sürümde SHA-256 özetleri yayımlanır. Derlemeler henüz kod imzalı değil; SmartScreen "Windows bilgisayarınızı korudu" diyebilir. **Ek bilgi**'ye tıkla, dosya adının sürümle eşleştiğini kontrol et, sonra **Yine de çalıştır**.
+
+### Linux beta
+
+```bash
+sudo apt install ./ReClaim-Cleaner_<sürüm>_amd64.deb
+```
+
+```bash
+chmod +x ReClaim-Cleaner_<sürüm>_amd64.AppImage
+./ReClaim-Cleaner_<sürüm>_amd64.AppImage
+```
+
+AppImage FUSE hatası verirse (Ubuntu 24.04 bunu varsayılan olarak kurmaz) `libfuse2t64` paketini kur ya da `--appimage-extract-and-run` ile başlat. Deb paketini kaldırmak için: `sudo apt remove reclaim-cleaner`.
+
+Alan haritası, Büyük dosyalar, Kopya dosyalar, Boş klasörler, Gereksiz dosyalar, Geliştirici, YZ modelleri, YZ asistanları, İndirilenler ve Oyunlar çalışır. Uygulamalar, Başlangıç, Windows araçları, gizli alan paneli, "Bunu ne kullanıyor?" ve dosya yöneticisi girdisi şimdilik yalnızca Windows'ta var.
+
+Beta yalnızca kullanıcı klasörünün içinde siler ve root olarak başlatılırsa hiçbir şey silmez. Paket önbellekleri ve günlük gibi sistem alanları ölçülür ya da kopyalanacak resmi komutla listelenir; uygulama bu komutları çalıştırmaz. Normal kullanıcınla çalıştır. Konteynerlerde denendi, henüz pek çok gerçek masaüstünde denenmedi, bu yüzden lütfen [sorunları bildir](https://github.com/yusufky63/reclaim-cleaner/issues/new/choose).
 
 ## Güvenlik modeli
 

@@ -2,6 +2,10 @@
 
 [Türkçe sorular aşağıda](#sss)
 
+### Does it run on Linux?
+
+Yes, as a beta, on x86-64: a deb package for Ubuntu and Debian and an AppImage for other distributions. Space map, Large files, Duplicates, Empty folders, Junk and caches, Developer, AI models, AI assistants, Downloads and Games work. Apps, Startup, Windows tools, the hidden space panel and "What is using this?" are Windows-only for now. It deletes only inside your home folder and never as root; for system areas such as package caches it shows the official command to copy.
+
 ### Is it safe?
 
 ReClaim only deletes what you confirmed in a preview. Items it is not sure about are marked "Review first" and are not preselected; risky ones stay hidden. System folders, your profile and libraries, OneDrive, `.git` folders and anything you exclude in Settings can never be removed. Links are never followed. See [the safety model](architecture.md#safety-model).
@@ -91,6 +95,10 @@ Open a "Cleanup rule request" issue, or write a rule yourself: [docs/rules.md](r
 ---
 
 ## SSS
+
+### Linux'ta çalışıyor mu?
+
+Evet, x86-64 üzerinde beta olarak: Ubuntu ve Debian için deb paketi, diğer dağıtımlar için AppImage. Alan haritası, Büyük dosyalar, Kopya dosyalar, Boş klasörler, Gereksiz dosyalar, Geliştirici, YZ modelleri, YZ asistanları, İndirilenler ve Oyunlar çalışır. Uygulamalar, Başlangıç, Windows araçları, gizli alan paneli ve "Bunu ne kullanıyor?" şimdilik yalnızca Windows'ta var. Yalnızca kullanıcı klasörünün içinde siler, root olarak hiçbir şey silmez; paket önbellekleri gibi sistem alanları için kopyalanacak resmi komutu gösterir.
 
 ### Güvenli mi?
 

@@ -1,6 +1,6 @@
 # ReClaim Cleaner
 
-An open-source disk cleaner and space analyzer for Windows 10 and 11. It shows where your space went, ranks everything it finds by how safe it is to remove, and deletes nothing until you have reviewed it.
+An open-source disk cleaner and space analyzer for Windows 10 and 11, with a [Linux beta](#linux-beta). It shows where your space went, ranks everything it finds by how safe it is to remove, and deletes nothing until you have reviewed it.
 
 [Download the latest release](https://github.com/yusufky63/reclaim-cleaner/releases/latest) · [Türkçe](README.tr.md) · [How it decides what is safe](docs/architecture.md#safety-model)
 
@@ -38,7 +38,27 @@ Screenshots are taken on a generated demo profile, not on a real PC.
 | `ReClaim-Cleaner_<version>_x64_en-US.msi` / `_tr-TR.msi` | IT deployment and Group Policy. |
 | `ReClaim-Cleaner_<version>_x64_portable.zip` | No installation. Settings and history stay in a `data` folder next to the exe. Needs the WebView2 runtime, which Windows 10 and 11 already include. |
 
+| `ReClaim-Cleaner_<version>_amd64.deb` | Linux beta: Ubuntu, Debian and their relatives. |
+| `ReClaim-Cleaner_<version>_amd64.AppImage` | Linux beta: other x86-64 distributions, no installation. |
+
 Each release lists SHA-256 checksums. Builds are not code-signed yet, so Windows SmartScreen may show "Windows protected your PC". Choose **More info**, check that the publisher and file name match the release, then **Run anyway**. See [code signing](#code-signing-policy).
+
+### Linux beta
+
+```bash
+sudo apt install ./ReClaim-Cleaner_<version>_amd64.deb
+```
+
+```bash
+chmod +x ReClaim-Cleaner_<version>_amd64.AppImage
+./ReClaim-Cleaner_<version>_amd64.AppImage
+```
+
+If the AppImage complains about FUSE, which Ubuntu 24.04 does not install by default, add `libfuse2t64` or start it with `--appimage-extract-and-run`. To remove the deb package: `sudo apt remove reclaim-cleaner`.
+
+Space map, Large files, Duplicates, Empty folders, Junk and caches, Developer, AI models, AI assistants, Downloads and Games work. Apps, Startup, Windows tools, the hidden space panel, "What is using this?" and the file manager entry are Windows-only for now.
+
+The beta deletes only inside your home folder and refuses to delete anything when started as root. System areas such as package caches and the journal are measured or listed with the official command to copy; the app does not run them. Run it as your normal user. It has been tested in containers, not yet on many real desktops, so please [report problems](https://github.com/yusufky63/reclaim-cleaner/issues/new/choose).
 
 ## Safety model
 
@@ -75,6 +95,8 @@ Installers end up in `target/release/bundle/` after:
 ```bash
 pnpm app:build
 ```
+
+On Linux you need Rust, Node.js, pnpm and `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev patchelf`; build packages with `pnpm tauri build --bundles deb,appimage`.
 
 | Script | What it does |
 |---|---|

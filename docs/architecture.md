@@ -57,7 +57,7 @@ The engine is a separate crate so `cargo test` runs without a WebView, and so a 
 
 ## Platforms
 
-Windows is the only released system. The engine also has a Linux foundation, on its way to a Linux version; its UI and packages come separately.
+Windows is the main system. Linux is a beta, released as a deb package and an AppImage, built on Ubuntu 22.04 by the Release workflow. Pages a system lacks are named in `src/lib/platform.ts`.
 
 - `windows` and `winreg` are Windows-only dependencies, `rustix` is Linux-only. Every Win32, registry or `std::os::windows` call sits behind `#[cfg(windows)]`, with a non-Windows version beside it.
 - **Not ported yet:** hidden space, locks, apps, leftovers, startup items and the shell menu have non-Windows versions that report nothing and refuse actions with `Error::Unsupported`, which reaches the UI as the `unsupported` code. They never guess. Any other non-Windows system keeps the old behaviour for everything: the guard refuses every delete.

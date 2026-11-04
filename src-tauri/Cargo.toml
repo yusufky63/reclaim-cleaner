@@ -1,6 +1,6 @@
 [package]
 name = "reclaim-cleaner"
-description = "ReClaim Cleaner: disk cleaner and space analyzer for Windows"
+description = "ReClaim Cleaner: disk cleaner and space analyzer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

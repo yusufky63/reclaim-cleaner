@@ -12,5 +12,6 @@ Thumbs.db
 .env
 .env.*
 /release/
+/linux-packages/
 /screenshots-tmp/
 .claude/worktrees/

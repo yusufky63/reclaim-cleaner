@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Linux beta: a deb package for Ubuntu and Debian and an AppImage for other x86-64 distributions. Space map, Large files, Duplicates, Empty folders, Junk and caches, Developer, AI models, AI assistants, Downloads and Games work. It deletes only inside your home folder and never as root. See the README for what is still Windows-only.
+
+### Fixed
+
+- `SHA256SUMS.txt` now uses line feeds, so `sha256sum -c` works on Linux.
+
 ## [0.4.0] - 2026-11-04
 
 ### Added

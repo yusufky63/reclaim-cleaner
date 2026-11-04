@@ -12,8 +12,8 @@ Releases come from a release PR that the **Release PR** workflow keeps up to dat
 
    The PR is rebuilt from `main` on every push, so fix the notes on `main`, not in the PR. Other edits for the release, such as "Shipped in" in `ROADMAP.md`, also go to `main` first.
 3. Merge the PR when you want to release. The workflow sees a version without a tag, tags it (`vX.Y.Z`) and calls the **Release** workflow.
-4. The **Release** workflow checks that the tag matches `package.json`, runs the full check suite, builds the NSIS setup and the MSI packages, zips the portable build and writes `SHA256SUMS.txt`. It creates a **draft** release with the CHANGELOG section as notes.
-5. Download the setup from the draft, install it on a clean Windows VM, smoke-test a scan and a clean, then publish the draft.
+4. The **Release** workflow checks that the tag matches `package.json` and runs the full check suite. A Linux job on Ubuntu 22.04 builds the deb package and the AppImage. The Windows job then builds the NSIS setup and the MSI packages, zips the portable build, adds the Linux packages and writes `SHA256SUMS.txt`. It creates a **draft** release with the CHANGELOG section as notes.
+5. Download the setup from the draft, install it on a clean Windows VM, and do the same with the deb package on a real Linux desktop. Smoke-test a scan and a clean, then publish the draft.
 
 The workflow needs "Allow GitHub Actions to create and approve pull requests" under Settings > Actions > General. A pushed `v*` tag still starts the Release workflow, but only if it matches the version in `package.json`.
 
@@ -28,7 +28,14 @@ pnpm app:build
 pnpm portable
 ```
 
-Everything ends up in `release/`.
+Everything ends up in `release/`. On Linux:
+
+```bash
+pnpm tauri build --bundles deb,appimage
+sh scripts/package-linux.sh
+```
+
+The packages end up in `linux-packages/`. In a container without FUSE, set `APPIMAGE_EXTRACT_AND_RUN=1`.
 
 ## Code signing
 

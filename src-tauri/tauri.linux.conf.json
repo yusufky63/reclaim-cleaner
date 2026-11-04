@@ -1,0 +1,12 @@
+{
+  "productName": "Reclaim Cleaner",
+  "bundle": {
+    "targets": ["deb", "appimage"],
+    "shortDescription": "Disk cleaner and space analyzer for Linux",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/desktop.hbs"
+      }
+    }
+  }
+}
