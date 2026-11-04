@@ -792,7 +792,7 @@ export const tr: Messages = {
       adminNote: "{{count}} öğe root yetkisi istiyor.",
     },
     games: {
-      notInstalled: "Bu sürüm bu sistemde Steam kütüphanelerini okuyamıyor.",
+      notInstalled: "Bu kullanıcı için Steam bulunamadı. Steam'in Snap sürümü kontrol edilmez.",
     },
     result: {
       recycled: "Çöp Kutusu'na taşınan",

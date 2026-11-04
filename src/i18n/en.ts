@@ -797,7 +797,7 @@ export const en = {
       adminNote: "{{count}} items need root rights.",
     },
     games: {
-      notInstalled: "This version cannot read Steam libraries on this system.",
+      notInstalled: "Steam was not found for this user. The Snap version of Steam is not checked.",
     },
     result: {
       recycled: "Moved to Trash",
