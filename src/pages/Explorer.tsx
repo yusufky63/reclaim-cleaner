@@ -6,7 +6,7 @@ import { HiddenSpacePanel } from "../components/HiddenSpace";
 import { LockDialog } from "../components/LockDialog";
 import { useBytes, useFeature, useLocale } from "../lib/hooks";
 import { Treemap, type TreemapMode } from "../components/Treemap";
-import { Banner, Button, Card, EmptyState, PageHeader, Segmented } from "../components/ui";
+import { Badge, Banner, Button, Card, EmptyState, PageHeader, Segmented } from "../components/ui";
 import { cx } from "../lib/cx";
 import { api, pickFolders } from "../lib/api";
 import { formatCount, formatDate, formatPercent } from "../lib/format";
@@ -306,28 +306,35 @@ export function ExplorerPage() {
                       {detail.kind === "small" ? t("explorer.smallFiles") : detail.name || detail.path}
                     </div>
                     <PathText path={detail.path} className="mt-0.5" />
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="label">{t("common.size")}</div>
-                        <div className="num font-mono text-[18px] text-ink">{fmt(detail.bytes)}</div>
+                    {detail.mount ? (
+                      <div className="mt-3">
+                        <Badge>{t(`explorer.mounts.${detail.mount}`)}</Badge>
+                        <p className="mt-2 text-[13px] text-ink-secondary">{t(`explorer.mountHints.${detail.mount}`)}</p>
                       </div>
-                      <div>
-                        <div className="label">{t("common.files")}</div>
-                        <div className="num font-mono text-[18px] text-ink">{formatCount(detail.files, locale)}</div>
+                    ) : (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="label">{t("common.size")}</div>
+                          <div className="num font-mono text-[18px] text-ink">{fmt(detail.bytes)}</div>
+                        </div>
+                        <div>
+                          <div className="label">{t("common.files")}</div>
+                          <div className="num font-mono text-[18px] text-ink">{formatCount(detail.files, locale)}</div>
+                        </div>
+                        {detail.reclaimSafe + detail.reclaimReview > 0 && (
+                          <div className="col-span-2">
+                            <div className="label">{t("explorer.reclaimable")}</div>
+                            <div className="num font-mono text-[14px] text-positive-fg">{fmt(detail.reclaimSafe + detail.reclaimReview)}</div>
+                          </div>
+                        )}
+                        {detail.mtime > 0 && (
+                          <div className="col-span-2">
+                            <div className="label">{t("common.modified")}</div>
+                            <div className="font-mono text-[13px] text-ink-secondary">{formatDate(detail.mtime, locale)}</div>
+                          </div>
+                        )}
                       </div>
-                      {detail.reclaimSafe + detail.reclaimReview > 0 && (
-                        <div className="col-span-2">
-                          <div className="label">{t("explorer.reclaimable")}</div>
-                          <div className="num font-mono text-[14px] text-positive-fg">{fmt(detail.reclaimSafe + detail.reclaimReview)}</div>
-                        </div>
-                      )}
-                      {detail.mtime > 0 && (
-                        <div className="col-span-2">
-                          <div className="label">{t("common.modified")}</div>
-                          <div className="font-mono text-[13px] text-ink-secondary">{formatDate(detail.mtime, locale)}</div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {detail.kind !== "small" && (
                         <>
@@ -348,7 +355,7 @@ export function ExplorerPage() {
                           >
                             {t("common.copyPath")}
                           </Button>
-                          {detail.id !== 0 && (
+                          {detail.id !== 0 && !detail.mount && (
                             <Button
                               size="sm"
                               variant="danger"
@@ -384,13 +391,23 @@ export function ExplorerPage() {
                         <span className="cat-dot" />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-[13px] text-ink">{c.kind === "small" ? `${t("explorer.smallFiles")} · ${formatCount(c.files, locale)}` : c.name}</span>
-                          <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-surface-muted">
-                            <span className="block h-full rounded-full" style={{ width: `${(c.bytes / (node.bytes || 1)) * 100}%`, background: "var(--cat)" }} />
-                          </span>
+                          {c.mount ? (
+                            <span className="mt-1 block truncate text-[11px] text-ink-muted">{t(`explorer.mounts.${c.mount}`)}</span>
+                          ) : (
+                            <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-surface-muted">
+                              <span className="block h-full rounded-full" style={{ width: `${(c.bytes / (node.bytes || 1)) * 100}%`, background: "var(--cat)" }} />
+                            </span>
+                          )}
                         </span>
                         <span className="w-[72px] shrink-0 text-right">
-                          <span className="num block font-mono text-[12px] text-ink">{fmt(c.bytes)}</span>
-                          <span className="num block font-mono text-[11px] text-ink-muted">{formatPercent(c.bytes, node.bytes, locale)}</span>
+                          {c.mount ? (
+                            <span className="num block font-mono text-[12px] text-ink-muted">—</span>
+                          ) : (
+                            <>
+                              <span className="num block font-mono text-[12px] text-ink">{fmt(c.bytes)}</span>
+                              <span className="num block font-mono text-[11px] text-ink-muted">{formatPercent(c.bytes, node.bytes, locale)}</span>
+                            </>
+                          )}
                         </span>
                       </button>
                     </li>

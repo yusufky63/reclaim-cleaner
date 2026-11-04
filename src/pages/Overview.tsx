@@ -68,7 +68,7 @@ function WhereSpace() {
     if (!explorer) return;
     void api.explorerNode(0, 1, 7).then(setRoot).catch(() => setRoot(null));
   }, [explorer, version]);
-  const items = root?.children.filter((c) => c.kind !== "small").slice(0, 6) ?? [];
+  const items = root?.children.filter((c) => c.kind !== "small" && !c.mount).slice(0, 6) ?? [];
   const max = items[0]?.bytes ?? 1;
   return (
     <Card>

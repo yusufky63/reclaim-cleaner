@@ -89,6 +89,7 @@ export const tr: Messages = {
     commandHint: "Dosya silmek yerine aracın kendi temizlik komutunu çalıştırır.",
     copyCommand: "Komutu kopyala",
     copyCommandHint: "ReClaim bunu çalıştırmaz. Kontrol et, sonra bir terminalde çalıştır.",
+    rootNoDelete: "ReClaim root olarak çalışıyor, bu yüzden hiçbir şey silmiyor. Temizlemek için kendi kullanıcınla başlat.",
     show: "Göster",
     folderPicker: "Klasör seç",
     roots: "Aranacak klasörler",
@@ -236,6 +237,16 @@ export const tr: Messages = {
     openFolder: "Klasörü aç",
     selection_one: "{{parent}} içinde {{count}} seçili klasör",
     selection_other: "{{parent}} içinde {{count}} seçili klasör",
+    mounts: {
+      local: "Başka bir disk, taranmadı",
+      remote: "Ağ ya da FUSE bağlantısı, taranmadı",
+      memory: "Bellekte, taranmadı",
+    },
+    mountHints: {
+      local: "Buraya başka bir disk bağlı, bu yüzden bu tarama içine girmedi ve boyutu sayılmadı.",
+      remote: "Bu tarama içine girmedi, çünkü ağ ya da FUSE bağlantısını okumak veri indirebilir. Boyutu sayılmadı.",
+      memory: "Bir tmpfs bağlantısı dosyalarını diskte değil bellekte tutar, bu yüzden boyutu sayılmadı.",
+    },
   },
   large: {
     title: "Büyük dosyalar",

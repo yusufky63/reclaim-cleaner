@@ -74,6 +74,8 @@ export function App() {
   const page = useApp((s) => s.page);
   const go = useApp((s) => s.go);
   const quickCleanShortcuts = useFeature("quickCleanShortcuts");
+  const elevation = useFeature("elevation");
+  const elevated = useApp((s) => !!s.info?.elevated);
 
   useEffect(() => {
     // Folders from Explorer's "Analyze with ReClaim": a cold start leaves them waiting, a
@@ -140,6 +142,13 @@ export function App() {
         <div className="mb-4">
           <Banner tone="danger" icon={<AlertTriangle size={16} strokeWidth={1.75} />}>
             {bootError}
+          </Banner>
+        </div>
+      )}
+      {elevated && !elevation && (
+        <div className="mb-4">
+          <Banner tone="warning" icon={<AlertTriangle size={16} strokeWidth={1.75} />}>
+            {t("common.rootNoDelete")}
           </Banner>
         </div>
       )}

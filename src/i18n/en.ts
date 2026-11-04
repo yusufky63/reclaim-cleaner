@@ -89,6 +89,7 @@ export const en = {
     commandHint: "Runs the tool's own cleanup command instead of deleting files.",
     copyCommand: "Copy command",
     copyCommandHint: "ReClaim does not run this. Check it, then run it in a terminal.",
+    rootNoDelete: "ReClaim is running as root, so it deletes nothing. Start it as your own user to clean.",
     show: "Show",
     folderPicker: "Choose folders",
     roots: "Folders to search",
@@ -236,6 +237,16 @@ export const en = {
     openFolder: "Open folder",
     selection_one: "{{count}} selected folder in {{parent}}",
     selection_other: "{{count}} selected folders in {{parent}}",
+    mounts: {
+      local: "Another disk, not scanned",
+      remote: "Network or FUSE mount, not scanned",
+      memory: "In memory, not scanned",
+    },
+    mountHints: {
+      local: "Another disk is mounted here, so this scan did not enter it and its size is not counted.",
+      remote: "This scan did not enter it, because reading a network or FUSE mount can download data. Its size is not counted.",
+      memory: "A tmpfs mount holds its files in memory rather than on a disk, so its size is not counted.",
+    },
   },
   large: {
     title: "Large files",
