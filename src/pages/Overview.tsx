@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, ProgressPanel, ReportDialog, UsageBar } from "../components/common";
 import { HiddenSummary } from "../components/HiddenSpace";
-import { useBytes, useLocale } from "../lib/hooks";
+import { useBytes, useFeature, useLocale } from "../lib/hooks";
 import { Badge, Button, Card, CardHeader, Checkbox, EmptyState, RiskDot, SectionTitle, Stat } from "../components/ui";
 import { cx } from "../lib/cx";
 import { api } from "../lib/api";
 import { formatAgo, formatBytes, splitBytes } from "../lib/format";
+import { driveLabel } from "../lib/paths";
+import { pageAvailable } from "../lib/platform";
 import { buildRecommendations, cleanRecommendations, defaultSelection, quickCleanItems, scriptItems, type Rec } from "../lib/recommend";
 import { buildScript } from "../lib/script";
 import type { CleanReport, NodeView } from "../lib/types";
@@ -66,7 +68,7 @@ function WhereSpace() {
     if (!explorer) return;
     void api.explorerNode(0, 1, 7).then(setRoot).catch(() => setRoot(null));
   }, [explorer, version]);
-  const items = root?.children.filter((c) => c.kind !== "small").slice(0, 6) ?? [];
+  const items = root?.children.filter((c) => c.kind !== "small" && !c.mount).slice(0, 6) ?? [];
   const max = items[0]?.bytes ?? 1;
   return (
     <Card>
@@ -127,10 +129,12 @@ function Drives() {
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <span className="flex min-w-0 items-center gap-2 text-[14px] text-ink">
                 <HardDrive size={15} strokeWidth={1.75} className="text-ink-muted" aria-hidden />
-                <span className="font-mono">{d.root.replace("\\", "")}</span>
-                <span className="truncate text-ink-secondary">{d.label}</span>
+                <span className="min-w-0 truncate font-mono" title={d.root}>
+                  {driveLabel(d.root)}
+                </span>
+                <span className="flex-1 truncate text-ink-secondary">{d.label}</span>
               </span>
-              <span className="num font-mono text-[12px] text-ink-secondary">{fmt(d.free)}</span>
+              <span className="num shrink-0 font-mono text-[12px] text-ink-secondary">{fmt(d.free)}</span>
             </div>
             <UsageBar segments={[{ value: d.total - d.free, className: d.free / d.total < 0.1 ? "bg-danger" : "bg-primary" }, { value: d.free, className: "swatch-free" }]} />
             <div className="mt-1 font-mono text-[11px] text-ink-muted">{t("overview.driveUsed", { used: fmt(d.total - d.free), total: fmt(d.total) })}</div>
@@ -144,12 +148,14 @@ function Drives() {
 function QuickActions() {
   const { t } = useTranslation();
   const go = useApp((s) => s.go);
-  const items: { page: PageId; icon: typeof FileStack; label: string }[] = [
+  const platform = useApp((s) => s.platform);
+  const all: { page: PageId; icon: typeof FileStack; label: string }[] = [
     { page: "large", icon: FileStack, label: t("overview.quickLarge") },
     { page: "duplicates", icon: Copy, label: t("overview.quickDup") },
     { page: "apps", icon: AppWindow, label: t("overview.quickApps") },
     { page: "startup", icon: Power, label: t("overview.quickStartup") },
   ];
+  const items = all.filter((i) => pageAvailable(platform, i.page));
   return (
     <Card>
       <CardHeader title={t("overview.quick")} />
@@ -267,6 +273,8 @@ export function OverviewPage() {
   const fmt = useBytes();
   const { info, settings, rules, junk, junkAt, projects, installers, drives, running, scanAll, toast, go, refreshDrives } = useApp();
   const scanning = !!(running.junk || running.projects);
+  const hiddenSpace = useFeature("hiddenSpace");
+  const scriptExport = useFeature("scriptExport");
 
   const recs = useMemo(() => recommendationsFor({ settings, rules, junk, projects, installers, info }, i18n.language, t), [settings, rules, junk, projects, installers, i18n.language, info, t]);
 
@@ -349,7 +357,7 @@ export function OverviewPage() {
           unit={freeAfter?.unit}
           sub={chosenBytes > 0 ? <span className="text-positive-fg">{t("overview.selectedGain", { size: fmt(chosenBytes) })}</span> : sys ? t("overview.of", { total: fmt(sys.total) }) : null}
         />
-        <Stat label={t("overview.freeNow")} value={freeNow?.value ?? "—"} unit={freeNow?.unit} sub={sys ? `${sys.root.replace("\\", "")} · ${t("overview.of", { total: fmt(sys.total) })}` : null} />
+        <Stat label={t("overview.freeNow")} value={freeNow?.value ?? "—"} unit={freeNow?.unit} sub={sys ? `${driveLabel(sys.root)} · ${t("overview.of", { total: fmt(sys.total) })}` : null} />
         <Stat label={t("overview.safe")} dot={<RiskDot risk="safe" />} value={hasScan ? safeSplit.value : "—"} unit={hasScan ? safeSplit.unit : undefined} sub={hasScan ? t("common.items", { count: safeCount }) : null} />
         <Stat label={t("overview.review")} dot={<RiskDot risk="review" />} value={hasScan ? reviewSplit.value : "—"} unit={hasScan ? reviewSplit.unit : undefined} sub={hasScan ? t("common.items", { count: reviewCount }) : null} />
       </div>
@@ -423,9 +431,11 @@ export function OverviewPage() {
                   >
                     {t("common.selectSafe")}
                   </Button>
-                  <Button size="sm" variant="secondary" icon={<ClipboardCopy size={15} strokeWidth={1.75} />} disabled={chosen.length === 0} onClick={() => void copyScript()}>
-                    {t("common.copyScript")}
-                  </Button>
+                  {scriptExport && (
+                    <Button size="sm" variant="secondary" icon={<ClipboardCopy size={15} strokeWidth={1.75} />} disabled={chosen.length === 0} onClick={() => void copyScript()}>
+                      {t("common.copyScript")}
+                    </Button>
+                  )}
                   <Button size="sm" variant="primary" disabled={chosen.length === 0} onClick={() => setConfirm(true)}>
                     {t("overview.cleanSelected")}
                   </Button>
@@ -436,7 +446,7 @@ export function OverviewPage() {
         </Card>
         <div className="space-y-5">
           <Drives />
-          <HiddenSummary />
+          {hiddenSpace && <HiddenSummary />}
           <WhereSpace />
           <QuickActions />
         </div>

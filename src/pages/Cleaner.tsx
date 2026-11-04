@@ -2,11 +2,12 @@ import { ChevronDown, ClipboardCopy, ExternalLink, FolderOpen, ScanSearch, Spark
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, PathText, ProgressPanel, ReportDialog, SelectionBar } from "../components/common";
-import { useBytes } from "../lib/hooks";
+import { useBytes, useFeature } from "../lib/hooks";
+import { isFilePath } from "../lib/paths";
 import { Badge, Banner, Button, Card, Checkbox, EmptyState, PageHeader, RiskBadge, SectionTitle } from "../components/ui";
 import { cx } from "../lib/cx";
 import { api, openUrl } from "../lib/api";
-import { isCleanable, ruleDescription, ruleName } from "../lib/recommend";
+import { isCleanable, isCommandOnly, ruleDescription, ruleName } from "../lib/recommend";
 import { buildScript } from "../lib/script";
 import type { CleanReport, DeleteMethod, Group, TargetResult, TargetRule } from "../lib/types";
 import { errorText, useApp } from "../store/app";
@@ -22,11 +23,13 @@ function RuleRow({ row, checked, onToggle, elevated }: { row: Row; checked: bool
   const { t, i18n } = useTranslation();
   const fmt = useBytes();
   const toast = useApp((s) => s.toast);
+  const runCommands = useFeature("runRuleCommands");
   const [open, setOpen] = useState(false);
   const [cmdBusy, setCmdBusy] = useState(false);
   const { rule, res } = row;
   const blocked = res.running.length > 0;
   const cleanable = isCleanable(rule);
+  const commandOnly = res.bytes === 0 && isCommandOnly(rule, res, runCommands);
 
   const runCommand = async () => {
     setCmdBusy(true);
@@ -39,6 +42,13 @@ function RuleRow({ row, checked, onToggle, elevated }: { row: Row; checked: bool
     } finally {
       setCmdBusy(false);
     }
+  };
+
+  const copyCommand = () => {
+    void navigator.clipboard.writeText(rule.command!).then(
+      () => toast("positive", t("common.copied")),
+      (e) => toast("danger", errorText(e)),
+    );
   };
 
   return (
@@ -57,35 +67,46 @@ function RuleRow({ row, checked, onToggle, elevated }: { row: Row; checked: bool
             </div>
             <div className="truncate text-[13px] text-ink-muted">{ruleDescription(rule, i18n.language)}</div>
           </div>
-          <span className="num shrink-0 font-mono text-[14px] text-ink">{fmt(res.bytes)}</span>
+          {commandOnly ? <span className="shrink-0 text-[13px] text-ink-muted">{t("junk.notMeasured")}</span> : <span className="num shrink-0 font-mono text-[14px] text-ink">{fmt(res.bytes)}</span>}
           <ChevronDown size={16} strokeWidth={1.75} className={cx("shrink-0 text-ink-muted transition-transform transition-fast", open && "rotate-180")} aria-hidden />
         </button>
       </div>
       {open && (
         <div className="anim-fade space-y-2 px-4 pb-3 pl-[46px]">
-          <ul className="divide-y divide-line rounded-md border border-line bg-canvas">
-            {res.found.map((f) => (
-              <li key={f.path} className="flex items-center gap-3 px-3 py-1.5">
-                <PathText path={f.path} className="flex-1" />
-                <span className="num shrink-0 font-mono text-[12px] text-ink-secondary">{fmt(f.bytes)}</span>
-                {f.path.includes("\\") && (
-                  <button type="button" title={t("common.reveal")} aria-label={t("common.reveal")} onClick={() => void api.reveal(f.path).catch(() => undefined)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
-                    <FolderOpen size={14} strokeWidth={1.75} />
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+          {res.found.length > 0 && (
+            <ul className="divide-y divide-line rounded-md border border-line bg-canvas">
+              {res.found.map((f) => (
+                <li key={f.path} className="flex items-center gap-3 px-3 py-1.5">
+                  <PathText path={f.path} className="flex-1" />
+                  <span className="num shrink-0 font-mono text-[12px] text-ink-secondary">{fmt(f.bytes)}</span>
+                  {isFilePath(f.path) && (
+                    <button type="button" title={t("common.reveal")} aria-label={t("common.reveal")} onClick={() => void api.reveal(f.path).catch(() => undefined)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
+                      <FolderOpen size={14} strokeWidth={1.75} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-[12px] text-ink-muted">
             {rule.minAgeHours ? <span>{t("junk.minAge", { hours: rule.minAgeHours })}</span> : null}
             {res.partial && <span>{t("junk.partial")}</span>}
             {rule.command && !rule.command.startsWith("api:") && (
               <>
                 <code className="selectable rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-ink">{rule.command}</code>
-                {res.commandAvailable && (
-                  <Button size="sm" variant="secondary" icon={<Terminal size={14} strokeWidth={1.75} />} loading={cmdBusy} onClick={() => void runCommand()} title={t("common.commandHint")}>
-                    {t("common.runCommand")}
-                  </Button>
+                {!runCommands ? (
+                  <>
+                    <Button size="sm" variant="secondary" icon={<ClipboardCopy size={14} strokeWidth={1.75} />} onClick={copyCommand}>
+                      {t("common.copyCommand")}
+                    </Button>
+                    <span>{t("common.copyCommandHint")}</span>
+                  </>
+                ) : (
+                  res.commandAvailable && (
+                    <Button size="sm" variant="secondary" icon={<Terminal size={14} strokeWidth={1.75} />} loading={cmdBusy} onClick={() => void runCommand()} title={t("common.commandHint")}>
+                      {t("common.runCommand")}
+                    </Button>
+                  )
                 )}
               </>
             )}
@@ -108,15 +129,17 @@ export function CleanerPage() {
   const { info, settings, rules, junk, running, scanJunk, toast, refreshDrives } = useApp();
   const scanning = !!running.junk;
   const elevated = !!info?.elevated;
+  const scriptExport = useFeature("scriptExport");
+  const runCommands = useFeature("runRuleCommands");
 
   const rows: Row[] = useMemo(() => {
     if (!rules || !junk) return [];
     const byId = new Map(rules.targets.map((r) => [r.id, r]));
     return junk
       .map((res) => ({ rule: byId.get(res.id)!, res }))
-      .filter((r) => r.rule && r.res.bytes > 0)
+      .filter((r) => r.rule && (r.res.bytes > 0 || isCommandOnly(r.rule, r.res, runCommands)))
       .sort((a, b) => b.res.bytes - a.res.bytes);
-  }, [rules, junk]);
+  }, [rules, junk, runCommands]);
 
   const visible = useMemo(() => rows.filter((r) => r.rule.risk !== "caution" || settings?.showCaution), [rows, settings?.showCaution]);
   const hiddenCaution = rows.length - visible.length;
@@ -236,9 +259,10 @@ export function CleanerPage() {
               if (list.length === 0) return null;
               const groupSel = list.filter((r) => selected.has(r.rule.id));
               const selectable = list.filter((r) => r.res.running.length === 0 && isCleanable(r.rule));
+              const groupBytes = list.reduce((s, r) => s + r.res.bytes, 0);
               return (
                 <div key={g}>
-                  <SectionTitle aside={fmt(list.reduce((s, r) => s + r.res.bytes, 0))}>
+                  <SectionTitle aside={groupBytes > 0 ? fmt(groupBytes) : "—"}>
                     <span className="inline-flex items-center gap-3">
                       <Checkbox
                         checked={selectable.length > 0 && groupSel.length === selectable.length}
@@ -268,9 +292,11 @@ export function CleanerPage() {
             })}
           </Card>
           <SelectionBar count={chosen.length} bytes={chosenBytes} note={t(`method.${method}`)}>
-            <Button size="sm" variant="secondary" icon={<ClipboardCopy size={15} strokeWidth={1.75} />} disabled={chosen.length === 0} onClick={() => void copyScript()}>
-              {t("common.copyScript")}
-            </Button>
+            {scriptExport && (
+              <Button size="sm" variant="secondary" icon={<ClipboardCopy size={15} strokeWidth={1.75} />} disabled={chosen.length === 0} onClick={() => void copyScript()}>
+                {t("common.copyScript")}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="primary"

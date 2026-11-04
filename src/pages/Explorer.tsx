@@ -4,12 +4,13 @@ import { useTranslation } from "react-i18next";
 import { ConfirmClean, PathText, ProgressPanel, ReportDialog } from "../components/common";
 import { HiddenSpacePanel } from "../components/HiddenSpace";
 import { LockDialog } from "../components/LockDialog";
-import { useBytes, useLocale } from "../lib/hooks";
+import { useBytes, useFeature, useLocale } from "../lib/hooks";
 import { Treemap, type TreemapMode } from "../components/Treemap";
-import { Banner, Button, Card, EmptyState, PageHeader, Segmented } from "../components/ui";
+import { Badge, Banner, Button, Card, EmptyState, PageHeader, Segmented } from "../components/ui";
 import { cx } from "../lib/cx";
 import { api, pickFolders } from "../lib/api";
 import { formatCount, formatDate, formatPercent } from "../lib/format";
+import { driveLabel, isDriveRoot, samePath } from "../lib/paths";
 import type { CleanReport, Category, Crumb, DeleteMethod, ExtStat, NodeView } from "../lib/types";
 import { errorText, useApp } from "../store/app";
 
@@ -101,6 +102,8 @@ export function ExplorerPage() {
   const [method, setMethod] = useState<DeleteMethod>(settings?.filesDelete ?? "recycle");
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<CleanReport | null>(null);
+  const locks = useFeature("locks");
+  const hiddenSpace = useFeature("hiddenSpace");
 
   useEffect(() => {
     if (!explorer) return;
@@ -128,9 +131,9 @@ export function ExplorerPage() {
     setSelected(null);
   }
 
-  const roots = [{ value: "home", label: t("explorer.home"), path: info?.userProfile ?? "" }, ...drives.map((d) => ({ value: d.root, label: d.root.replace("\\", ""), path: d.root }))];
+  const roots = [{ value: "home", label: t("explorer.home"), path: info?.userProfile ?? "" }, ...drives.map((d) => ({ value: d.root, label: driveLabel(d.root), path: d.root }))];
   // The selected location follows the last scan, which may also come from Explorer's menu.
-  const location = explorer && explorer.selection.length === 0 ? (roots.find((r) => r.path && r.path.toLowerCase() === explorer.root.toLowerCase())?.value ?? "custom") : "custom";
+  const location = explorer && explorer.selection.length === 0 ? (roots.find((r) => r.path && samePath(r.path, explorer.root))?.value ?? "custom") : "custom";
   const scan = (path: string) => {
     setSelected(null);
     void scanExplorer(path);
@@ -141,7 +144,7 @@ export function ExplorerPage() {
   };
 
   const whole = !!explorer && explorer.selection.length === 0;
-  const drive = explorer && whole ? drives.find((d) => explorer.root.toLowerCase() === d.root.toLowerCase()) : undefined;
+  const drive = explorer && whole ? drives.find((d) => samePath(explorer.root, d.root)) : undefined;
   const notScanned = drive ? Math.max(0, drive.total - drive.free - explorer!.bytes) : 0;
   const detail = selected ?? node;
 
@@ -303,28 +306,35 @@ export function ExplorerPage() {
                       {detail.kind === "small" ? t("explorer.smallFiles") : detail.name || detail.path}
                     </div>
                     <PathText path={detail.path} className="mt-0.5" />
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="label">{t("common.size")}</div>
-                        <div className="num font-mono text-[18px] text-ink">{fmt(detail.bytes)}</div>
+                    {detail.mount ? (
+                      <div className="mt-3">
+                        <Badge>{t(`explorer.mounts.${detail.mount}`)}</Badge>
+                        <p className="mt-2 text-[13px] text-ink-secondary">{t(`explorer.mountHints.${detail.mount}`)}</p>
                       </div>
-                      <div>
-                        <div className="label">{t("common.files")}</div>
-                        <div className="num font-mono text-[18px] text-ink">{formatCount(detail.files, locale)}</div>
+                    ) : (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="label">{t("common.size")}</div>
+                          <div className="num font-mono text-[18px] text-ink">{fmt(detail.bytes)}</div>
+                        </div>
+                        <div>
+                          <div className="label">{t("common.files")}</div>
+                          <div className="num font-mono text-[18px] text-ink">{formatCount(detail.files, locale)}</div>
+                        </div>
+                        {detail.reclaimSafe + detail.reclaimReview > 0 && (
+                          <div className="col-span-2">
+                            <div className="label">{t("explorer.reclaimable")}</div>
+                            <div className="num font-mono text-[14px] text-positive-fg">{fmt(detail.reclaimSafe + detail.reclaimReview)}</div>
+                          </div>
+                        )}
+                        {detail.mtime > 0 && (
+                          <div className="col-span-2">
+                            <div className="label">{t("common.modified")}</div>
+                            <div className="font-mono text-[13px] text-ink-secondary">{formatDate(detail.mtime, locale)}</div>
+                          </div>
+                        )}
                       </div>
-                      {detail.reclaimSafe + detail.reclaimReview > 0 && (
-                        <div className="col-span-2">
-                          <div className="label">{t("explorer.reclaimable")}</div>
-                          <div className="num font-mono text-[14px] text-positive-fg">{fmt(detail.reclaimSafe + detail.reclaimReview)}</div>
-                        </div>
-                      )}
-                      {detail.mtime > 0 && (
-                        <div className="col-span-2">
-                          <div className="label">{t("common.modified")}</div>
-                          <div className="font-mono text-[13px] text-ink-secondary">{formatDate(detail.mtime, locale)}</div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {detail.kind !== "small" && (
                         <>
@@ -332,7 +342,7 @@ export function ExplorerPage() {
                             {t("common.reveal")}
                           </Button>
                           {/* On a whole drive every running program would match, which says nothing. */}
-                          {!/^[A-Za-z]:\\?$/.test(detail.path) && (
+                          {locks && !isDriveRoot(detail.path, drives.map((d) => d.root)) && (
                             <Button size="sm" variant="ghost" icon={<Lock size={14} strokeWidth={1.75} />} onClick={() => setLockPath(detail.path)}>
                               {t("locks.button")}
                             </Button>
@@ -345,7 +355,7 @@ export function ExplorerPage() {
                           >
                             {t("common.copyPath")}
                           </Button>
-                          {detail.id !== 0 && (
+                          {detail.id !== 0 && !detail.mount && (
                             <Button
                               size="sm"
                               variant="danger"
@@ -381,13 +391,23 @@ export function ExplorerPage() {
                         <span className="cat-dot" />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-[13px] text-ink">{c.kind === "small" ? `${t("explorer.smallFiles")} · ${formatCount(c.files, locale)}` : c.name}</span>
-                          <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-surface-muted">
-                            <span className="block h-full rounded-full" style={{ width: `${(c.bytes / (node.bytes || 1)) * 100}%`, background: "var(--cat)" }} />
-                          </span>
+                          {c.mount ? (
+                            <span className="mt-1 block truncate text-[11px] text-ink-muted">{t(`explorer.mounts.${c.mount}`)}</span>
+                          ) : (
+                            <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-surface-muted">
+                              <span className="block h-full rounded-full" style={{ width: `${(c.bytes / (node.bytes || 1)) * 100}%`, background: "var(--cat)" }} />
+                            </span>
+                          )}
                         </span>
                         <span className="w-[72px] shrink-0 text-right">
-                          <span className="num block font-mono text-[12px] text-ink">{fmt(c.bytes)}</span>
-                          <span className="num block font-mono text-[11px] text-ink-muted">{formatPercent(c.bytes, node.bytes, locale)}</span>
+                          {c.mount ? (
+                            <span className="num block font-mono text-[12px] text-ink-muted">—</span>
+                          ) : (
+                            <>
+                              <span className="num block font-mono text-[12px] text-ink">{fmt(c.bytes)}</span>
+                              <span className="num block font-mono text-[11px] text-ink-muted">{formatPercent(c.bytes, node.bytes, locale)}</span>
+                            </>
+                          )}
                         </span>
                       </button>
                     </li>
@@ -405,7 +425,7 @@ export function ExplorerPage() {
               </Button>
             </div>
           </div>
-          {drive && <HiddenSpacePanel root={drive.root} />}
+          {drive && hiddenSpace && <HiddenSpacePanel root={drive.root} />}
         </>
       )}
       <ConfirmClean open={confirm} onClose={() => setConfirm(false)} onConfirm={() => void remove()} count={1} bytes={detail?.bytes ?? 0} method={method} onMethod={setMethod} busy={busy} files>

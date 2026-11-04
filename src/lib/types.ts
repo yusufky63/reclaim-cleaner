@@ -6,6 +6,7 @@ export type Mode = "contents" | "folder" | "files" | "report";
 export type DeleteMethod = "permanent" | "recycle";
 export type Category = "projects" | "media" | "caches" | "apps" | "ai" | "system" | "other";
 export type NodeKind = "dir" | "file" | "small";
+export type MountKind = "local" | "remote" | "memory";
 
 export interface OsInfo {
   name: string;
@@ -199,6 +200,8 @@ export interface NodeView {
   reclaimSafe: number;
   reclaimReview: number;
   marked: Risk | null;
+  /** Set on a mount the scan did not enter: no bytes, no children. Never set on Windows. */
+  mount?: MountKind | null;
   childCount: number;
   children: NodeView[];
   restBytes: number;

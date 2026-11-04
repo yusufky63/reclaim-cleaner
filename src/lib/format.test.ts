@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baseName, daysSince, exeFromCommand, extOf, formatAgo, formatBytes, formatPercent, parentPath, shortPath, splitBytes } from "./format";
+import { daysSince, exeFromCommand, extOf, formatAgo, formatBytes, formatPercent, splitBytes } from "./format";
 
 describe("formatBytes", () => {
   it("uses binary units with Explorer labels", () => {
@@ -20,9 +20,7 @@ describe("formatBytes", () => {
 });
 
 describe("paths", () => {
-  it("extracts names and parents", () => {
-    expect(baseName("C:\\Users\\a\\Desktop\\")).toBe("Desktop");
-    expect(parentPath("C:\\Users\\a\\file.txt")).toBe("C:\\Users\\a");
+  it("extracts extensions", () => {
     expect(extOf("Movie.MKV")).toBe("mkv");
     expect(extOf(".gitignore")).toBe("");
   });
@@ -31,13 +29,6 @@ describe("paths", () => {
     expect(exeFromCommand('"C:\\Program Files\\App\\app.exe" --minimized')).toBe("C:\\Program Files\\App\\app.exe");
     expect(exeFromCommand("C:\\Tools\\run.exe /background")).toBe("C:\\Tools\\run.exe");
     expect(exeFromCommand("%ProgramFiles%\\x\\y.exe")).toBe("%ProgramFiles%\\x\\y.exe");
-  });
-
-  it("shortens the profile prefix case-insensitively", () => {
-    expect(shortPath("C:\\Users\\Alex\\.npm", "c:\\users\\alex")).toBe("~\\.npm");
-    expect(shortPath("D:\\data", "C:\\Users\\Alex")).toBe("D:\\data");
-    expect(shortPath("C:\\Users\\Alex", "C:\\Users\\Alex")).toBe("C:\\Users\\Alex");
-    expect(shortPath("C:\\Users\\Alex2\\x", "C:\\Users\\Alex")).toBe("C:\\Users\\Alex2\\x");
   });
 });
 

@@ -2,10 +2,11 @@ import { ExternalLink, FolderOpen, GitBranch, RefreshCw, ShieldCheck, Zap } from
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { FolderList } from "../components/common";
-import { useBytes } from "../lib/hooks";
+import { useBytes, useFeature } from "../lib/hooks";
 import { Banner, Button, Card, CardHeader, PageHeader, Segmented, Select, Switch } from "../components/ui";
 import { LANGUAGES } from "../i18n/languages";
 import { api, openUrl } from "../lib/api";
+import { osLabel } from "../lib/platform";
 import { REPO_URL, checkForUpdate, type UpdateResult } from "../lib/updates";
 import type { DeleteMethod, MenuStatus } from "../lib/types";
 import { errorText, useApp } from "../store/app";
@@ -98,6 +99,9 @@ export function SettingsPage() {
   const { settings, info, saveSettings, toast } = useApp();
   const [update, setUpdate] = useState<UpdateResult | null>(null);
   const [checking, setChecking] = useState(false);
+  const explorerMenu = useFeature("explorerMenu");
+  const quickCleanShortcuts = useFeature("quickCleanShortcuts");
+  const elevation = useFeature("elevation");
   if (!settings || !info) return null;
 
   const methodOptions = [
@@ -208,8 +212,8 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      <ExplorerMenu />
-      <QuickCleanShortcut />
+      {explorerMenu && <ExplorerMenu />}
+      {quickCleanShortcuts && <QuickCleanShortcut />}
 
       <Card>
         <CardHeader title={t("settings.updates")} />
@@ -235,23 +239,25 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      <Card>
-        <CardHeader title={t("settings.adminTitle")} />
-        <Row label={info.elevated ? t("settings.adminOn") : t("settings.adminOff")}>
-          {!info.elevated && (
-            <Button size="sm" icon={<ShieldCheck size={14} strokeWidth={1.75} />} onClick={() => void restart()}>
-              {t("settings.restartAdmin")}
-            </Button>
-          )}
-        </Row>
-      </Card>
+      {elevation && (
+        <Card>
+          <CardHeader title={t("settings.adminTitle")} />
+          <Row label={info.elevated ? t("settings.adminOn") : t("settings.adminOff")}>
+            {!info.elevated && (
+              <Button size="sm" icon={<ShieldCheck size={14} strokeWidth={1.75} />} onClick={() => void restart()}>
+                {t("settings.restartAdmin")}
+              </Button>
+            )}
+          </Row>
+        </Card>
+      )}
 
       <Card>
         <CardHeader title={t("settings.about")} />
         <dl className="divide-y divide-line text-[14px]">
           {[
             [t("settings.version"), <span className="font-mono">{info.version}</span>],
-            [t("settings.os"), <span className="font-mono">{`${info.os.name} ${info.os.displayVersion} (${info.os.build})`}</span>],
+            [t("settings.os"), <span className="font-mono">{osLabel(info.os)}</span>],
             [t("settings.mode"), info.portable ? t("settings.portableMode") : t("settings.installed")],
             [
               t("settings.dataFolder"),

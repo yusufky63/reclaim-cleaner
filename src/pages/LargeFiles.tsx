@@ -3,12 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, PathText, ProgressPanel, ReportDialog, SelectionBar } from "../components/common";
 import { LockDialog } from "../components/LockDialog";
-import { useBytes, useLocale } from "../lib/hooks";
+import { useBytes, useFeature, useLocale } from "../lib/hooks";
 import { FileIcon } from "../components/FileIcons";
 import { Button, Card, Checkbox, EmptyState, PageHeader, Select } from "../components/ui";
 import { cx } from "../lib/cx";
 import { api } from "../lib/api";
-import { daysSince, formatDate, parentPath } from "../lib/format";
+import { daysSince, formatDate } from "../lib/format";
+import { driveLabel, parentPath, pathKey } from "../lib/paths";
 import { FILE_KINDS, fileKind, type FileKind } from "../lib/filetypes";
 import type { CleanReport, DeleteMethod, FileView, InstallerFile } from "../lib/types";
 import { errorText, useApp } from "../store/app";
@@ -31,6 +32,7 @@ export function LargeFilesPage() {
   const [report, setReport] = useState<CleanReport | null>(null);
   const [lockPath, setLockPath] = useState<string | null>(null);
   const sys = drives.find((d) => d.system) ?? drives[0];
+  const locks = useFeature("locks");
 
   useEffect(() => {
     if (!explorer) return;
@@ -43,9 +45,9 @@ export function LargeFilesPage() {
 
   // Old installers live outside the scanned root sometimes; merge them so the list is complete.
   const merged: FileView[] = useMemo(() => {
-    const seen = new Set(files.map((f) => f.path.toLowerCase()));
+    const seen = new Set(files.map((f) => pathKey(f.path)));
     const extra = (installers ?? [])
-      .filter((i: InstallerFile) => i.bytes >= minMb * MB && !seen.has(i.path.toLowerCase()))
+      .filter((i: InstallerFile) => i.bytes >= minMb * MB && !seen.has(pathKey(i.path)))
       .map((i, n) => ({ id: -1 - n, name: i.name, path: i.path, bytes: i.bytes, mtime: i.mtime, category: "other" as const }));
     return [...files, ...extra].sort((a, b) => b.bytes - a.bytes);
   }, [files, installers, minMb]);
@@ -100,7 +102,7 @@ export function LargeFilesPage() {
             title={t("large.needsScan")}
             action={drives.map((d) => (
               <Button key={d.root} variant={d.system ? "primary" : "secondary"} icon={<HardDrive size={16} strokeWidth={1.75} />} onClick={() => void scanExplorer(d.root)}>
-                {t("large.scanDrive", { drive: d.root.replace("\\", "") })}
+                {t("large.scanDrive", { drive: driveLabel(d.root) })}
               </Button>
             ))}
           />
@@ -196,9 +198,11 @@ export function LargeFilesPage() {
                       <td className="px-2 py-2 font-mono text-[12px] text-ink-secondary">{formatDate(f.mtime, locale)}</td>
                       <td className="num px-2 py-2 text-right font-mono text-ink">{fmt(f.bytes)}</td>
                       <td className="whitespace-nowrap px-2 py-2 text-right">
-                        <button type="button" title={t("locks.button")} aria-label={t("locks.button")} onClick={() => setLockPath(f.path)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
-                          <Lock size={15} strokeWidth={1.75} />
-                        </button>
+                        {locks && (
+                          <button type="button" title={t("locks.button")} aria-label={t("locks.button")} onClick={() => setLockPath(f.path)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
+                            <Lock size={15} strokeWidth={1.75} />
+                          </button>
+                        )}
                         <button type="button" title={t("common.reveal")} aria-label={t("common.reveal")} onClick={() => void api.reveal(f.path).catch(() => undefined)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
                           <FolderOpen size={15} strokeWidth={1.75} />
                         </button>

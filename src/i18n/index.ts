@@ -39,6 +39,35 @@ void i18n.use(initReactI18next).init({
   returnNull: false,
 });
 
+type Tree = { [key: string]: string | Tree };
+
+function merge(base: Tree, over: Tree): Tree {
+  const out: Tree = { ...base };
+  for (const [key, value] of Object.entries(over)) {
+    const current = out[key];
+    out[key] = typeof value === "object" && typeof current === "object" ? merge(current, value) : value;
+  }
+  return out;
+}
+
+/**
+ * What a language says off Windows: its own `linux` wording over the English one. Starting from
+ * English matters, because a translated Windows string would otherwise win over the fallback.
+ */
+export function linuxWording(lang: string): Tree {
+  const own = (TRANSLATIONS as Record<string, { linux?: unknown }>)[lang]?.linux;
+  return merge(en.linux, (own ?? {}) as Tree);
+}
+
+/**
+ * Pages ask for the same keys on every system; off Windows the strings that name Windows things
+ * (Explorer, the Recycle Bin, UAC) are replaced once at startup. Windows is left untouched.
+ */
+export function applyPlatformWording(platform: string): void {
+  if (platform === "windows") return;
+  for (const code of Object.keys(TRANSLATIONS)) i18n.addResourceBundle(code, "translation", linuxWording(code), true, true);
+}
+
 export function setLanguage(pref: string): Lang {
   const lang = resolveLang(pref);
   try {

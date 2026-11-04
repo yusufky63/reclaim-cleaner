@@ -6,6 +6,7 @@ import { cx } from "../lib/cx";
 import { formatBytes } from "../lib/format";
 import { outsideBytes, partActions, systemKept, type PartAction } from "../lib/hidden";
 import { useBytes, useLocale } from "../lib/hooks";
+import { driveLabel, samePath } from "../lib/paths";
 import type { HiddenPart, HiddenSpace } from "../lib/types";
 import { errorText, useApp } from "../store/app";
 import { PathText, UsageBar } from "./common";
@@ -118,7 +119,7 @@ export function HiddenSpacePanel({ root }: { root: string }) {
   const [nonce, setNonce] = useState(0);
   const h = useHidden(root, nonce);
   const { measuring, measure } = useMeasure(useCallback(() => setNonce((n) => n + 1), []));
-  const drive = root.replace(/\\$/, "");
+  const drive = driveLabel(root);
 
   if (!h) {
     return (
@@ -219,8 +220,8 @@ export function HiddenSummary() {
   const h = useHidden(root, nonce);
   const { measuring, measure } = useMeasure(useCallback(() => setNonce((n) => n + 1), []));
   if (!sys || !root) return null;
-  const drive = root.replace(/\\$/, "");
-  const mapped = !!explorer && explorer.root.toLowerCase() === root.toLowerCase() && explorer.selection.length === 0;
+  const drive = driveLabel(root);
+  const mapped = !!explorer && samePath(explorer.root, root) && explorer.selection.length === 0;
   const kept = h ? systemKept(h) : null;
   const shown = [...(kept?.parts ?? [])].filter((p) => p.bytes !== 0 || p.needsAdmin).sort((a, b) => (b.bytes ?? -1) - (a.bytes ?? -1));
 

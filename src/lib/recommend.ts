@@ -2,7 +2,8 @@
 // cleaners, and executes a selection of them.
 
 import { api } from "./api";
-import { daysSince, shortPath } from "./format";
+import { daysSince } from "./format";
+import { shortPath } from "./paths";
 import type { ScriptItem } from "./script";
 import type { CleanReport, DeleteMethod, Group, InstallerFile, Project, Risk, Settings, TargetResult, TargetRule } from "./types";
 
@@ -38,6 +39,15 @@ export function ruleDescription(rule: TargetRule, lang: string): string {
 /** Rule results that can be cleaned by deleting files (report-only rules need their tool). */
 export function isCleanable(rule: TargetRule): boolean {
   return rule.mode !== "report" || !!rule.command?.startsWith("api:SHEmptyRecycleBin");
+}
+
+/**
+ * A rule whose only way in is a command the user runs: it names no paths, so it can never be
+ * measured. It is worth showing where the command is copied rather than run, and only when this
+ * system has the tool, which keeps the apt rules off Fedora.
+ */
+export function isCommandOnly(rule: TargetRule, res: TargetResult, runCommands: boolean): boolean {
+  return !runCommands && rule.mode === "report" && rule.paths.length === 0 && !!rule.command && !rule.command.startsWith("api:") && res.commandAvailable;
 }
 
 export function idleProjects(projects: Project[], idleDays: number, now = Date.now()): Project[] {

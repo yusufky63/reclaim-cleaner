@@ -7,19 +7,15 @@ import { api } from "../lib/api";
 import { cx } from "../lib/cx";
 import { daysSince, formatAgo, formatCount } from "../lib/format";
 import { useBytes, useLocale } from "../lib/hooks";
+import { claudeProjectLabel } from "../lib/paths";
 import type { AssistantData, CleanReport, DeleteMethod } from "../lib/types";
 import { errorText, useApp } from "../store/app";
-
-/** `C--code-shop` (Claude Code's project folder name) -> `C:\code-shop`, a readable hint. */
-function projectLabel(name: string): string {
-  const m = /^([A-Za-z])--(.*)$/.exec(name);
-  return m ? `${m[1]}:\\${m[2]}` : name;
-}
 
 function Folder({ data, selected, onToggle }: { data: AssistantData; selected: Set<string>; onToggle: (paths: string[], on: boolean) => void }) {
   const { t } = useTranslation();
   const fmt = useBytes();
   const locale = useLocale();
+  const profile = useApp((s) => s.info?.userProfile ?? "");
   const [open, setOpen] = useState(false);
   const paths = data.items.length > 0 ? data.items.map((i) => i.path) : [data.path];
   const sel = paths.filter((p) => selected.has(p));
@@ -53,7 +49,7 @@ function Folder({ data, selected, onToggle }: { data: AssistantData; selected: S
               <Checkbox checked={selected.has(i.path)} onChange={(on) => onToggle([i.path], on)} label={i.name} className="h-4 w-4" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-mono text-[12px] text-ink" title={i.name}>
-                  {data.id === "claude-projects" ? projectLabel(i.name) : i.name}
+                  {data.id === "claude-projects" ? claudeProjectLabel(i.name, profile) : i.name}
                 </span>
               </span>
               <span className="shrink-0 font-mono text-[11px] text-ink-muted">{formatCount(i.files, locale)}</span>

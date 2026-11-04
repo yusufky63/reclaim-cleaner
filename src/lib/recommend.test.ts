@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRecommendations, defaultSelection, idleProjects, mergeReports, quickCleanItems, safeArtifactPaths } from "./recommend";
+import { buildRecommendations, defaultSelection, idleProjects, isCleanable, isCommandOnly, mergeReports, quickCleanItems, safeArtifactPaths } from "./recommend";
 import type { Project, Settings, TargetResult, TargetRule } from "./types";
 
 const t = (key: string, opts?: Record<string, unknown>) => `${key}${opts ? JSON.stringify(opts) : ""}`;
@@ -48,6 +48,39 @@ const settings: Settings = {
   onboarded: false,
   explorerMenuDefaultApplied: false,
 };
+
+describe("isCommandOnly", () => {
+  const pathless = rule("apt-cache", "review", { mode: "report", paths: [], command: "apt-get clean" });
+  const empty = (commandAvailable: boolean) => ({ id: "apt-cache", bytes: 0, files: 0, found: [], running: [], partial: false, commandAvailable });
+
+  it("shows a pathless report rule where commands are copied", () => {
+    expect(isCommandOnly(pathless, empty(true), false)).toBe(true);
+  });
+
+  it("hides it when this system does not have the tool", () => {
+    expect(isCommandOnly(pathless, empty(false), false)).toBe(false);
+  });
+
+  it("changes nothing where commands run from the app", () => {
+    expect(isCommandOnly(pathless, empty(true), true)).toBe(false);
+  });
+
+  it("keeps other rules to what the scan measured", () => {
+    expect(isCommandOnly({ ...pathless, paths: ["%HOME%/.cache/x"] }, empty(true), false)).toBe(false);
+    expect(isCommandOnly({ ...pathless, mode: "contents" }, empty(true), false)).toBe(false);
+    expect(isCommandOnly({ ...pathless, command: null }, empty(true), false)).toBe(false);
+    expect(isCommandOnly({ ...pathless, command: "api:SHEmptyRecycleBinW()" }, empty(true), false)).toBe(false);
+  });
+});
+
+describe("the Linux Trash rule", () => {
+  const trash = rule("recycle-bin", "review", { mode: "report", paths: [], command: "api:SHEmptyRecycleBin" });
+
+  it("is cleaned by the app, so nothing offers its command", () => {
+    expect(isCleanable(trash)).toBe(true);
+    expect(isCommandOnly(trash, { id: trash.id, bytes: 0, files: 0, found: [], running: [], partial: false, commandAvailable: true }, false)).toBe(false);
+  });
+});
 
 describe("buildRecommendations", () => {
   const now = Date.UTC(2026, 9, 16);

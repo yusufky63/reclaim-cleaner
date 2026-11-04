@@ -87,6 +87,9 @@ export const en = {
     scriptCopied: "PowerShell script copied. It starts in dry-run mode.",
     runCommand: "Run official command",
     commandHint: "Runs the tool's own cleanup command instead of deleting files.",
+    copyCommand: "Copy command",
+    copyCommandHint: "ReClaim does not run this. Check it, then run it in a terminal.",
+    rootNoDelete: "ReClaim is running as root, so it deletes nothing. Start it as your own user to clean.",
     show: "Show",
     folderPicker: "Choose folders",
     roots: "Folders to search",
@@ -234,6 +237,16 @@ export const en = {
     openFolder: "Open folder",
     selection_one: "{{count}} selected folder in {{parent}}",
     selection_other: "{{count}} selected folders in {{parent}}",
+    mounts: {
+      local: "Another disk, not scanned",
+      remote: "Network or FUSE mount, not scanned",
+      memory: "In memory, not scanned",
+    },
+    mountHints: {
+      local: "Another disk is mounted here, so this scan did not enter it and its size is not counted.",
+      remote: "This scan did not enter it, because reading a network or FUSE mount can download data. Its size is not counted.",
+      memory: "A tmpfs mount holds its files in memory rather than on a disk, so its size is not counted.",
+    },
   },
   large: {
     title: "Large files",
@@ -302,6 +315,7 @@ export const en = {
     hiddenCaution_one: "{{count}} caution item hidden. Enable caution items in Settings to see it.",
     hiddenCaution_other: "{{count}} caution items hidden. Enable caution items in Settings to see them.",
     minAge: "Only files older than {{hours}} h",
+    notMeasured: "Not measured",
   },
   projects: {
     title: "Developer",
@@ -719,6 +733,75 @@ export const en = {
     skipped: "Skipped",
     skippedList: "Skipped items",
     ok: "Done",
+  },
+  /**
+   * Replaces the same keys above on systems other than Windows, wherever a string names something
+   * only Windows has. Keys of pages and panels those systems do not show are left out. Plural keys
+   * cannot be replaced here, because other languages add forms English does not have.
+   */
+  linux: {
+    nav: {
+      admin: "Root",
+    },
+    common: {
+      reveal: "Show in file manager",
+      needsAdmin: "Needs root",
+    },
+    groups: {
+      system: "System",
+    },
+    categories: {
+      system: "System",
+    },
+    method: {
+      recycle: "Move to Trash",
+      recycleShort: "Trash",
+      recycleHint: "Can be restored from the Trash. Space is freed when the Trash is emptied.",
+    },
+    reasons: {
+      needs_admin: "Needs root",
+    },
+    errors: {
+      needs_admin: "This needs root rights.",
+    },
+    overview: {
+      recommendationsHint: "Select items to clean now.",
+      promise2: "Your files go to the Trash",
+      recycledToast: "Moved {{size}} to the Trash.",
+      elevationCancelled: "Items that need root rights were skipped.",
+      quickSkipped: "Apps that are open and items that need root rights are left out.",
+    },
+    explorer: {
+      denied: "Some folders could not be read.",
+    },
+    empty: {
+      emptyBody: "Searches the folders you choose. .git and node_modules are skipped because apps keep placeholders there.",
+    },
+    junk: {
+      emptyBody: "Checks {{count}} known locations for the system, browsers, apps, games and developer tools.",
+      partial: "Some files could not be measured without root rights.",
+    },
+    history: {
+      kinds: {
+        "recycle-bin": "Trash",
+        tool: "System tool",
+      },
+      recycled: "To Trash",
+    },
+    settings: {
+      showCautionHint: "Items that can lose data or slow things down. Each one shows its warning.",
+      os: "System",
+      portableMode: "Portable (settings stay next to the app)",
+    },
+    confirm: {
+      adminNote: "{{count}} items need root rights.",
+    },
+    games: {
+      notInstalled: "Steam was not found for this user. The Snap version of Steam is not checked.",
+    },
+    result: {
+      recycled: "Moved to Trash",
+    },
   },
 };
 
