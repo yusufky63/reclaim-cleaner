@@ -388,16 +388,13 @@ mod tests {
 
     /// The Linux twin of `builtin_rule_paths_pass_the_guard`, on a home folder of its own so it
     /// does not depend on who runs it.
-    // Ignored until the Linux guard from the linux-engine session is on main. Then remove the
-    // ignore and build the guard with `Guard::for_home(home, &[], None)`: `Guard::new` refuses
-    // everything when running as root, which is the case in Docker.
+    // `Guard::new` refuses everything when running as root, which is the case in Docker.
     #[cfg(target_os = "linux")]
     #[test]
-    #[ignore = "needs the Linux guard from the linux-engine branch"]
     fn linux_rule_paths_pass_the_guard() {
         let tmp = tempfile::tempdir().unwrap();
         let home = tmp.path();
-        let guard = Guard::new(&[], None);
+        let guard = Guard::for_home(home, &[], None);
         for r in builtin_targets() {
             for p in &r.paths {
                 let sample = p.replace('*', "sample");
