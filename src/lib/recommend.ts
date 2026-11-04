@@ -2,7 +2,8 @@
 // cleaners, and executes a selection of them.
 
 import { api } from "./api";
-import { daysSince, shortPath } from "./format";
+import { daysSince } from "./format";
+import { shortPath } from "./paths";
 import type { ScriptItem } from "./script";
 import type { CleanReport, DeleteMethod, Group, InstallerFile, Project, Risk, Settings, TargetResult, TargetRule } from "./types";
 

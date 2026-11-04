@@ -60,26 +60,6 @@ export function daysSince(unixSeconds: number, now = Date.now()): number {
   return Math.floor((now - unixSeconds * 1000) / 86_400_000);
 }
 
-/** Last path segment, for compact labels. */
-export function baseName(path: string): string {
-  const trimmed = path.replace(/[\\/]+$/, "");
-  const i = Math.max(trimmed.lastIndexOf("\\"), trimmed.lastIndexOf("/"));
-  return i >= 0 ? trimmed.slice(i + 1) : trimmed;
-}
-
-export function parentPath(path: string): string {
-  const trimmed = path.replace(/[\\/]+$/, "");
-  const i = Math.max(trimmed.lastIndexOf("\\"), trimmed.lastIndexOf("/"));
-  return i > 0 ? trimmed.slice(0, i) : trimmed;
-}
-
-/** Replaces the user profile prefix with `~` to keep long paths readable. */
-export function shortPath(path: string, profile: string): string {
-  const p = profile.replace(/[\\/]+$/, "");
-  if (p && path.length > p.length && path.toLowerCase().startsWith(p.toLowerCase() + "\\")) return "~" + path.slice(p.length);
-  return path;
-}
-
 /** The program part of a command line: `"C:\App\app.exe" --x` -> `C:\App\app.exe`. */
 export function exeFromCommand(cmd: string): string {
   const s = cmd.trim();

@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import i18n, { setLanguage } from "../i18n";
+import i18n, { applyPlatformWording, setLanguage } from "../i18n";
 import { ApiError, api } from "../lib/api";
+import { pageAvailable } from "../lib/platform";
 import type { AnalyzeRequest, AppInfo, Drive, InstallerFile, ProgressEvent, Project, RulesPayload, ScanSummary, Settings, TargetResult } from "../lib/types";
 
 export type PageId = "overview" | "explorer" | "large" | "duplicates" | "empty" | "junk" | "projects" | "models" | "assistants" | "downloads" | "games" | "apps" | "startup" | "tools" | "history" | "settings";
@@ -16,6 +17,8 @@ interface AppState {
   ready: boolean;
   bootError: string | null;
   info: AppInfo | null;
+  /** From `app_info`. Windows until it answers, which happens before anything is shown. */
+  platform: string;
   drives: Drive[];
   settings: Settings | null;
   rules: RulesPayload | null;
@@ -85,6 +88,7 @@ export const useApp = create<AppState>((set, get) => ({
   ready: false,
   bootError: null,
   info: null,
+  platform: "windows",
   drives: [],
   settings: null,
   rules: null,
@@ -99,11 +103,23 @@ export const useApp = create<AppState>((set, get) => ({
   quickCleanPending: false,
   toasts: [],
 
-  go: (page) => set({ page }),
+  // Pages a system lacks stay out of the navigation; this also covers links from anywhere else.
+  go: (page) => {
+    if (pageAvailable(get().platform, page)) set({ page });
+  },
 
   boot: async () => {
     try {
-      const [info, settings, drives, rules, explorer] = await Promise.all([api.appInfo(), api.settingsGet(), api.drives(), api.rules(), api.explorerSummary()]);
+      const appInfo = api.appInfo();
+      // Gates and wording need the platform even if another call below fails.
+      void appInfo.then(
+        ({ platform }) => {
+          applyPlatformWording(platform);
+          set({ platform });
+        },
+        () => undefined,
+      );
+      const [info, settings, drives, rules, explorer] = await Promise.all([appInfo, api.settingsGet(), api.drives(), api.rules(), api.explorerSummary()]);
       setLanguage(settings.language);
       applyTheme(settings.theme);
       set({ info, settings, drives, rules, explorer, ready: true });

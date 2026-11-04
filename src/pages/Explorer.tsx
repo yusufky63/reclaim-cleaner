@@ -4,12 +4,13 @@ import { useTranslation } from "react-i18next";
 import { ConfirmClean, PathText, ProgressPanel, ReportDialog } from "../components/common";
 import { HiddenSpacePanel } from "../components/HiddenSpace";
 import { LockDialog } from "../components/LockDialog";
-import { useBytes, useLocale } from "../lib/hooks";
+import { useBytes, useFeature, useLocale } from "../lib/hooks";
 import { Treemap, type TreemapMode } from "../components/Treemap";
 import { Banner, Button, Card, EmptyState, PageHeader, Segmented } from "../components/ui";
 import { cx } from "../lib/cx";
 import { api, pickFolders } from "../lib/api";
 import { formatCount, formatDate, formatPercent } from "../lib/format";
+import { driveLabel, isDriveRoot, samePath } from "../lib/paths";
 import type { CleanReport, Category, Crumb, DeleteMethod, ExtStat, NodeView } from "../lib/types";
 import { errorText, useApp } from "../store/app";
 
@@ -101,6 +102,8 @@ export function ExplorerPage() {
   const [method, setMethod] = useState<DeleteMethod>(settings?.filesDelete ?? "recycle");
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<CleanReport | null>(null);
+  const locks = useFeature("locks");
+  const hiddenSpace = useFeature("hiddenSpace");
 
   useEffect(() => {
     if (!explorer) return;
@@ -128,9 +131,9 @@ export function ExplorerPage() {
     setSelected(null);
   }
 
-  const roots = [{ value: "home", label: t("explorer.home"), path: info?.userProfile ?? "" }, ...drives.map((d) => ({ value: d.root, label: d.root.replace("\\", ""), path: d.root }))];
+  const roots = [{ value: "home", label: t("explorer.home"), path: info?.userProfile ?? "" }, ...drives.map((d) => ({ value: d.root, label: driveLabel(d.root), path: d.root }))];
   // The selected location follows the last scan, which may also come from Explorer's menu.
-  const location = explorer && explorer.selection.length === 0 ? (roots.find((r) => r.path && r.path.toLowerCase() === explorer.root.toLowerCase())?.value ?? "custom") : "custom";
+  const location = explorer && explorer.selection.length === 0 ? (roots.find((r) => r.path && samePath(r.path, explorer.root))?.value ?? "custom") : "custom";
   const scan = (path: string) => {
     setSelected(null);
     void scanExplorer(path);
@@ -141,7 +144,7 @@ export function ExplorerPage() {
   };
 
   const whole = !!explorer && explorer.selection.length === 0;
-  const drive = explorer && whole ? drives.find((d) => explorer.root.toLowerCase() === d.root.toLowerCase()) : undefined;
+  const drive = explorer && whole ? drives.find((d) => samePath(explorer.root, d.root)) : undefined;
   const notScanned = drive ? Math.max(0, drive.total - drive.free - explorer!.bytes) : 0;
   const detail = selected ?? node;
 
@@ -332,7 +335,7 @@ export function ExplorerPage() {
                             {t("common.reveal")}
                           </Button>
                           {/* On a whole drive every running program would match, which says nothing. */}
-                          {!/^[A-Za-z]:\\?$/.test(detail.path) && (
+                          {locks && !isDriveRoot(detail.path, drives.map((d) => d.root)) && (
                             <Button size="sm" variant="ghost" icon={<Lock size={14} strokeWidth={1.75} />} onClick={() => setLockPath(detail.path)}>
                               {t("locks.button")}
                             </Button>
@@ -405,7 +408,7 @@ export function ExplorerPage() {
               </Button>
             </div>
           </div>
-          {drive && <HiddenSpacePanel root={drive.root} />}
+          {drive && hiddenSpace && <HiddenSpacePanel root={drive.root} />}
         </>
       )}
       <ConfirmClean open={confirm} onClose={() => setConfirm(false)} onConfirm={() => void remove()} count={1} bytes={detail?.bytes ?? 0} method={method} onMethod={setMethod} busy={busy} files>

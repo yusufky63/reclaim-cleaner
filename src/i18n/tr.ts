@@ -87,6 +87,8 @@ export const tr: Messages = {
     scriptCopied: "PowerShell betiği kopyalandı. Deneme modunda başlar.",
     runCommand: "Resmi komutu çalıştır",
     commandHint: "Dosya silmek yerine aracın kendi temizlik komutunu çalıştırır.",
+    copyCommand: "Komutu kopyala",
+    copyCommandHint: "ReClaim bunu çalıştırmaz. Kontrol et, sonra bir terminalde çalıştır.",
     show: "Göster",
     folderPicker: "Klasör seç",
     roots: "Aranacak klasörler",
@@ -719,5 +721,69 @@ export const tr: Messages = {
     skipped: "Atlanan",
     skippedList: "Atlanan öğeler",
     ok: "Tamam",
+  },
+  linux: {
+    nav: {
+      admin: "Root",
+    },
+    common: {
+      reveal: "Dosya yöneticisinde göster",
+      needsAdmin: "Root gerekir",
+    },
+    groups: {
+      system: "Sistem",
+    },
+    categories: {
+      system: "Sistem",
+    },
+    method: {
+      recycle: "Çöp Kutusu'na taşı",
+      recycleShort: "Çöp Kutusu",
+      recycleHint: "Çöp Kutusu'ndan geri alınabilir. Alan, kutu boşaltılınca açılır.",
+    },
+    reasons: {
+      needs_admin: "Root gerekir",
+    },
+    errors: {
+      needs_admin: "Bunun için root yetkisi gerekir.",
+    },
+    overview: {
+      recommendationsHint: "Hemen temizlemek için öğeleri seç.",
+      promise2: "Senin dosyaların Çöp Kutusu'na gider",
+      recycledToast: "{{size}} Çöp Kutusu'na taşındı.",
+      elevationCancelled: "Root yetkisi gerektiren öğeler atlandı.",
+      quickSkipped: "Açık olan uygulamalar ve root yetkisi isteyen öğeler dışarıda bırakılır.",
+    },
+    explorer: {
+      denied: "Bazı klasörler okunamadı.",
+    },
+    empty: {
+      emptyBody: "Seçtiğin klasörlerde arar. Uygulamalar orada yer tutucu tuttuğu için .git ve node_modules atlanır.",
+    },
+    junk: {
+      emptyBody: "Sistem, tarayıcılar, uygulamalar, oyunlar ve geliştirici araçları için bilinen {{count}} konumu kontrol eder.",
+      partial: "Bazı dosyalar root yetkisi olmadan ölçülemedi.",
+    },
+    history: {
+      kinds: {
+        "recycle-bin": "Çöp Kutusu",
+        tool: "Sistem aracı",
+      },
+      recycled: "Çöp Kutusu'na",
+    },
+    settings: {
+      showCautionHint: "Veri kaybettirebilecek ya da işleri yavaşlatabilecek öğeler. Her biri kendi uyarısını gösterir.",
+      os: "Sistem",
+      portableMode: "Taşınabilir (ayarlar uygulamanın yanında durur)",
+    },
+    confirm: {
+      adminNote: "{{count}} öğe root yetkisi istiyor.",
+    },
+    games: {
+      notInstalled: "Bu sürüm bu sistemde Steam kütüphanelerini okuyamıyor.",
+    },
+    result: {
+      recycled: "Çöp Kutusu'na taşınan",
+    },
   },
 };

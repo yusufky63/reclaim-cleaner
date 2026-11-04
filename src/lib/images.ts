@@ -3,6 +3,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { api, isDesktop } from "./api";
+import { pathKey } from "./paths";
 import type { ImageKind } from "./types";
 
 const cache = new Map<string, string | null>();
@@ -12,7 +13,7 @@ const subscribers = new Set<() => void>();
 let version = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
-const keyOf = (kind: ImageKind, size: number, path: string) => `${kind}|${size}|${path.toLowerCase()}`;
+const keyOf = (kind: ImageKind, size: number, path: string) => `${kind}|${size}|${pathKey(path)}`;
 
 function notify() {
   version++;
@@ -61,7 +62,7 @@ function subscribe(f: () => void) {
   return () => subscribers.delete(f);
 }
 
-/** The image for `path` once loaded: a data URL, `null` when Windows has none, `undefined` while loading. */
+/** The image for `path` once loaded: a data URL, `null` when the system has none, `undefined` while loading. */
 export function useShellImage(path: string | null | undefined, size = 32, kind: ImageKind = "icon"): string | null | undefined {
   useSyncExternalStore(subscribe, () => version);
   useEffect(() => {

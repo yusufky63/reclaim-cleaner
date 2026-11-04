@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Shell } from "./components/Shell";
 import { Banner, EmptyState } from "./components/ui";
 import { api, isDesktop, onProgress, onQuickClean, onShellAnalyze } from "./lib/api";
+import { useFeature } from "./lib/hooks";
+import { hasFeature } from "./lib/platform";
 import { checkForUpdate } from "./lib/updates";
 import { OverviewPage } from "./pages/Overview";
 import { useApp } from "./store/app";
@@ -71,6 +73,7 @@ export function App() {
   const settingsError = useApp((s) => s.info?.settingsError);
   const page = useApp((s) => s.page);
   const go = useApp((s) => s.go);
+  const quickCleanShortcuts = useFeature("quickCleanShortcuts");
 
   useEffect(() => {
     // Folders from Explorer's "Analyze with ReClaim": a cold start leaves them waiting, a
@@ -91,12 +94,14 @@ export function App() {
     void boot().then(() => {
       takePending();
       takeQuickClean();
-      const { settings, info, toast } = useApp.getState();
+      const { settings, info, platform, toast } = useApp.getState();
       // Installed copies add the Explorer entry the first time they start; say where it went.
-      void api
-        .shellMenuDefault(i18n.language)
-        .then((added) => added && toast("neutral", t("settings.explorerDefaultAdded")))
-        .catch(() => undefined);
+      if (hasFeature(platform, "explorerMenu")) {
+        void api
+          .shellMenuDefault(i18n.language)
+          .then((added) => added && toast("neutral", t("settings.explorerDefaultAdded")))
+          .catch(() => undefined);
+      }
       if (settings?.checkUpdates && info) {
         void checkForUpdate(info.version).then((r) => {
           if (r.kind === "available") toast("neutral", t("settings.updateAvailable", { version: r.version }));
@@ -116,10 +121,10 @@ export function App() {
   }, [boot]);
 
   useEffect(() => {
-    if (!ready || !isDesktop()) return;
+    if (!ready || !isDesktop() || !quickCleanShortcuts) return;
     // The jump list keeps the text it was given, so it is rewritten when the language changes.
     void api.jumpListSet(t("overview.quickTitle"), t("overview.quickTaskHint")).catch(() => undefined);
-  }, [ready, t, i18n.language]);
+  }, [ready, quickCleanShortcuts, t, i18n.language]);
 
   if (!isDesktop()) {
     return (

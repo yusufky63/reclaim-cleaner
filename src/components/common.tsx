@@ -2,10 +2,11 @@ import { AlertTriangle, FolderPlus, Lock, ShieldAlert, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { pickFolders } from "../lib/api";
-import { formatBytes, formatCount, shortPath } from "../lib/format";
+import { formatBytes, formatCount } from "../lib/format";
+import { hasDriveLetter, samePath, shortPath } from "../lib/paths";
 import type { CleanReport, DeleteMethod } from "../lib/types";
 import { api } from "../lib/api";
-import { useBytes, useLocale } from "../lib/hooks";
+import { useBytes, useFeature, useLocale } from "../lib/hooks";
 import { useApp } from "../store/app";
 import { Banner, Button, Dialog, ProgressBar, Segmented } from "./ui";
 import { LockDialog } from "./LockDialog";
@@ -44,10 +45,10 @@ export function FolderList({ folders, onChange, suggestions = [], emptyText }: {
   const add = async () => {
     const picked = await pickFolders(true);
     const next = [...folders];
-    for (const p of picked) if (!next.some((f) => f.toLowerCase() === p.toLowerCase())) next.push(p);
+    for (const p of picked) if (!next.some((f) => samePath(f, p))) next.push(p);
     onChange(next);
   };
-  const missing = suggestions.filter((s) => !folders.some((f) => f.toLowerCase() === s.toLowerCase()));
+  const missing = suggestions.filter((s) => !folders.some((f) => samePath(f, s)));
   return (
     <div className="flex flex-wrap items-center gap-2">
       {folders.length === 0 && <span className="text-[13px] text-ink-muted">{emptyText ?? t("settings.noneAdded")}</span>}
@@ -182,7 +183,7 @@ export function ConfirmClean({
 
 /** Paths of failures that "What is using this?" can check: files or folders that were in use. */
 function lockable(reason: string, path: string): boolean {
-  return reason === "in_use" && /^[A-Za-z]:\\/.test(path);
+  return reason === "in_use" && hasDriveLetter(path);
 }
 
 export function ReportDialog({ report, onClose }: { report: CleanReport | null; onClose: () => void }) {
@@ -190,6 +191,7 @@ export function ReportDialog({ report, onClose }: { report: CleanReport | null; 
   const fmt = useBytes();
   const locale = useLocale();
   const [lockPath, setLockPath] = useState<string | null>(null);
+  const locks = useFeature("locks");
   if (!report) return null;
   // The lock check replaces the report while it is open, so the two dialogs never stack.
   if (lockPath) return <LockDialog path={lockPath} onClose={() => setLockPath(null)} />;
@@ -228,7 +230,7 @@ export function ReportDialog({ report, onClose }: { report: CleanReport | null; 
                 <PathText path={f.path} />
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="text-[12px] text-ink-secondary">{t(`reasons.${f.reason}`, { defaultValue: f.reason })}</span>
-                  {lockable(f.reason, f.path) && (
+                  {locks && lockable(f.reason, f.path) && (
                     <Button size="sm" variant="ghost" icon={<Lock size={13} strokeWidth={1.75} />} onClick={() => setLockPath(f.path)}>
                       {t("locks.button")}
                     </Button>

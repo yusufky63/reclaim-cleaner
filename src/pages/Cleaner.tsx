@@ -2,7 +2,8 @@ import { ChevronDown, ClipboardCopy, ExternalLink, FolderOpen, ScanSearch, Spark
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmClean, PathText, ProgressPanel, ReportDialog, SelectionBar } from "../components/common";
-import { useBytes } from "../lib/hooks";
+import { useBytes, useFeature } from "../lib/hooks";
+import { isFilePath } from "../lib/paths";
 import { Badge, Banner, Button, Card, Checkbox, EmptyState, PageHeader, RiskBadge, SectionTitle } from "../components/ui";
 import { cx } from "../lib/cx";
 import { api, openUrl } from "../lib/api";
@@ -22,6 +23,7 @@ function RuleRow({ row, checked, onToggle, elevated }: { row: Row; checked: bool
   const { t, i18n } = useTranslation();
   const fmt = useBytes();
   const toast = useApp((s) => s.toast);
+  const runCommands = useFeature("runRuleCommands");
   const [open, setOpen] = useState(false);
   const [cmdBusy, setCmdBusy] = useState(false);
   const { rule, res } = row;
@@ -39,6 +41,13 @@ function RuleRow({ row, checked, onToggle, elevated }: { row: Row; checked: bool
     } finally {
       setCmdBusy(false);
     }
+  };
+
+  const copyCommand = () => {
+    void navigator.clipboard.writeText(rule.command!).then(
+      () => toast("positive", t("common.copied")),
+      (e) => toast("danger", errorText(e)),
+    );
   };
 
   return (
@@ -68,7 +77,7 @@ function RuleRow({ row, checked, onToggle, elevated }: { row: Row; checked: bool
               <li key={f.path} className="flex items-center gap-3 px-3 py-1.5">
                 <PathText path={f.path} className="flex-1" />
                 <span className="num shrink-0 font-mono text-[12px] text-ink-secondary">{fmt(f.bytes)}</span>
-                {f.path.includes("\\") && (
+                {isFilePath(f.path) && (
                   <button type="button" title={t("common.reveal")} aria-label={t("common.reveal")} onClick={() => void api.reveal(f.path).catch(() => undefined)} className="rounded p-1 text-ink-muted hover:bg-surface-muted hover:text-ink">
                     <FolderOpen size={14} strokeWidth={1.75} />
                   </button>
@@ -82,10 +91,19 @@ function RuleRow({ row, checked, onToggle, elevated }: { row: Row; checked: bool
             {rule.command && !rule.command.startsWith("api:") && (
               <>
                 <code className="selectable rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-ink">{rule.command}</code>
-                {res.commandAvailable && (
-                  <Button size="sm" variant="secondary" icon={<Terminal size={14} strokeWidth={1.75} />} loading={cmdBusy} onClick={() => void runCommand()} title={t("common.commandHint")}>
-                    {t("common.runCommand")}
-                  </Button>
+                {!runCommands ? (
+                  <>
+                    <Button size="sm" variant="secondary" icon={<ClipboardCopy size={14} strokeWidth={1.75} />} onClick={copyCommand}>
+                      {t("common.copyCommand")}
+                    </Button>
+                    <span>{t("common.copyCommandHint")}</span>
+                  </>
+                ) : (
+                  res.commandAvailable && (
+                    <Button size="sm" variant="secondary" icon={<Terminal size={14} strokeWidth={1.75} />} loading={cmdBusy} onClick={() => void runCommand()} title={t("common.commandHint")}>
+                      {t("common.runCommand")}
+                    </Button>
+                  )
                 )}
               </>
             )}
@@ -108,6 +126,7 @@ export function CleanerPage() {
   const { info, settings, rules, junk, running, scanJunk, toast, refreshDrives } = useApp();
   const scanning = !!running.junk;
   const elevated = !!info?.elevated;
+  const scriptExport = useFeature("scriptExport");
 
   const rows: Row[] = useMemo(() => {
     if (!rules || !junk) return [];
@@ -268,9 +287,11 @@ export function CleanerPage() {
             })}
           </Card>
           <SelectionBar count={chosen.length} bytes={chosenBytes} note={t(`method.${method}`)}>
-            <Button size="sm" variant="secondary" icon={<ClipboardCopy size={15} strokeWidth={1.75} />} disabled={chosen.length === 0} onClick={() => void copyScript()}>
-              {t("common.copyScript")}
-            </Button>
+            {scriptExport && (
+              <Button size="sm" variant="secondary" icon={<ClipboardCopy size={15} strokeWidth={1.75} />} disabled={chosen.length === 0} onClick={() => void copyScript()}>
+                {t("common.copyScript")}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="primary"

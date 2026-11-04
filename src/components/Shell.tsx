@@ -25,6 +25,8 @@ import { useTranslation } from "react-i18next";
 import { useApp, type PageId } from "../store/app";
 import { UsageBar } from "./common";
 import { useBytes } from "../lib/hooks";
+import { driveLabel } from "../lib/paths";
+import { pageAvailable } from "../lib/platform";
 import {  } from "./ui";
 import { cx } from "../lib/cx";
 
@@ -105,8 +107,10 @@ function Sidebar() {
   const go = useApp((s) => s.go);
   const info = useApp((s) => s.info);
   const drives = useApp((s) => s.drives);
+  const platform = useApp((s) => s.platform);
   const fmt = useBytes();
   const sys = drives.find((d) => d.system) ?? drives[0];
+  const sections = SECTIONS.map((s) => ({ ...s, items: s.items.filter((item) => pageAvailable(platform, item.id)) })).filter((s) => s.items.length > 0);
   return (
     <aside className="flex h-full w-[232px] shrink-0 flex-col border-r border-line bg-surface">
       <div className="flex h-14 items-center gap-2.5 px-4">
@@ -117,7 +121,7 @@ function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-3 pt-1" aria-label="Main">
-        {SECTIONS.map((s, i) => (
+        {sections.map((s, i) => (
           <div key={i}>
             {s.label && <div className="label mb-1.5 px-3">{t(s.label)}</div>}
             <div className="space-y-0.5">
@@ -134,9 +138,11 @@ function Sidebar() {
       </div>
       {sys && (
         <div className="border-t border-line px-4 py-3">
-          <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-ink-muted">
-            <span>{sys.root.replace("\\", "")}</span>
-            <span className="num">{fmt(sys.free)}</span>
+          <div className="mb-1.5 flex items-center justify-between gap-2 font-mono text-[11px] text-ink-muted">
+            <span className="min-w-0 truncate" title={sys.root}>
+              {driveLabel(sys.root)}
+            </span>
+            <span className="num shrink-0">{fmt(sys.free)}</span>
           </div>
           <UsageBar segments={[{ value: sys.total - sys.free, className: "bg-primary" }, { value: sys.free, className: "swatch-free" }]} />
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-muted">

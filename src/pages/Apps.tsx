@@ -6,7 +6,7 @@ import { AppIcon } from "../components/FileIcons";
 import { PathText, ReportDialog } from "../components/common";
 import { Badge, Banner, Button, Card, Checkbox, Dialog, EmptyState, PageHeader, Segmented, Select, Skeleton } from "../components/ui";
 import { api } from "../lib/api";
-import { baseName } from "../lib/format";
+import { baseName } from "../lib/paths";
 import type { CleanReport, DeleteMethod, InstalledApp, Leftover } from "../lib/types";
 import { errorText, useApp } from "../store/app";
 
